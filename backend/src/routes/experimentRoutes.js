@@ -1,15 +1,17 @@
-const express = require('express');
-const { createExperiment } = require('../controllers/experimentController');
-const { getWallet } = require('../controllers/walletController');
-const { protect, authorize } = require('../middlewares/authMiddleware');
+const router = require("express").Router();
 
-const router = express.Router();
+const {
+  createExperiment,
+  getExperiments,
+  getExperimentById,
+  updateExperiment,
+  deleteExperiment,
+} = require("../controllers/experimentController");
 
-router.use(protect);
-
-router.post('/', authorize('RESEARCHER', 'ADMIN'), createExperiment);
-
-// Wallet access for researcher
-router.get('/:experimentId/wallet', authorize('RESEARCHER', 'ADMIN'), getWallet);
+router.post("/", createExperiment);
+router.get("/", getExperiments);
+router.get("/:id", getExperimentById);
+router.put("/:id", updateExperiment);
+router.delete("/:id", deleteExperiment);
 
 module.exports = router;
