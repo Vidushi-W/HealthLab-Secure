@@ -10,7 +10,6 @@ router.use(authorize('ADMIN'));
 
 router.get('/fund-requests', getAllRequests);
 router.patch('/fund-requests/:id/status', updateStatus);
-router.post('/fund-requests/:id/disburse', disburseRequest);
 
 router.get('/experiments/:experimentId/wallet', getWallet);
 

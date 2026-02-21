@@ -15,11 +15,33 @@ const hasActiveRequest = async (experimentId) => {
     return count > 0;
 };
 
+// Helper: Enforce only one fund request per researcher per calendar month
+const enforceMonthlyResearcherFundRequestLimit = async (researcherId) => {
+    const now = new Date();
+    // Using UTC to safely determine start and end of the current month
+    const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0));
+    const endOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+
+    const count = await FundRequest.countDocuments({
+        researcherId,
+        createdAt: {
+            $gte: startOfMonth,
+            $lte: endOfMonth
+        }
+    });
+
+    if (count > 0) {
+        const error = new Error('Researcher can create only one fund request per month.');
+        error.code = 'MONTHLY_FUND_REQUEST_LIMIT_REACHED';
+        throw error;
+    }
+};
+
 const createRequest = async (user, data) => {
-    const { experimentId, requestedAmount, reason } = data;
+    const { experimentId, targetAmount, reason } = data;
 
     // 1. Validation
-    if (requestedAmount <= 0) throw new Error('Requested amount must be positive');
+    if (targetAmount <= 0) throw new Error('Target amount must be positive');
 
     const experiment = await Experiment.findById(experimentId);
     if (!experiment) throw new Error('Experiment not found');
@@ -29,10 +51,10 @@ const createRequest = async (user, data) => {
     }
 
     // Check limits
-    if (requestedAmount < experiment.minTopUpAmount) {
+    if (targetAmount < experiment.minTopUpAmount) {
         throw new Error(`Amount below minimum top-up limit (${experiment.minTopUpAmount})`);
     }
-    if (requestedAmount > experiment.maxTopUpAmount) {
+    if (targetAmount > experiment.maxTopUpAmount) {
         throw new Error(`Amount exceeds maximum top-up limit (${experiment.maxTopUpAmount})`);
     }
 
@@ -41,11 +63,14 @@ const createRequest = async (user, data) => {
         throw new Error('An active fund request already exists for this experiment');
     }
 
+    // Check monthly limit
+    await enforceMonthlyResearcherFundRequestLimit(user._id);
+
     // 2. Create
     const request = await FundRequest.create({
         experimentId,
         researcherId: user._id,
-        requestedAmount,
+        targetAmount,
         reason,
         status: 'DRAFT',
         submittedAt: new Date(),
@@ -58,7 +83,7 @@ const createRequest = async (user, data) => {
         fundRequestId: request._id,
         experimentId,
         toStatus: 'SUBMITTED',
-        metadata: { requestedAmount }
+        metadata: { targetAmount }
     });
 
     return request;
@@ -66,6 +91,13 @@ const createRequest = async (user, data) => {
 
 const getMyRequests = async (userId) => {
     return await FundRequest.find({ researcherId: userId }).sort({ createdAt: -1 });
+};
+
+const getOpenRequests = async () => {
+    return await FundRequest.find({ status: 'OPEN_FOR_FUNDING', isOpenForFunding: true })
+        .sort({ createdAt: -1 })
+        .populate('researcherId', 'name')
+        .populate('experimentId', 'title');
 };
 
 const getRequestById = async (requestId, user) => {
@@ -91,7 +123,7 @@ const updateRequest = async (requestId, user, data) => {
     }
 
     // Only allow updating amount and reason
-    if (data.requestedAmount) request.requestedAmount = data.requestedAmount;
+    if (data.targetAmount) request.targetAmount = data.targetAmount;
     if (data.reason) request.reason = data.reason;
 
     // Allow submission
@@ -157,10 +189,10 @@ const getAllRequests = async (filters) => {
     return await FundRequest.find(query).sort({ createdAt: -1 }).populate('researcherId', 'name email').populate('experimentId', 'title');
 };
 
-const updateStatus = async (requestId, user, { status, adminDecisionNote, approvedAmount }) => {
+const updateStatus = async (requestId, user, { status, adminDecisionNote }) => {
     // Valid transitions:
     // SUBMITTED -> UNDER_REVIEW
-    // UNDER_REVIEW -> APPROVED | REJECTED
+    // UNDER_REVIEW -> OPEN_FOR_FUNDING | REJECTED
 
     const request = await FundRequest.findById(requestId);
     if (!request) throw new Error('Request not found');
@@ -174,13 +206,16 @@ const updateStatus = async (requestId, user, { status, adminDecisionNote, approv
     } else if (status === 'REJECTED') {
         if (oldStatus !== 'UNDER_REVIEW') throw new Error('Invalid transition to REJECTED');
         request.status = 'REJECTED';
-        request.decidedAt = new Date();
+        request.rejectedAt = new Date();
         request.adminDecisionNote = adminDecisionNote;
-    } else if (status === 'APPROVED') {
-        if (oldStatus !== 'UNDER_REVIEW') throw new Error('Invalid transition to APPROVED');
+    } else if (status === 'OPEN_FOR_FUNDING') {
+        if (oldStatus !== 'UNDER_REVIEW') throw new Error('Invalid transition to OPEN_FOR_FUNDING');
 
-        // This is the critical part: Wallet Allocation
-        return await approveRequest(request, user, approvedAmount, adminDecisionNote);
+        request.status = 'OPEN_FOR_FUNDING';
+        request.isOpenForFunding = true;
+        request.approvedAt = new Date();
+        request.approvedBy = user._id;
+        request.adminDecisionNote = adminDecisionNote;
     } else {
         throw new Error('Invalid status update');
     }
@@ -201,76 +236,7 @@ const updateStatus = async (requestId, user, { status, adminDecisionNote, approv
     return request;
 };
 
-const approveRequest = async (request, user, approvedAmountOverride, note) => {
-    // Removed transaction for local dev compatibility (requires replica set)
-    // const session = await mongoose.startSession();
-    // session.startTransaction();
-
-    try {
-        const approvedAmount = approvedAmountOverride || request.requestedAmount;
-
-        // Check idempotency (though status check handles mostly)
-        if (request.status === 'APPROVED') throw new Error('Already approved');
-
-        // Check global cap (maxTotalTopUps)
-        const experiment = await Experiment.findById(request.experimentId); // .session(session);
-        if (experiment.maxTotalTopUps) {
-            // Calculate total approved so far
-            const totalApproved = await FundRequest.aggregate([
-                { $match: { experimentId: experiment._id, status: { $in: ['APPROVED', 'DISBURSED'] } } },
-                { $group: { _id: null, total: { $sum: '$approvedAmount' } } }
-            ]); // .session(session);
-
-            const currentTotal = totalApproved.length > 0 ? totalApproved[0].total : 0;
-            if (currentTotal + approvedAmount > experiment.maxTotalTopUps) {
-                throw new Error('Approval would exceed experiment global funding cap');
-            }
-        }
-
-        request.status = 'APPROVED';
-        request.approvedAmount = approvedAmount;
-        request.decidedAt = new Date();
-        request.allocatedAt = new Date();
-        request.adminDecisionNote = note;
-        request.allocationIdempotencyKey = `ALLOC_${request._id}_${Date.now()}`; // Simple key
-
-        await request.save(); // { session });
-
-        // Update Wallet
-        let wallet = await ExperimentWallet.findOne({ experimentId: request.experimentId }); // .session(session);
-        if (!wallet) {
-            // Should exist from experiment creation, but just in case
-            wallet = await ExperimentWallet.create([{ experimentId: request.experimentId, balance: 0 }]); // , { session });
-            wallet = wallet[0];
-        } else {
-            wallet.balance += approvedAmount;
-            wallet.lastUpdatedAt = new Date();
-            await wallet.save(); // { session });
-        }
-
-        // await session.commitTransaction();
-        // session.endSession();
-
-        // Audit Log (outside transaction or after)
-        await auditService.logAction({
-            actorId: user._id,
-            actorRole: user.role,
-            action: 'WALLET_ALLOCATION',
-            fundRequestId: request._id,
-            experimentId: request.experimentId,
-            fromStatus: 'UNDER_REVIEW',
-            toStatus: 'APPROVED',
-            metadata: { approvedAmount, note }
-        });
-
-        return request;
-
-    } catch (error) {
-        // await session.abortTransaction();
-        // session.endSession();
-        throw error;
-    }
-};
+// Removed disburseRequest as wallet logic is moving to contributions
 
 const disburseRequest = async (requestId, user, referenceId) => {
     const request = await FundRequest.findById(requestId);
@@ -306,10 +272,10 @@ const disburseRequest = async (requestId, user, referenceId) => {
 module.exports = {
     createRequest,
     getMyRequests,
+    getOpenRequests,
     getRequestById,
     updateRequest,
     cancelRequest,
     getAllRequests,
-    updateStatus,
-    disburseRequest
+    updateStatus
 };

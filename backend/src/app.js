@@ -1,6 +1,10 @@
 const express = require("express");
 const cors = require("cors");
 const experimentRoutes = require("./routes/experimentRoutes");
+const authRoutes = require("./routes/authRoutes");
+const fundRequestRoutes = require("./routes/fundRequestRoutes");
+const adminRoutes = require("./routes/adminRoutes");
+const contributionRoutes = require("./routes/contributionRoutes");
 
 const app = express();
 
@@ -13,6 +17,10 @@ app.get("/health", (req, res) => {
 });
 
 // Routes
-app.use("/experiments", experimentRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/experiments", experimentRoutes); // Kept for backward compatibility
+app.use("/api/fund-requests", fundRequestRoutes);
+app.use("/api/contributions", contributionRoutes);
+app.use("/api/admin", adminRoutes);
 
 module.exports = app;

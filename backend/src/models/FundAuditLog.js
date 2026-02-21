@@ -12,7 +12,7 @@ const fundAuditLogSchema = new mongoose.Schema({
     action: {
         type: String,
         required: true,
-        // enum: ['CREATE_REQUEST', 'UPDATE_REQUEST', 'CANCEL_REQUEST', 'REVIEW_STATUS_CHANGE', 'WALLET_ALLOCATION', 'DISBURSEMENT']
+        // enum: ['CREATE_REQUEST', 'UPDATE_REQUEST', 'CANCEL_REQUEST', 'REVIEW_STATUS_CHANGE', 'CONTRIBUTION_CREATED', 'CONTRIBUTION_SUCCESS', 'WALLET_CREDIT']
     },
     fundRequestId: {
         type: mongoose.Schema.Types.ObjectId,

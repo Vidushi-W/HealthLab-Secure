@@ -13,16 +13,21 @@ const fundRequestSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'DISBURSED', 'CANCELLED'],
+        enum: ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'OPEN_FOR_FUNDING', 'CLOSED', 'FUNDED'],
         default: 'DRAFT',
     },
-    requestedAmount: {
+    isOpenForFunding: {
+        type: Boolean,
+        default: false,
+    },
+    targetAmount: {
         type: Number,
         required: true,
         min: 0,
     },
-    approvedAmount: {
-        type: Number, // Set upon approval
+    raisedAmount: {
+        type: Number,
+        default: 0,
     },
     reason: {
         type: String,
@@ -31,27 +36,20 @@ const fundRequestSchema = new mongoose.Schema({
     adminDecisionNote: {
         type: String,
     },
-    disbursementReferenceId: {
-        type: String,
-    },
-    allocationIdempotencyKey: {
-        type: String, // To prevent double allocation
-        unique: true,
-        sparse: true, // Allow nulls for non-approved requests
+    approvedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
     },
     // Timestamps for status changes
     submittedAt: Date,
     reviewedAt: Date,
-    decidedAt: Date,
-    allocatedAt: Date,
-    disbursedAt: Date,
-    cancelledAt: Date,
+    approvedAt: Date,
+    rejectedAt: Date,
+    fundedAt: Date,
+    closedAt: Date,
 }, {
     timestamps: true
 });
-
-// Compound index for finding active requests per experiment
-// fundRequestSchema.index({ experimentId: 1, status: 1 });
 
 const FundRequest = mongoose.model('FundRequest', fundRequestSchema);
 
