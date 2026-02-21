@@ -46,16 +46,8 @@ const createRequest = async (user, data) => {
     const experiment = await Experiment.findById(experimentId);
     if (!experiment) throw new Error('Experiment not found');
 
-    if (experiment.ownerId.toString() !== user._id.toString()) {
+    if (experiment.createdBy && experiment.createdBy.toString() !== user._id.toString()) {
         throw new Error('Not authorized to request funds for this experiment');
-    }
-
-    // Check limits
-    if (targetAmount < experiment.minTopUpAmount) {
-        throw new Error(`Amount below minimum top-up limit (${experiment.minTopUpAmount})`);
-    }
-    if (targetAmount > experiment.maxTopUpAmount) {
-        throw new Error(`Amount exceeds maximum top-up limit (${experiment.maxTopUpAmount})`);
     }
 
     // Check active requests
@@ -72,7 +64,7 @@ const createRequest = async (user, data) => {
         researcherId: user._id,
         targetAmount,
         reason,
-        status: 'DRAFT',
+        status: 'SUBMITTED',
         submittedAt: new Date(),
     });
 

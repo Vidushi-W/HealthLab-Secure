@@ -3,9 +3,9 @@ const contributionService = require('../services/contributionService');
 const contribute = async (req, res, next) => {
     try {
         const fundRequestId = req.params.id;
-        const { amount, paymentReferenceId } = req.body;
+        const { amount, paymentStatus, paymentReferenceId, notes } = req.body;
 
-        const result = await contributionService.contribute(req.user, fundRequestId, amount, paymentReferenceId);
+        const result = await contributionService.contribute(req.user, fundRequestId, { amount, paymentStatus, paymentReferenceId, notes });
 
         res.status(201).json(result);
     } catch (error) {

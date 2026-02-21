@@ -8,6 +8,7 @@ const createExperiment = async (req, res, next) => {
     const experiment = await Experiment.create({
       title,
       description,
+      createdBy: req.user ? req.user._id : null,
       status: "draft",
     });
 
