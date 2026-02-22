@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 
 const userSchema = new mongoose.Schema(
   {
@@ -17,12 +18,12 @@ const userSchema = new mongoose.Schema(
     // RBAC
     role: {
       type: String,
-      enum: ["participant", "researcher", "admin", "medical_reviewer"],
+      enum: ["participant", "researcher", "admin", "medical_reviewer", "DONOR", "USER", "ADMIN", "RESEARCHER"],
       default: "participant",
       required: true,
     },
 
-    // Optional: Participant / enrollment fields (keep optional to avoid breaking existing users)
+    // Optional: Participant / enrollment fields
     age: { type: Number },
 
     gender: {
@@ -71,5 +72,19 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Password hashing hook (from fund_management)
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) {
+    return next();
+  }
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+});
+
+// Password matching method (from fund_management)
+userSchema.methods.matchPassword = async function (enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
+};
 
 module.exports = mongoose.model("User", userSchema);

@@ -1,6 +1,16 @@
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
+const mongoose = require("mongoose");
+
+// Middleware imports
+const { optionalAuth } = require("./middleware/auth");
+const researcherApprovedForPublish = require("./middleware/researcherApproved");
+const { extractUserFromHeader } = require("./middleware/rbacMiddleware");
+const { errorHandler, notFound } = require("./middlewares/errorMiddleware"); // Note: conflict between middlewares and middleware folder name?
+const dbReadyMiddleware = require("./middlewares/dbReadyMiddleware");
+
+// Route imports
 const authRoutes = require("./routes/authRoutes");
 const experimentRoutes = require("./routes/experimentRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
@@ -9,55 +19,57 @@ const recommendationRoutes = require("./routes/recommendationRoutes");
 const participationRoutes = require("./routes/participationRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const externalRoutes = require("./routes/externalRoutes");
-
-const { optionalAuth } = require("./middleware/auth");
-const researcherApprovedForPublish = require("./middleware/researcherApproved");
-const { extractUserFromHeader } = require("./middleware/rbacMiddleware");
-const errorHandler = require("./utils/errorHandler");
-const { HTTP_STATUS } = require("./config/constants");
+const fundRequestRoutes = require("./routes/fundRequestRoutes");
+const contributionRoutes = require("./routes/contributionRoutes");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
-// Auth routes
-app.use("/api/auth", authRoutes);
 
-// PART B.3: Extract user info from headers (for authentication)
-app.use(extractUserFromHeader);
-
-app.use("/api/recommendations", recommendationRoutes);
-app.use("/api/experiments", experimentRoutes);
-app.use("/api/participations", participationRoutes); Develop_Integration
-
-// Static uploads (friend branch)
+// Static uploads
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
-// IMPORTANT: Mount before /experiments so /experiments/:experimentId/co-researchers is matched first
-app.use("/experiments/:experimentId/co-researchers", coResearcherRoutes);
-
-// Public / health
+// 📊 Health check
 app.get("/health", (req, res) => {
-  res.status(HTTP_STATUS.OK).json({ status: "ok", message: "Backend is running" });
+  const states = ["Disconnected", "Connected", "Connecting", "Disconnecting"];
+  res.status(200).json({
+    status: "ok",
+    api: "HealthLab Backend API",
+    database: states[mongoose.connection.readyState],
+    dbCode: mongoose.connection.readyState,
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  });
 });
 
-// Auth/admin/external (friend branch)
-app.use("/auth", authRoutes);
-app.use("/admin", adminRoutes);
+// 🛡️ Database Readiness Guard - Applied to all API routes
+app.use("/api", dbReadyMiddleware);
+
+// Extract user info from headers (RBAC)
+app.use(extractUserFromHeader);
+
+// 🚀 Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/recommendations", recommendationRoutes);
+app.use("/api/experiments", experimentRoutes);
+app.use("/api/participations", participationRoutes);
+app.use("/api/fund-requests", fundRequestRoutes);
+app.use("/api/contributions", contributionRoutes);
+app.use("/api/admin", adminRoutes);
 app.use("/api/external", externalRoutes);
 
-// Experiments (friend branch uses optionalAuth + approval middleware)
-app.use(
-  "/experiments",
-  optionalAuth,
-  researcherApprovedForPublish,
-  experimentRoutes
-);
-
-// Reviews (your branch)
+// Backward compatibility or direct routes
+app.use("/experiments", experimentRoutes); 
+app.use("/auth", authRoutes);
+app.use("/admin", adminRoutes);
 app.use("/reviews", reviewRoutes);
 
-// Global error handler (friend branch)
+// IMPORTANT: Mount before /experiments if necessary
+app.use("/experiments/:experimentId/co-researchers", coResearcherRoutes);
+
+// 🛑 Error Handling
+app.use(notFound);
 app.use(errorHandler);
 
 module.exports = app;

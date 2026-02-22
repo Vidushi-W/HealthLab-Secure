@@ -6,11 +6,10 @@ const jwt = require("jsonwebtoken");
 const asyncHandler = require("../utils/asyncHandler");
 const { parseBool } = require("../validators/authValidators");
 const { JWT_SECRET, JWT_EXPIRES_IN } = require("../config/constants");
+const authService = require('../services/authService');
 
 /**
  * Register a PARTICIPANT (used for participation/enrollment flow)
- * - Keeps your feature branch registration idea
- * - Uses Develop_Integration style (asyncHandler + constants)
  */
 const registerParticipant = asyncHandler(async (req, res) => {
   const {
@@ -41,9 +40,6 @@ const registerParticipant = asyncHandler(async (req, res) => {
 
   const hashedPassword = await bcrypt.hash(password, 12);
 
-  // NOTE:
-  // If your User schema doesn't include these extra fields, Mongoose (strict mode)
-  // will ignore them safely (won't crash). If schema has them, they will be saved.
   const user = await User.create({
     name,
     email,
@@ -77,7 +73,6 @@ const registerParticipant = asyncHandler(async (req, res) => {
 
 /**
  * Register a RESEARCHER (submitted for admin review)
- * - This is the Develop_Integration flow
  */
 const registerResearcher = asyncHandler(async (req, res) => {
   const {
@@ -152,12 +147,38 @@ const registerResearcher = asyncHandler(async (req, res) => {
 });
 
 /**
- * Login (used for all roles)
+ * Unifying General User Registration (from fund_management service)
+ */
+const registerUser = async (req, res, next) => {
+  try {
+    const { name, email, password, role } = req.body;
+    const user = await authService.registerUser(name, email, password, role);
+    res.status(201).json(user);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Login (unifying loginUser from fund_management)
+ */
+const loginUser = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+    const user = await authService.loginUser(email, password);
+    res.json(user);
+  } catch (error) {
+    res.status(401);
+    next(error);
+  }
+};
+
+/**
+ * Original Login (Develop_Integration)
  */
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  // IMPORTANT: password is select:false in Develop_Integration User model
   const user = await User.findOne({ email }).select("+password");
   if (!user) {
     return res.status(401).json({
@@ -175,7 +196,7 @@ const login = asyncHandler(async (req, res) => {
   }
 
   const token = jwt.sign(
-    { userId: user._id, role: user.role }, // include role (helpful + safe)
+    { userId: user._id, role: user.role },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
   );
@@ -202,5 +223,7 @@ const login = asyncHandler(async (req, res) => {
 module.exports = {
   registerParticipant,
   registerResearcher,
+  registerUser,
   login,
+  loginUser,
 };

@@ -1,5 +1,8 @@
 const router = require("express").Router();
-const { optionalAuth } = require("../middlewares/auth");
+
+// Note: checking which middleware folder to use (middlewares vs middleware)
+const { optionalAuth } = require("../middleware/auth");
+
 const {
   createExperiment,
   getExperiments,
@@ -7,6 +10,7 @@ const {
   updateExperiment,
   deleteExperiment,
 } = require("../controllers/experimentController");
+
 const { getReviewsByExperiment } = require("../controllers/reviewController");
 
 router.post("/", createExperiment);
@@ -22,4 +26,3 @@ router.put("/:id", updateExperiment);
 router.delete("/:id", deleteExperiment);
 
 module.exports = router;
-

@@ -9,6 +9,8 @@ const { error: errorResponse, success: successResponse } = require("../utils/res
 const { HTTP_STATUS } = require("../config/constants");
 const adminService = require("../services/adminService");
 const pdfExportService = require("../services/pdfExportService");
+const fundRequestService = require('../services/fundRequestService');
+const analyticsService = require('../services/analyticsService');
 
 const { RESEARCHER_STATUS } = adminService;
 const POPULATE = { user: "name email role", reviewedBy: "name email" };
@@ -114,12 +116,57 @@ const exportResearchersPdf = asyncHandler(async (req, res) => {
   pdfExportService.pipeResearchersReportToResponse(researchers, res);
 });
 
-/** Dashboard analytics: researcher counts, status breakdown, type distribution, pending backlog, overdue reviews */
-const getAnalytics = asyncHandler(async (req, res) => {
+/** Dashboard analytics: Researcher counts */
+const getResearcherAnalytics = asyncHandler(async (req, res) => {
   const overdueDays = Math.max(1, parseInt(req.query.overdueDays, 10) || 7);
   const data = await adminService.getResearcherAnalytics(overdueDays);
   return res.status(HTTP_STATUS.OK).json(data);
 });
+
+/** Fund Management Admin Functions */
+const getAllRequests = async (req, res, next) => {
+  try {
+    const filters = req.query; // status, experimentId, researcherId
+    const requests = await fundRequestService.getAllRequests(filters);
+    res.json(requests);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateStatus = async (req, res, next) => {
+  try {
+    const { status, adminDecisionNote, approvedAmount } = req.body;
+    const request = await fundRequestService.updateStatus(req.params.id, req.user, {
+      status,
+      adminDecisionNote,
+      approvedAmount
+    });
+    res.json(request);
+  } catch (error) {
+    if (error.message.includes('not found')) res.status(404);
+    else if (error.message.includes('Invalid transition') || error.message.includes('exceed')) res.status(400);
+    next(error);
+  }
+};
+
+const getAnalytics = async (req, res, next) => {
+  try {
+    const data = await analyticsService.getAnalytics();
+    res.json(data);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getReports = async (req, res, next) => {
+  try {
+    const data = await analyticsService.getReports(req.query);
+    res.json(data);
+  } catch (error) {
+    next(error);
+  }
+};
 
 module.exports = {
   getPendingResearchers,
@@ -130,5 +177,9 @@ module.exports = {
   getUsers,
   deleteExperiment,
   exportResearchersPdf,
+  getResearcherAnalytics,
+  getAllRequests,
+  updateStatus,
   getAnalytics,
+  getReports
 };

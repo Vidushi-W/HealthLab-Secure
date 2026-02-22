@@ -84,14 +84,6 @@ const experimentSchema = new mongoose.Schema(
     eligibilityRules: {
       type: Object,
       default: {},
-      // Structure:
-      // {
-      //   minAge: Number,
-      //   maxAge: Number,
-      //   medicalConditions: [String], // e.g., ["Diabetes", "Hypertension"]
-      //   requiredConditions: [String],
-      //   conflictsWith: [ObjectId] // IDs of conflicting experiments
-      // }
     },
     participantLimit: { type: Number, default: 0 },
     // Track current number of active participants for atomic capacity checks
@@ -103,6 +95,4 @@ const experimentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const { experimentDB } = require("../config/db");
-
-module.exports = experimentDB.model("Experiment", experimentSchema);
+module.exports = mongoose.model("Experiment", experimentSchema);
