@@ -182,36 +182,38 @@ const getAllRequests = async (filters) => {
 };
 
 const updateStatus = async (requestId, user, { status, adminDecisionNote }) => {
-    // Valid transitions:
-    // SUBMITTED -> UNDER_REVIEW
-    // UNDER_REVIEW -> OPEN_FOR_FUNDING | REJECTED
-
     const request = await FundRequest.findById(requestId);
     if (!request) throw new Error('Request not found');
 
     const oldStatus = request.status;
+    const allowedStatuses = ['UNDER_REVIEW', 'APPROVED', 'REJECTED', 'OPEN_FOR_FUNDING', 'CLOSED'];
 
-    if (status === 'UNDER_REVIEW') {
-        if (oldStatus !== 'SUBMITTED') throw new Error('Invalid transition to UNDER_REVIEW');
-        request.status = 'UNDER_REVIEW';
-        request.reviewedAt = new Date();
-    } else if (status === 'REJECTED') {
-        if (oldStatus !== 'UNDER_REVIEW') throw new Error('Invalid transition to REJECTED');
-        request.status = 'REJECTED';
-        request.rejectedAt = new Date();
-        request.adminDecisionNote = adminDecisionNote;
-    } else if (status === 'OPEN_FOR_FUNDING') {
-        if (oldStatus !== 'UNDER_REVIEW') throw new Error('Invalid transition to OPEN_FOR_FUNDING');
-
-        request.status = 'OPEN_FOR_FUNDING';
-        request.isOpenForFunding = true;
-        request.approvedAt = new Date();
-        request.approvedBy = user._id;
-        request.adminDecisionNote = adminDecisionNote;
-    } else {
+    if (!allowedStatuses.includes(status)) {
         throw new Error('Invalid status update');
     }
 
+    // Logic for specific status changes
+    if (status === 'UNDER_REVIEW') {
+        if (oldStatus !== 'SUBMITTED') throw new Error('Invalid transition to UNDER_REVIEW');
+        request.reviewedAt = new Date();
+    } else if (status === 'REJECTED') {
+        request.rejectedAt = new Date();
+        request.isOpenForFunding = false;
+    } else if (status === 'OPEN_FOR_FUNDING') {
+        // Allow moving to OPEN from either SUBMITTED or UNDER_REVIEW
+        if (!['SUBMITTED', 'UNDER_REVIEW'].includes(oldStatus)) {
+            throw new Error('Invalid transition to OPEN_FOR_FUNDING');
+        }
+        request.isOpenForFunding = true;
+        request.approvedAt = new Date();
+        request.approvedBy = user._id;
+    } else if (status === 'CLOSED') {
+        request.isOpenForFunding = false;
+        request.closedAt = new Date();
+    }
+
+    request.status = status;
+    request.adminDecisionNote = adminDecisionNote || request.adminDecisionNote;
     await request.save();
 
     await auditService.logAction({
