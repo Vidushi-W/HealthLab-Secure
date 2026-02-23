@@ -1,6 +1,5 @@
 require("dotenv").config();
-const app = require("./app");
-const connectDB = require("./config/db");
+const { connectDB } = require("./config/db");
 const mongoose = require("mongoose");
 
 const PORT = process.env.PORT || 5000;
@@ -13,7 +12,10 @@ const boot = async () => {
     // 1. Await Database connection before proceeding
     await connectDB();
 
-    // 2. Start HTTP Listener
+    // 2. Load app after DB is connected (ensures models bind correctly)
+    const app = require("./app");
+
+    // 3. Start HTTP Listener
     const server = app.listen(PORT, () => {
       console.log(`🚀 Server: Listening on port ${PORT} [${process.env.NODE_ENV}]`);
     });

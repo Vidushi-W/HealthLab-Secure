@@ -61,4 +61,5 @@ reviewSchema.pre("save", function (next) {
   next();
 });
 
-module.exports = mongoose.model("Review", reviewSchema);
+const { experimentDB } = require("../config/db");
+module.exports = experimentDB.model("Review", reviewSchema);

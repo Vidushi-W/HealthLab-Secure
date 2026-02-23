@@ -23,6 +23,7 @@ const experimentWalletSchema = new mongoose.Schema({
     timestamps: true
 });
 
-const ExperimentWallet = mongoose.model('ExperimentWallet', experimentWalletSchema);
+const { experimentDB } = require("../config/db");
+const ExperimentWallet = experimentDB.model('ExperimentWallet', experimentWalletSchema);
 
 module.exports = ExperimentWallet;

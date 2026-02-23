@@ -55,7 +55,7 @@ const joinExperiment = async (req, res, next) => {
     // 2. ELIGIBILITY ENGINE: Run all three validation checks
     // This includes: Protocol Validation, Medical Term Verification, and Conflict Detection
     const user = { id: userId, age: userAge, email: userEmail };
-    
+
     await eligibilityService.runEligibilityCheck(user, experimentId);
 
     // 3. CREATION: Create new participation record if all checks pass
@@ -108,7 +108,7 @@ const joinExperiment = async (req, res, next) => {
         message: err.message,
       });
     }
-    
+
     // Pass other errors to next middleware
     next(err);
   }
@@ -125,14 +125,19 @@ const getMyStudies = async (req, res, next) => {
     }
 
     // DATA RETRIEVAL: Find all participations for this user
-    // POPULATE: Link experiment details instead of just showing ID
-    const myStudies = await Participation.find({ userId })
-      .populate("experimentId", "title description status eligibilityRules") // Only get these experiment fields
-      .sort({ dateJoined: -1 }); // Newest first
+    const myStudies = await Participation.find({ userId }).sort({ dateJoined: -1 });
+
+    // MANUAL POPULATE: Across different database connections
+    const enrichedStudies = await Promise.all(myStudies.map(async (p) => {
+      const pObj = p.toObject();
+      const experiment = await Experiment.findById(p.experimentId).select("title description status eligibilityRules");
+      pObj.experimentId = experiment;
+      return pObj;
+    }));
 
     return res.status(200).json({
-      totalStudies: myStudies.length,
-      studies: myStudies,
+      totalStudies: enrichedStudies.length,
+      studies: enrichedStudies,
     });
   } catch (err) {
     next(err);
@@ -149,7 +154,7 @@ const leaveExperiment = async (req, res, next) => {
     // 1. Mark status as 'dropped' (preserves database history for researchers)
     // 2. Anonymize personal data for GDPR/ethics compliance
     // 3. Keep aggregated data for analytics
-    
+
     // Fetch previous participation to know if we should decrement experiment count
     const previous = await Participation.findById(participationId);
 
@@ -202,7 +207,7 @@ const getParticipantsList = async (req, res, next) => {
     // This check is enforced by middleware in routes
 
     const query = { experimentId };
-    
+
     // By default, only show active participants
     if (includeWithdrawn !== "true") {
       query.status = "joined";

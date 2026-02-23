@@ -13,7 +13,8 @@ package-lock.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-backend/*.log
+**/logs/
+**/*.log
 
 # IDE / OS
 .vscode/
@@ -44,3 +45,5 @@ backend/get_my_ip.js
 backend/fix_db.js
 backend/test_db.js
 backend/fix_dns.ps1
+error.log
+test-db.js

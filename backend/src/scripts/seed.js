@@ -4,7 +4,7 @@ const User = require('../models/User');
 const Experiment = require('../models/Experiment');
 const ExperimentWallet = require('../models/ExperimentWallet');
 const FundRequest = require('../models/FundRequest');
-const connectDB = require('../config/db');
+const { connectDB } = require('../config/db');
 
 const seedData = async () => {
     await connectDB();

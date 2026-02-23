@@ -1,90 +1,19 @@
 const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
+const db = require("../config/db");
 
-const userSchema = new mongoose.Schema(
-  {
-    // Basic profile
-    name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+const userSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true, select: false },
+  role: { type: String, default: "participant" },
+  isApproved: { type: Boolean, default: false },
+  age: Number,
+  medicalConditions: [String],
+  activityLevel: String,
+  // Add other fields as needed for recommendations
+}, { timestamps: true });
 
-    // Auth
-    password: {
-      type: String,
-      required: true,
-      minlength: 6,
-      select: false, // don't return password in queries by default
-    },
+const userModel = db.userDB.model("User", userSchema);
+console.log(`📁 Model: 'User' loaded on DB: ${userModel.db.name}`);
 
-    // RBAC
-    role: {
-      type: String,
-      enum: ["participant", "researcher", "admin", "medical_reviewer", "DONOR", "USER", "ADMIN", "RESEARCHER"],
-      default: "participant",
-      required: true,
-    },
-
-    // Optional: Participant / enrollment fields
-    age: { type: Number },
-
-    gender: {
-      type: String,
-      enum: ["Male", "Female", "Non-binary", "Other", "Prefer not to say"],
-      default: "Prefer not to say",
-    },
-    location: { type: String, default: "Prefer not to say" },
-
-    // Health Metrics
-    height: { type: Number }, // cm
-    weight: { type: Number }, // kg
-    bloodGroup: {
-      type: String,
-      enum: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Unknown"],
-      default: "Unknown",
-    },
-
-    // Medical History
-    medicalConditions: [{ type: String }],
-    medications: [{ type: String }],
-
-    // Lifestyle
-    smokingStatus: {
-      type: String,
-      enum: ["Never", "Former", "Current", "Prefer not to say"],
-      default: "Prefer not to say",
-    },
-    alcoholStatus: {
-      type: String,
-      enum: ["Never", "Occasional", "Regular", "Prefer not to say"],
-      default: "Prefer not to say",
-    },
-    sleepPatterns: {
-      type: String,
-      default: "Unknown",
-    },
-    activityLevel: {
-      type: String,
-      enum: ["Sedentary", "Lightly Active", "Moderately Active", "Very Active", "Prefer not to say"],
-      default: "Prefer not to say",
-    },
-
-    // For researchers: experiments they created
-    researchesCreated: [{ type: mongoose.Schema.Types.ObjectId, ref: "Experiment" }],
-  },
-  { timestamps: true }
-);
-
-// Password hashing hook (from fund_management)
-userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) {
-    return next();
-  }
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
-});
-
-// Password matching method (from fund_management)
-userSchema.methods.matchPassword = async function (enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
-};
-
-module.exports = mongoose.model("User", userSchema);
+module.exports = userModel;

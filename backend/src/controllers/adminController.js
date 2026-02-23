@@ -3,6 +3,7 @@
  * Delegates business logic to services; handles HTTP only.
  */
 
+const User = require("../models/User");
 const Researcher = require("../models/Researcher");
 const asyncHandler = require("../utils/asyncHandler");
 const { error: errorResponse, success: successResponse } = require("../utils/response");
@@ -87,6 +88,39 @@ const getUsers = asyncHandler(async (req, res) => {
   const { role } = req.query;
   const list = await adminService.getUsersWithResearcherStatus(role || null);
   return res.status(HTTP_STATUS.OK).json(list);
+});
+
+const getUnapprovedResearchers = asyncHandler(async (req, res) => {
+  const users = await User.find({ role: "researcher", isApproved: false });
+  return res.status(HTTP_STATUS.OK).json(users);
+});
+
+const approveUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const user = await User.findByIdAndUpdate(id, { isApproved: true }, { new: true });
+
+  if (!user) {
+    return errorResponse(res, HTTP_STATUS.NOT_FOUND, "User not found");
+  }
+
+  // Also update corresponding Researcher record if it exists
+  await Researcher.findOneAndUpdate({ user: id }, { status: "approved" });
+
+  return res.status(HTTP_STATUS.OK).json(user);
+});
+
+const rejectUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const user = await User.findByIdAndUpdate(id, { isApproved: false }, { new: true });
+
+  if (!user) {
+    return errorResponse(res, HTTP_STATUS.NOT_FOUND, "User not found");
+  }
+
+  // Also update corresponding Researcher record if it exists
+  await Researcher.findOneAndUpdate({ user: id }, { status: "rejected" });
+
+  return res.status(HTTP_STATUS.OK).json(user);
 });
 
 const deleteExperiment = asyncHandler(async (req, res) => {
@@ -175,6 +209,9 @@ module.exports = {
   approveResearcher,
   rejectResearcher,
   getUsers,
+  getUnapprovedResearchers,
+  approveUser,
+  rejectUser,
   deleteExperiment,
   exportResearchersPdf,
   getResearcherAnalytics,

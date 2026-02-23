@@ -6,6 +6,9 @@ const {
   approveResearcher,
   rejectResearcher,
   getUsers,
+  getUnapprovedResearchers,
+  approveUser,
+  rejectUser,
   deleteExperiment,
   exportResearchersPdf,
   getAnalytics, // Note: conflict in adminController between analytics and fund-analytics
@@ -36,6 +39,9 @@ router.get("/analytics", adminGuard, getAnalytics);
 
 /** Get all users */
 router.get("/users", adminGuard, getUsers);
+router.get("/users/unapproved", adminGuard, getUnapprovedResearchers);
+router.patch("/users/approve/:id", adminGuard, approveUser);
+router.patch("/users/reject/:id", adminGuard, rejectUser);
 
 /** Researcher Review Routes */
 router.get("/researchers/pending", adminGuard, getPendingResearchers);

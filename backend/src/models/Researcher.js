@@ -39,5 +39,6 @@ const researcherSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Researcher", researcherSchema);
+const { userDB } = require("../config/db");
+module.exports = userDB.model("Researcher", researcherSchema);
 module.exports.RESEARCHER_TYPES = RESEARCHER_TYPES;

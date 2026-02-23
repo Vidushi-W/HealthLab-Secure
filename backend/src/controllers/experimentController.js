@@ -29,6 +29,7 @@ const createExperiment = async (req, res, next) => {
 const getExperiments = async (req, res, next) => {
   try {
     const experiments = await Experiment.find().sort({ createdAt: -1 });
+    console.log(`📊 API /experiments: Found ${experiments.length} experiments in DB: ${Experiment.db.name}`);
     return res.status(200).json(experiments);
   } catch (err) {
     next(err);

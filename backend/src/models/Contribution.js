@@ -52,6 +52,5 @@ const contributionSchema = new mongoose.Schema({
     timestamps: true
 });
 
-const Contribution = mongoose.model('Contribution', contributionSchema);
-
-module.exports = Contribution;
+const { experimentDB } = require("../config/db");
+module.exports = experimentDB.model('Contribution', contributionSchema);

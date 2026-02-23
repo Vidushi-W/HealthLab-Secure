@@ -7,8 +7,8 @@ const mongoose = require("mongoose");
 const { optionalAuth } = require("./middleware/auth");
 const researcherApprovedForPublish = require("./middleware/researcherApproved");
 const { extractUserFromHeader } = require("./middleware/rbacMiddleware");
-const { errorHandler, notFound } = require("./middlewares/errorMiddleware"); // Note: conflict between middlewares and middleware folder name?
-const dbReadyMiddleware = require("./middlewares/dbReadyMiddleware");
+const { errorHandler, notFound } = require("./middleware/errorMiddleware");
+const dbReadyMiddleware = require("./middleware/dbReadyMiddleware");
 
 // Route imports
 const authRoutes = require("./routes/authRoutes");
@@ -60,7 +60,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/external", externalRoutes);
 
 // Backward compatibility or direct routes
-app.use("/experiments", experimentRoutes); 
+app.use("/experiments", experimentRoutes);
 app.use("/auth", authRoutes);
 app.use("/admin", adminRoutes);
 app.use("/reviews", reviewRoutes);

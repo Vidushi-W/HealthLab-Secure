@@ -1,57 +1,42 @@
 const mongoose = require("mongoose");
-const dns = require("dns");
 
-// Optional: helps in some networks/DNS issues
-dns.setServers(["1.1.1.1", "8.8.8.8"]);
+let userDB;
+let experimentDB;
 
-/**
- * Establishment of MongoDB connection with robust event monitoring.
- */
 const connectDB = async () => {
-  const connString = process.env.MONGODB_URI || process.env.MONGO_URI;
+  const uri = process.env.MONGODB_URI;
+  const userDBName = process.env.MONGO_DB_NAME || "af_project_db";
+  const experimentDBName = process.env.EXPERIMENT_DB_NAME || "healthlab_fund_mgmt";
 
-  if (!connString) {
-    console.error("❌ FATAL: Neither MONGODB_URI nor MONGO_URI found in .env");
-    process.exit(1);
-  }
+  if (!uri) throw new Error("MONGODB_URI missing");
 
-  // Monitor connection states
-  mongoose.connection.on("connecting", () => {
-    console.log("⏳ MongoDB: Connecting...");
-  });
-
-  mongoose.connection.on("connected", () => {
-    const host = mongoose.connection.host;
-    const dbName = mongoose.connection.name;
-    console.log(`✅ MongoDB: Connected to ${host} (DB: ${dbName})`);
-  });
-
-  mongoose.connection.on("error", (err) => {
-    console.error(`❌ MongoDB: Connection Error: ${err.message}`);
-  });
-
-  mongoose.connection.on("disconnected", () => {
-    console.warn("⚠️ MongoDB: Disconnected");
-  });
-
-  mongoose.connection.on("reconnected", () => {
-    console.log("🔄 MongoDB: Reconnected");
-  });
+  console.log(`⏳ MongoDB: Connecting to ${uri}...`);
 
   try {
-    // Explicitly disable buffering to ensure route handlers fail fast if DB is down
-    mongoose.set('bufferCommands', false);
+    const baseUri = uri.endsWith('/') ? uri.slice(0, -1) : uri;
 
-    const conn = await mongoose.connect(connString, {
-      dbName: process.env.MONGO_DB_NAME || "af_project_db",
-      serverSelectionTimeoutMS: 5000,
+    // Connect default mongoose instance to af_project_db
+    const connection = await mongoose.connect(`${baseUri}/${userDBName}`, {
+      serverSelectionTimeoutMS: 15000,
     });
+    console.log(`✅ MongoDB: Main connection connected to ${userDBName}`);
 
-    return conn;
+    // Set references
+    userDB = mongoose.connection.useDb(userDBName, { useCache: true });
+    experimentDB = mongoose.connection.useDb(experimentDBName, { useCache: true });
+
+    console.log(`✅ MongoDB: useDb for userDB -> ${userDB.name}`);
+    console.log(`✅ MongoDB: useDb for experimentDB -> ${experimentDB.name}`);
+
+    return { userDB, experimentDB };
   } catch (error) {
-    console.error(`❌ MongoDB: Initial connection failed: ${error.message}`);
-    throw error; // Let server.js handle the fatal exit
+    console.error(`❌ MongoDB Error: ${error.message}`);
+    throw error;
   }
 };
 
-module.exports = connectDB;
+module.exports = {
+  connectDB,
+  get userDB() { return userDB || mongoose.connection.useDb(process.env.MONGO_DB_NAME || "af_project_db", { useCache: true }); },
+  get experimentDB() { return experimentDB || mongoose.connection.useDb(process.env.EXPERIMENT_DB_NAME || "healthlab_fund_mgmt", { useCache: true }); }
+};

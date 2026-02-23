@@ -33,6 +33,5 @@ const fundAuditLogSchema = new mongoose.Schema({
     }
 });
 
-const FundAuditLog = mongoose.model('FundAuditLog', fundAuditLogSchema);
-
-module.exports = FundAuditLog;
+const { experimentDB } = require("../config/db");
+module.exports = experimentDB.model('FundAuditLog', fundAuditLogSchema);

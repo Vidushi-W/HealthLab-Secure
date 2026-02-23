@@ -1,7 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-
-const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
+const { JWT_SECRET } = require("../config/constants");
 
 const protect = async (req, res, next) => {
   let token;
@@ -14,13 +13,26 @@ const protect = async (req, res, next) => {
       // Verify token
       const decoded = jwt.verify(token, JWT_SECRET);
 
-      // Get user from the token
-      req.user = await User.findById(decoded.id).select("-password");
+      // Get user from the token - handle both 'id' and 'userId' for compatibility
+      const id = decoded.id || decoded.userId;
+      if (!id) {
+        console.log("❌ Auth: No id/userId found in token");
+        return res.status(401).json({ message: "Not authorized. Token payload missing ID." });
+      }
 
+      console.log(`⏳ Auth: Looking up user ${id} in ${User.db.name}...`);
+      req.user = await User.findById(id).select("-password");
+
+      if (!req.user) {
+        console.log(`❌ Auth: User ${id} not found in ${User.db.name}`);
+        return res.status(401).json({ message: `User ${id} not found in ${User.db.name}` });
+      }
+
+      console.log(`✅ Auth: Authenticated user ${req.user.email}`);
       return next();
     } catch (error) {
-      console.error(error);
-      return res.status(401).json({ message: "Not authorized" });
+      console.error("❌ Auth Error:", error.message);
+      return res.status(401).json({ message: "Not authorized", error: error.message });
     }
   }
 
