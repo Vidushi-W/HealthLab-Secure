@@ -3,6 +3,14 @@ const asyncHandler = require("../utils/asyncHandler");
 const { error: errorResponse } = require("../utils/response");
 const { HTTP_STATUS } = require("../config/constants");
 
+/** True if user is the post author or admin (allowed to edit/delete). */
+function canEditPost(post, user) {
+  if (!user || !post) return false;
+  const isAuthor = post.author && post.author._id ? post.author._id.toString() === user._id.toString() : post.author.toString() === user._id.toString();
+  const isAdmin = (user.role || "").toUpperCase() === "ADMIN";
+  return isAuthor || isAdmin;
+}
+
 /**
  * Create a discussion post. JWT required; author and authorRole from req.user.
  */
@@ -59,8 +67,57 @@ const getPostById = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * Update discussion title or content. Only original author or admin. updatedAt set automatically.
+ */
+const updatePost = asyncHandler(async (req, res) => {
+  const post = await Post.findById(req.params.id).populate("author", "name email role");
+  if (!post) {
+    return errorResponse(res, HTTP_STATUS.NOT_FOUND, "Post not found");
+  }
+  if (post.status === "deleted") {
+    return errorResponse(res, HTTP_STATUS.NOT_FOUND, "Post not found");
+  }
+  if (!canEditPost(post, req.user)) {
+    return errorResponse(res, HTTP_STATUS.FORBIDDEN, "Only the author or admin can edit this post");
+  }
+  if (req.body.title !== undefined) post.title = String(req.body.title).trim();
+  if (req.body.content !== undefined) post.content = String(req.body.content).trim();
+  await post.save();
+  const updated = await Post.findById(post._id).populate("author", "name email role");
+  return res.status(HTTP_STATUS.OK).json({
+    success: true,
+    message: "Post updated",
+    post: updated,
+  });
+});
+
+/**
+ * Soft delete: set status to "deleted". Only original author or admin.
+ */
+const deletePost = asyncHandler(async (req, res) => {
+  const post = await Post.findById(req.params.id);
+  if (!post) {
+    return errorResponse(res, HTTP_STATUS.NOT_FOUND, "Post not found");
+  }
+  if (post.status === "deleted") {
+    return errorResponse(res, HTTP_STATUS.NOT_FOUND, "Post not found");
+  }
+  if (!canEditPost(post, req.user)) {
+    return errorResponse(res, HTTP_STATUS.FORBIDDEN, "Only the author or admin can delete this post");
+  }
+  post.status = "deleted";
+  await post.save();
+  return res.status(HTTP_STATUS.OK).json({
+    success: true,
+    message: "Post deleted",
+  });
+});
+
 module.exports = {
   createPost,
   getPosts,
   getPostById,
+  updatePost,
+  deletePost,
 };

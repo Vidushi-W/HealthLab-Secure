@@ -23,7 +23,7 @@ const postSchema = new mongoose.Schema(
     shareCount: { type: Number, default: 0 },
     status: {
       type: String,
-      enum: ["active", "hidden"],
+      enum: ["active", "hidden", "deleted"],
       default: "active",
     },
     comments: [commentSchema],
