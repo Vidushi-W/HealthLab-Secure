@@ -10,7 +10,7 @@ const userSchema = new mongoose.Schema({
   age: Number,
   medicalConditions: [String],
   activityLevel: String,
-  // Add other fields as needed for recommendations
+  savedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
 }, { timestamps: true });
 
 const userModel = db.userDB.model("User", userSchema);

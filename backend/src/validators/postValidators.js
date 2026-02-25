@@ -26,6 +26,28 @@ const updatePostRules = () => [
   }),
 ];
 
+const commentIdRule = () => [param("commentId").isMongoId().withMessage("Invalid comment ID")];
+
+const addCommentRules = () => [
+  param("id").isMongoId().withMessage("Invalid post ID"),
+  body("content").trim().notEmpty().withMessage("Comment content is required"),
+];
+
+const updateCommentRules = () => [
+  param("id").isMongoId().withMessage("Invalid post ID"),
+  param("commentId").isMongoId().withMessage("Invalid comment ID"),
+  body("content").trim().notEmpty().withMessage("Comment content is required"),
+];
+
+const reportRules = () => [
+  body("reason").trim().notEmpty().withMessage("Reason is required"),
+];
+
+const postStatusRules = () => [
+  param("id").isMongoId().withMessage("Invalid post ID"),
+  body("status").isIn(["active", "hidden", "deleted", "reported"]).withMessage("Status must be active, hidden, deleted, or reported"),
+];
+
 const validate = (req, res, next) => {
   const errors = validationResult(req);
   if (errors.isEmpty()) return next();
@@ -33,4 +55,14 @@ const validate = (req, res, next) => {
   return res.status(400).json({ success: false, message: messages.join("; ") });
 };
 
-module.exports = { createPostRules, updatePostRules, postIdRule, validate };
+module.exports = {
+  createPostRules,
+  updatePostRules,
+  postIdRule,
+  commentIdRule,
+  addCommentRules,
+  updateCommentRules,
+  reportRules,
+  postStatusRules,
+  validate,
+};
