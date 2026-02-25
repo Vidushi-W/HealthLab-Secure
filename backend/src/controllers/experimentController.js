@@ -4,19 +4,21 @@ const Experiment = require("../models/Experiment");
 // POST /experiments
 const createExperiment = async (req, res, next) => {
   try {
-    const { title, description, status, eligibilityRules, participantLimit } = req.body;
+    const userId =
+      (req.user && (req.user.id || req.user._id)) || req.headers["x-user-id"];
 
-    // Determine createdBy from authenticated user or placeholder headers
-    const userId = (req.user && (req.user.id || req.user._id)) || req.headers["x-user-id"];
-    const createdBy = (userId && mongoose.Types.ObjectId.isValid(userId)) ? new mongoose.Types.ObjectId(userId) : null;
+    const createdBy =
+      userId && mongoose.Types.ObjectId.isValid(userId)
+        ? new mongoose.Types.ObjectId(userId)
+        : null;
+
 
     const experiment = await Experiment.create({
-      title,
-      description,
-      status: status || "draft",
+      ...req.body,
+      status: req.body.status ?? "draft",
+      eligibilityRules: req.body.eligibilityRules ?? {},
+      participantLimit: req.body.participantLimit ?? 0,
       createdBy,
-      eligibilityRules: eligibilityRules || {},
-      participantLimit: participantLimit || 0,
     });
 
     return res.status(201).json(experiment);
