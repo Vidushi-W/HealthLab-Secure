@@ -7,11 +7,11 @@ const router = express.Router();
 router.use(protect);
 
 // User/Donor routes
-router.get('/my', authorize('USER', 'DONOR', 'RESEARCHER', 'ADMIN'), getMyContributions);
+router.get('/my', authorize('participant', 'researcher', 'admin'), getMyContributions);
 
 // Admin / System routes
-router.get('/admin', authorize('ADMIN'), getAllContributions);
-router.patch('/:id/status', authorize('ADMIN'), updateStatus);
-router.delete('/:id', authorize('ADMIN'), voidContribution);
+router.get('/admin', authorize('admin'), getAllContributions);
+router.patch('/:id/status', authorize('admin'), updateStatus);
+router.delete('/:id', authorize('admin'), voidContribution);
 
 module.exports = router;
