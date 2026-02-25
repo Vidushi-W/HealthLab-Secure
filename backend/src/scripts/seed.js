@@ -1,5 +1,5 @@
 require('dotenv').config();
-const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Experiment = require('../models/Experiment');
 const ExperimentWallet = require('../models/ExperimentWallet');
@@ -17,22 +17,27 @@ const seedData = async () => {
 
         console.log('Data destroyed...');
 
-        // Create Users
+        // Hash passwords so login (bcrypt.compare) works
+        const adminPasswordHash = await bcrypt.hash('admin123', 12);
+        const researcherPasswordHash = await bcrypt.hash('password123', 12);
+
+        // Create Users (admin credentials: admin@healthlab.com / admin123)
         const adminUser = await User.create({
             name: 'Admin User',
-            email: 'admin@healthlab.io',
-            password: 'password123',
+            email: 'admin@healthlab.com',
+            password: adminPasswordHash,
             role: 'ADMIN'
         });
 
         const researcherUser = await User.create({
             name: 'Dr. Researcher',
             email: 'researcher@healthlab.io',
-            password: 'password123',
+            password: researcherPasswordHash,
             role: 'RESEARCHER'
         });
 
         console.log('Users created...');
+        console.log('Admin login: email = admin@healthlab.com, password = admin123');
 
         // Create Experiment
         const experiment = await Experiment.create({
@@ -60,7 +65,7 @@ const seedData = async () => {
         await FundRequest.create({
             experimentId: experiment._id,
             researcherId: researcherUser._id,
-            requestedAmount: 1000,
+            targetAmount: 1000,
             reason: 'Reagents purchase',
             status: 'SUBMITTED',
             submittedAt: new Date()

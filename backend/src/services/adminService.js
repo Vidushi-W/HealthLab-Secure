@@ -89,6 +89,24 @@ async function deleteExperimentWithOptions(experimentId, options, adminUserId) {
 }
 
 /**
+ * Delete researcher and convert the linked user to normal user (participant).
+ * Removes the Researcher document and sets User.role to "participant".
+ * @returns {Promise<{ user: object } | null>} Updated user or null if researcher not found
+ */
+async function deleteResearcherAndConvertToUser(researcherId) {
+  const researcher = await Researcher.findById(researcherId);
+  if (!researcher) return null;
+  const userId = researcher.user;
+  await Researcher.findByIdAndDelete(researcherId);
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { role: USER_ROLE.PARTICIPANT },
+    { new: true }
+  ).select("-password");
+  return user ? { user } : null;
+}
+
+/**
  * Get researcher analytics for admin dashboard: total registered, by status, by type, pending backlog, overdue count.
  * @param {number} overdueDays - Pending registrations older than this many days count as "overdue" (default 7)
  */
@@ -137,6 +155,7 @@ module.exports = {
   updateResearcherReview,
   getUsersWithResearcherStatus,
   deleteExperimentWithOptions,
+  deleteResearcherAndConvertToUser,
   getResearcherAnalytics,
   RESEARCHER_STATUS,
 };
