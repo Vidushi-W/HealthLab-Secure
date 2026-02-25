@@ -13,7 +13,15 @@ const userSchema = new mongoose.Schema({
   // Add other fields as needed for recommendations
 }, { timestamps: true });
 
+// Register on userDB (primary)
 const userModel = db.userDB.model("User", userSchema);
 console.log(`📁 Model: 'User' loaded on DB: ${userModel.db.name}`);
+
+// Also register on experimentDB so FundRequest.populate('researcherId') works
+// (FundRequest lives on experimentDB and uses ref: 'User')
+if (!db.experimentDB.models["User"]) {
+  db.experimentDB.model("User", userSchema);
+  console.log(`📁 Model: 'User' also registered on experimentDB for cross-DB populate`);
+}
 
 module.exports = userModel;

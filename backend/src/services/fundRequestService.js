@@ -96,7 +96,7 @@ const getRequestById = async (requestId, user) => {
     const request = await FundRequest.findById(requestId);
     if (!request) throw new Error('Request not found');
 
-    if (user.role !== 'ADMIN' && request.researcherId.toString() !== user._id.toString()) {
+    if (user.role?.toLowerCase() !== 'admin' && request.researcherId.toString() !== user._id.toString()) {
         throw new Error('Not authorized');
     }
     return request;
@@ -106,19 +106,28 @@ const updateRequest = async (requestId, user, data) => {
     const request = await FundRequest.findById(requestId);
     if (!request) throw new Error('Request not found');
 
-    if (request.researcherId.toString() !== user._id.toString()) {
-        throw new Error('Not authorized');
+    // Business Rules:
+    // 1. If not admin, check ownership
+    // 2. If not admin, check status lock (only SUBMITTED/DRAFT allowed)
+    if (user.role?.toLowerCase() !== 'admin') {
+        if (request.researcherId.toString() !== user._id.toString()) {
+            throw new Error('Not authorized: You do not own this fund request');
+        }
+
+        if (!['DRAFT', 'SUBMITTED'].includes(request.status)) {
+            throw new Error(`Fund request is locked and cannot be modified after approval. Current status: ${request.status}`);
+        }
     }
 
-    if (!['DRAFT', 'SUBMITTED'].includes(request.status)) {
-        throw new Error('Cannot update request in current status');
-    }
+    // Whitelist allowed fields for update
+    const allowedFields = ['targetAmount', 'reason', 'description'];
+    allowedFields.forEach(field => {
+        if (data[field] !== undefined) {
+            request[field] = data[field];
+        }
+    });
 
-    // Only allow updating amount and reason
-    if (data.targetAmount) request.targetAmount = data.targetAmount;
-    if (data.reason) request.reason = data.reason;
-
-    // Allow submission
+    // Handle manual submission if status is DRAFT
     if (data.status === 'SUBMITTED' && request.status === 'DRAFT') {
         request.status = 'SUBMITTED';
         request.submittedAt = new Date();
@@ -168,6 +177,37 @@ const cancelRequest = async (requestId, user) => {
     return request;
 };
 
+const deleteRequest = async (requestId, user) => {
+    const request = await FundRequest.findById(requestId);
+    if (!request) throw new Error('Request not found');
+
+    // Business Rules:
+    // 1. If not admin, check ownership
+    // 2. If not admin, check status lock (only SUBMITTED/DRAFT allowed)
+    if (user.role?.toLowerCase() !== 'admin') {
+        if (request.researcherId.toString() !== user._id.toString()) {
+            throw new Error('Not authorized: You do not own this fund request');
+        }
+
+        if (!['DRAFT', 'SUBMITTED'].includes(request.status)) {
+            throw new Error(`Fund request is locked and cannot be deleted after approval. Current status: ${request.status}`);
+        }
+    }
+
+    await FundRequest.findByIdAndDelete(requestId);
+
+    await auditService.logAction({
+        actorId: user._id,
+        actorRole: user.role,
+        action: 'DELETE_REQUEST',
+        fundRequestId: requestId,
+        experimentId: request.experimentId,
+        metadata: { reason: request.reason, targetAmount: request.targetAmount }
+    });
+
+    return { success: true, message: 'Fund request deleted successfully' };
+};
+
 // Admin Functions
 
 const getAllRequests = async (filters) => {
@@ -199,14 +239,20 @@ const updateStatus = async (requestId, user, { status, adminDecisionNote }) => {
     } else if (status === 'REJECTED') {
         request.rejectedAt = new Date();
         request.isOpenForFunding = false;
-    } else if (status === 'OPEN_FOR_FUNDING') {
-        // Allow moving to OPEN from either SUBMITTED or UNDER_REVIEW
+    } else if (status === 'APPROVED' || status === 'OPEN_FOR_FUNDING') {
+        // Allow moving to APPROVED/OPEN from either SUBMITTED or UNDER_REVIEW
         if (!['SUBMITTED', 'UNDER_REVIEW'].includes(oldStatus)) {
-            throw new Error('Invalid transition to OPEN_FOR_FUNDING');
+            throw new Error(`Invalid transition to ${status}`);
         }
+
+        // Automatically make it open for funding if approved
+        request.status = 'OPEN_FOR_FUNDING';
         request.isOpenForFunding = true;
         request.approvedAt = new Date();
         request.approvedBy = user._id;
+
+        // Finalize status for the rest of the function logic
+        status = 'OPEN_FOR_FUNDING';
     } else if (status === 'CLOSED') {
         request.isOpenForFunding = false;
         request.closedAt = new Date();
@@ -269,6 +315,7 @@ module.exports = {
     getOpenRequests,
     getRequestById,
     updateRequest,
+    deleteRequest,
     cancelRequest,
     getAllRequests,
     updateStatus

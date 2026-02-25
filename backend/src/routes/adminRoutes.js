@@ -32,7 +32,7 @@ const { reviewResearcherRules, deleteExperimentRules, validate } = require("../v
  * Using requiredAuth/adminOnly for Researcher review
  * We'll unify them here assuming they guard similarly.
  */
-const adminGuard = [protect || requiredAuth, authorize ? authorize('ADMIN') : adminOnly];
+const adminGuard = [protect || requiredAuth, authorize ? authorize('admin') : adminOnly];
 
 /** Dashboard analytics */
 router.get("/analytics", adminGuard, getAnalytics);
@@ -63,4 +63,3 @@ router.get('/fund-reports', adminGuard, getReports);
 
 module.exports = router;
 
-module.exports = router;

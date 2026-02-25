@@ -214,9 +214,10 @@ module.exports = {
   rejectUser,
   deleteExperiment,
   exportResearchersPdf,
-  getResearcherAnalytics,
+  getAnalytics,           // fund analytics (from analyticsService)
   getAllRequests,
   updateStatus,
-  getAnalytics,
-  getReports
+  getReports,
+  disburseRequest: (req, res) => res.status(501).json({ message: 'Not implemented' }) // stub
 };
+
