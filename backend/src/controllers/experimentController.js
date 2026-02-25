@@ -53,10 +53,11 @@ const getExperimentById = async (req, res, next) => {
 const updateExperiment = async (req, res, next) => {
   try {
     console.log("PUT body:", req.body);
+
     const updated = await Experiment.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true, runValidators: true }
+      { returnDocument: "after", runValidators: true }
     );
 
     if (!updated) return res.status(404).json({ message: "Experiment not found" });
