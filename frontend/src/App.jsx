@@ -6,6 +6,8 @@ import Signup from './pages/Signup';
 import Home from './pages/Home';
 import RecommendationPage from './pages/RecommendationPage';
 import AdminDashboard from './pages/AdminDashboard';
+import Community from './pages/Community';
+import PostDetail from './pages/PostDetail';
 import { getCurrentUser, logoutUser } from './api/auth';
 
 function App() {
@@ -28,6 +30,7 @@ function App() {
         <nav>
           <Link to="/" className="nav-btn">Home</Link>
           <Link to="/experiments" className="nav-btn">Experiments</Link>
+          <Link to="/community" className="nav-btn">Community</Link>
           <Link to="/recommended" className="nav-btn">Recommended</Link>
           <button className="nav-btn">My Studies</button>
           {user && user.role === 'admin' && (
@@ -52,6 +55,8 @@ function App() {
       <Route path="/signup" element={<Signup />} />
       <Route path="/" element={<Layout><Home /></Layout>} />
       <Route path="/experiments" element={<Layout><ExperimentList /></Layout>} />
+      <Route path="/community" element={<Layout><Community /></Layout>} />
+      <Route path="/community/:id" element={<Layout><PostDetail /></Layout>} />
       <Route path="/recommended" element={<Layout><RecommendationPage /></Layout>} />
       {user && user.role === 'admin' && (
         <Route path="/admin" element={<Layout><AdminDashboard /></Layout>} />
