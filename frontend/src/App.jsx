@@ -3,6 +3,7 @@ import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import ExperimentList from './components/ExperimentList';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import RegisterResearcher from './pages/RegisterResearcher';
 import Home from './pages/Home';
 import RecommendationPage from './pages/RecommendationPage';
 import AdminDashboard from './pages/AdminDashboard';
@@ -30,7 +31,7 @@ function App() {
           <Link to="/experiments" className="nav-btn">Experiments</Link>
           <Link to="/recommended" className="nav-btn">Recommended</Link>
           <button className="nav-btn">My Studies</button>
-          {user && user.role === 'admin' && (
+          {user && (user.role || '').toLowerCase() === 'admin' && (
             <Link to="/admin" className="nav-btn admin-link">Admin Dashboard</Link>
           )}
           {user ? (
@@ -50,11 +51,14 @@ function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/register-researcher" element={<RegisterResearcher />} />
       <Route path="/" element={<Layout><Home /></Layout>} />
       <Route path="/experiments" element={<Layout><ExperimentList /></Layout>} />
       <Route path="/recommended" element={<Layout><RecommendationPage /></Layout>} />
-      {user && user.role === 'admin' && (
+      {(user && (user.role || '').toLowerCase() === 'admin') ? (
         <Route path="/admin" element={<Layout><AdminDashboard /></Layout>} />
+      ) : (
+        <Route path="/admin" element={<Layout><div className="admin-loading">Access denied. Admin only.</div></Layout>} />
       )}
     </Routes>
   );
