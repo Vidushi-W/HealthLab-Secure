@@ -14,7 +14,7 @@ const optionalAuth = async (req, res, next) => {
       return next();
     }
     const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await User.findById(decoded.userId).select("_id name email role");
+    const user = await User.findById(decoded.id).select("_id name email role");
     req.user = user || null;
     next();
   } catch {
@@ -34,7 +34,7 @@ const requiredAuth = async (req, res, next) => {
       return res.status(HTTP_STATUS.UNAUTHORIZED).json({ success: false, message: "Authentication required" });
     }
     const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await User.findById(decoded.userId).select("_id name email role");
+    const user = await User.findById(decoded.id).select("_id name email role");
     if (!user) {
       return res.status(HTTP_STATUS.UNAUTHORIZED).json({ success: false, message: "User not found" });
     }

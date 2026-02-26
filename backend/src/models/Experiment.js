@@ -16,6 +16,27 @@ const eligibilityCriteriaSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const logFieldDefinitionSchema = new mongoose.Schema(
+  {
+    label: { type: String, required: true, trim: true },
+    key: { type: String, required: true, trim: true }, // fieldId
+    type: {
+      type: String,
+      required: true,
+      enum: ["number", "text", "boolean", "date", "time", "select", "multi-select"],
+    },
+    required: { type: Boolean, default: false },
+    unit: { type: String, trim: true },
+    min: { type: Number },
+    max: { type: Number },
+    options: [{ type: String, trim: true }], // only for select/multi-select
+    frequency: { type: String, enum: ["daily", "weekly", "once"] },
+    helpText: { type: String, trim: true },
+  },
+  { _id: false }
+);
+
+
 const experimentSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true },
@@ -35,8 +56,19 @@ const experimentSchema = new mongoose.Schema(
     // ✅ Keep ONE counter only (recommended)
     currentParticipantCount: { type: Number, default: 0 },
 
+    // ✅ Researcher Authorization
+    ownerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+
     // ✅ Conflict tags
     conflictTags: { type: [String], default: [] },
+
+    // ✅ Data Collection Fields / Participant Log Template
+    logFieldDefinitions: { type: [logFieldDefinitionSchema], default: [] },
+
 
     // ✅ Duration / lifecycle
     startDate: { type: Date },

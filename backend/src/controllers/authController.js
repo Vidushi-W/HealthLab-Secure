@@ -58,7 +58,7 @@ const registerParticipant = asyncHandler(async (req, res) => {
   });
 
   const token = jwt.sign(
-    { userId: user._id, role: user.role },
+    { id: user._id, role: user.role },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
   );
@@ -200,7 +200,7 @@ const login = asyncHandler(async (req, res) => {
   }
 
   const token = jwt.sign(
-    { userId: user._id, role: user.role },
+    { id: user._id, role: user.role },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
   );
