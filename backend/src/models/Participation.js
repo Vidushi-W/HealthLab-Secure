@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const db = require("../config/db");
+const { db } = require("../config/db");
 
 const participationSchema = new mongoose.Schema(
   {
@@ -21,5 +21,4 @@ const participationSchema = new mongoose.Schema(
 
 participationSchema.index({ userId: 1, experimentId: 1 }, { unique: true });
 
-// Use a getter approach for multi-db compatibility
-module.exports = db.userDB.model("Participation", participationSchema);
+module.exports = db.model("Participation", participationSchema);

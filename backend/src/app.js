@@ -21,6 +21,7 @@ const adminRoutes = require("./routes/adminRoutes");
 const externalRoutes = require("./routes/externalRoutes");
 const fundRequestRoutes = require("./routes/fundRequestRoutes");
 const contributionRoutes = require("./routes/contributionRoutes");
+const postRoutes = require("./routes/postRoutes");
 
 const app = express();
 
@@ -56,6 +57,7 @@ app.use("/api/experiments", experimentRoutes);
 app.use("/api/participations", participationRoutes);
 app.use("/api/fund-requests", fundRequestRoutes);
 app.use("/api/contributions", contributionRoutes);
+app.use("/api/posts", postRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/external", externalRoutes);
 

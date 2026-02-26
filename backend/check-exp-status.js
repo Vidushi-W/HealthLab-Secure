@@ -7,7 +7,7 @@ const checkStatus = async () => {
 
     try {
         await client.connect();
-        const db = client.db('healthlab_fund_mgmt');
+        const db = client.db('af_project_db');
         const experiments = await db.collection('experiments').find({}).toArray();
 
         console.log(`Total experiments: ${experiments.length}`);

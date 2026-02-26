@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const db = require("../config/db");
 
 const eligibilityCriteriaSchema = new mongoose.Schema(
   {
@@ -110,9 +109,10 @@ experimentSchema.pre("validate", function () {
 });
 
 // ✅ Prevent OverwriteModelError during nodemon restarts
+const { db } = require("../config/db");
 const experimentModel =
-  db.experimentDB.models.Experiment ||
-  db.experimentDB.model("Experiment", experimentSchema);
+  db.models.Experiment ||
+  db.model("Experiment", experimentSchema);
 
 console.log(
   `📁 Model: 'Experiment' initialized on DB: ${experimentModel.db.name} (Coll: ${experimentModel.collection.name})`

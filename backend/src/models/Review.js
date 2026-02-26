@@ -61,5 +61,5 @@ reviewSchema.pre("save", function (next) {
   next();
 });
 
-const { experimentDB } = require("../config/db");
-module.exports = experimentDB.model("Review", reviewSchema);
+const { db } = require("../config/db");
+module.exports = db.model("Review", reviewSchema);

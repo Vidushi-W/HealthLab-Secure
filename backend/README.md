@@ -21,7 +21,7 @@ REST API for managing experiment fund requests, approval workflows, and wallet a
    Create `.env` (already provided):
    ```
    PORT=5000
-   MONGODB_URI=mongodb://localhost:27017/healthlab_fund_mgmt
+   MONGODB_URI=mongodb://localhost:27017/af_project_db
    JWT_SECRET= ...
    ```
 
