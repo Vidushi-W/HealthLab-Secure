@@ -21,6 +21,8 @@ const adminRoutes = require("./routes/adminRoutes");
 const externalRoutes = require("./routes/externalRoutes");
 const fundRequestRoutes = require("./routes/fundRequestRoutes");
 const contributionRoutes = require("./routes/contributionRoutes");
+const postRoutes = require("./routes/postRoutes");
+const reportRoutes = require("./routes/reportRoutes");
 
 const app = express();
 
@@ -58,6 +60,8 @@ app.use("/api/fund-requests", fundRequestRoutes);
 app.use("/api/contributions", contributionRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/external", externalRoutes);
+app.use("/api/posts", postRoutes);
+app.use("/api/reports", reportRoutes);
 
 // Backward compatibility or direct routes
 app.use("/experiments", experimentRoutes);

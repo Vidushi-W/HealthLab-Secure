@@ -17,12 +17,17 @@ const boot = async () => {
     // 1. Await Database connection before proceeding
     await connectDB();
 
-    // 2. Load app after DB is connected (ensures models bind correctly)
+    // 2. Ensure default admin exists (admin@healthlab.com / admin123) – permanent credentials
+    const { ensureAdmin } = require("./config/ensureAdmin");
+    await ensureAdmin();
+
+    // 3. Load app after DB is connected (ensures models bind correctly)
     const app = require("./app");
 
-    // 3. Start HTTP Listener
-    const server = app.listen(PORT, () => {
-      console.log(`🚀 Server: Listening on port ${PORT} [${process.env.NODE_ENV}]`);
+    // 4. Start HTTP Listener (0.0.0.0 = accept connections from localhost and network)
+    const HOST = process.env.HOST || "0.0.0.0";
+    const server = app.listen(PORT, HOST, () => {
+      console.log(`🚀 Server: Listening on http://${HOST}:${PORT} [${process.env.NODE_ENV || "development"}]`);
     });
 
     /**

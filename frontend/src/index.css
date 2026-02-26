@@ -67,6 +67,10 @@ button {
     color: var(--error-color);
 }
 
+.text-success {
+    color: #059669;
+}
+
 /* Form Styles */
 .form-group {
     margin-bottom: 1rem;
