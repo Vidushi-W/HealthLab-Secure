@@ -38,12 +38,10 @@ const registerParticipant = asyncHandler(async (req, res) => {
     });
   }
 
-  const hashedPassword = await bcrypt.hash(password, 12);
-
   const user = await User.create({
     name,
     email,
-    password: hashedPassword,
+    password, // Hashing now handled by pre-save hook
     role: "participant",
     age,
     gender,
@@ -59,9 +57,16 @@ const registerParticipant = asyncHandler(async (req, res) => {
     activityLevel,
   });
 
+  const token = jwt.sign(
+    { userId: user._id, role: user.role },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN }
+  );
+
   res.status(201).json({
     success: true,
     message: "Participant registered successfully",
+    token,
     user: {
       _id: user._id,
       name: user.name,
@@ -101,11 +106,10 @@ const registerResearcher = asyncHandler(async (req, res) => {
 
   const hasPublished = parseBool(hasPublishedResearch);
 
-  const hashedPassword = await bcrypt.hash(password, 12);
   const user = await User.create({
     name: name || fullName,
     email,
-    password: hashedPassword,
+    password, // Hashing now handled by pre-save hook
     role: "researcher",
   });
 

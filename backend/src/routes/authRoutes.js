@@ -20,7 +20,7 @@ const { uploadAffiliationProof } = require("../middleware/upload");
 /**
  * Participant registration (simple)
  */
-router.post("/register-participant", authController.register || authController.registerUser);
+router.post("/register-participant", authController.registerParticipant);
 
 /**
  * Researcher registration (with upload + validation)

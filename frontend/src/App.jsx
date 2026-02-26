@@ -34,7 +34,7 @@ function App() {
             <Link to="/admin" className="nav-btn admin-link">Admin Dashboard</Link>
           )}
           {user ? (
-            <button className="nav-btn profile" onClick={handleLogout}>Logout ({user.name.split(' ')[0]})</button>
+            <button className="nav-btn profile" onClick={handleLogout}>Logout ({user.name ? user.name.split(' ')[0] : 'User'})</button>
           ) : (
             <Link to="/login" className="nav-btn profile">Login</Link>
           )}
