@@ -7,26 +7,26 @@ const createExperiment = async (req, res, next) => {
     const userId =
       (req.user && (req.user.id || req.user._id)) || req.headers["x-user-id"];
 
-    const createdBy =
-      userId && mongoose.Types.ObjectId.isValid(userId)
-        ? new mongoose.Types.ObjectId(userId)
-        : null;
+    if (!userId) {
+      return res.status(400).json({ message: "User ID not found in request" });
+    }
 
-
-    const experiment = await Experiment.create({
+    const experiment = new Experiment({
       ...req.body,
-      status: req.body.status ?? "draft",
-      eligibilityRules: req.body.eligibilityRules ?? {},
-      participantLimit: req.body.participantLimit ?? 0,
-      createdBy,
+      ownerId: userId  // 🔥 assign owner automatically
     });
 
-    return res.status(201).json(experiment);
+    await experiment.save();
+
+    return res.status(201).json({
+      success: true,
+      data: experiment
+    });
+
   } catch (err) {
     next(err);
   }
 };
-
 // GET /experiments
 const getExperiments = async (req, res, next) => {
   try {

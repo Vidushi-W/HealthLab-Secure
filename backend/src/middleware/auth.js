@@ -7,6 +7,7 @@ const { JWT_SECRET, HTTP_STATUS } = require("../config/constants");
  */
 const optionalAuth = async (req, res, next) => {
   try {
+    if (!JWT_SECRET) return res.status(500).json({ error: { code: "SERVER_MISCONFIG", message: "JWT_SECRET not set" } });
     const authHeader = req.headers.authorization;
     const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
     if (!token) {
@@ -28,6 +29,7 @@ const optionalAuth = async (req, res, next) => {
  */
 const requiredAuth = async (req, res, next) => {
   try {
+    if (!JWT_SECRET) return res.status(500).json({ error: { code: "SERVER_MISCONFIG", message: "JWT_SECRET not set" } });
     const authHeader = req.headers.authorization;
     const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
     if (!token) {
