@@ -1,14 +1,12 @@
 # Dependency directories
 node_modules/
+package-lock.json
 
-# Environment variables (never commit secrets)
+# Environment variables
 .env
 .env.local
 .env.*.local
-.env.backup
-.env.old
 *.env
-!*.env.example
 
 # Logs
 *.log
@@ -21,12 +19,10 @@ yarn-error.log*
 # IDE / OS
 .vscode/
 .idea/
-.cursor/
 .DS_Store
 Thumbs.db
 *.swp
 *.swo
-*.suo
 
 # Build / Temp
 dist/
@@ -35,13 +31,8 @@ coverage/
 .tmp/
 *.tmp
 .cache/
-*.tsbuildinfo
-
-# Uploads (user-generated content)
-backend/uploads/
 
 # Project specific
-package-lock.json
 backend/server_debug.log
 backend/test_output.txt
 backend/debug_final.txt

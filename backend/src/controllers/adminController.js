@@ -84,19 +84,6 @@ const rejectResearcher = asyncHandler(async (req, res) => {
   }
 });
 
-/**
- * Delete researcher and convert to normal user (participant).
- * Removes researcher record and sets User.role to "participant".
- */
-const deleteResearcher = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const result = await adminService.deleteResearcherAndConvertToUser(id);
-  if (!result) {
-    return errorResponse(res, HTTP_STATUS.NOT_FOUND, "Researcher not found");
-  }
-  return successResponse(res, HTTP_STATUS.OK, result, "Researcher removed; user is now a normal user.");
-});
-
 const getUsers = asyncHandler(async (req, res) => {
   const { role } = req.query;
   const list = await adminService.getUsersWithResearcherStatus(role || null);
@@ -221,7 +208,6 @@ module.exports = {
   getResearcherById,
   approveResearcher,
   rejectResearcher,
-  deleteResearcher,
   getUsers,
   getUnapprovedResearchers,
   approveUser,

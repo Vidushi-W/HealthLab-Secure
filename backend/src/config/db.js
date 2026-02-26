@@ -1,14 +1,14 @@
 const mongoose = require("mongoose");
-const dns = require("dns"); dns.setServers(["1.1.1.1", "8.8.8.8"]);
+
 let userDB;
 let experimentDB;
 
 const connectDB = async () => {
-  const uri = process.env.MONGODB_URI || process.env.MONGO_URI;
+  const uri = process.env.MONGODB_URI;
   const userDBName = process.env.MONGO_DB_NAME || "af_project_db";
   const experimentDBName = process.env.EXPERIMENT_DB_NAME || "healthlab_fund_mgmt";
 
-  if (!uri) throw new Error("MONGODB_URI (or MONGO_URI) missing");
+  if (!uri) throw new Error("MONGODB_URI missing");
 
   console.log(`⏳ MongoDB: Connecting to ${uri}...`);
 

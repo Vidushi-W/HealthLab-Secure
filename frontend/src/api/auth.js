@@ -3,17 +3,11 @@ import axios from 'axios';
 const API_URL = 'http://localhost:5000/api/auth';
 
 export const registerUser = async (userData) => {
-    const response = await axios.post(`${API_URL}/register-participant`, userData);
+    const response = await axios.post(`${API_URL}/register`, userData);
     if (response.data.token) {
         localStorage.setItem('user', JSON.stringify(response.data.user));
         localStorage.setItem('token', response.data.token);
     }
-    return response.data;
-};
-
-/** Researcher registration: multipart FormData (includes optional file). No token stored; admin must approve before publishing. */
-export const registerResearcher = async (formData) => {
-    const response = await axios.post(`${API_URL}/register`, formData);
     return response.data;
 };
 

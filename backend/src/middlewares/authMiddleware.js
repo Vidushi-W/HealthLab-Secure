@@ -1,6 +1,5 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const { JWT_SECRET } = require('../config/constants');
 
 const protect = async (req, res, next) => {
     let token;
@@ -11,33 +10,21 @@ const protect = async (req, res, next) => {
     ) {
         try {
             token = req.headers.authorization.split(' ')[1];
-            if (!token || !token.trim()) {
-                return res.status(401).json({ error: { code: 'AUTH_MISSING', message: 'Bearer token is empty' } });
-            }
 
-            const decoded = jwt.verify(token.trim(), JWT_SECRET);
-            const userId = decoded.userId || decoded.id;
-            if (!userId) {
-                return res.status(401).json({ error: { code: 'AUTH_FAILED', message: 'Token missing user id' } });
-            }
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-            req.user = await User.findById(userId).select('-password');
+            req.user = await User.findById(decoded.id).select('-password');
+
             if (!req.user) {
-                return res.status(401).json({
-                    error: { code: 'AUTH_FAILED', message: 'User not found. Log in again to get a new token.' }
-                });
+                res.status(401);
+                throw new Error('User not found'); // Should be caught by error handler if we passed it there, but here we are in middleware
+                // better to use res 401
             }
 
             next();
         } catch (error) {
-            if (error.name === 'TokenExpiredError') {
-                return res.status(401).json({ error: { code: 'AUTH_FAILED', message: 'Token expired. Please log in again.' } });
-            }
-            if (error.name === 'JsonWebTokenError') {
-                return res.status(401).json({ error: { code: 'AUTH_FAILED', message: 'Invalid token' } });
-            }
             console.error(error);
-            return res.status(401).json({ error: { code: 'AUTH_FAILED', message: 'Not authorized, token failed' } });
+            res.status(401).json({ error: { code: 'AUTH_FAILED', message: 'Not authorized, token failed' } });
         }
     } else {
         res.status(401).json({ error: { code: 'AUTH_MISSING', message: 'Not authorized, no token' } });
@@ -46,24 +33,11 @@ const protect = async (req, res, next) => {
 
 const authorize = (...roles) => {
     return (req, res, next) => {
-if (!req.user) {
-  return res.status(401).json({
-    error: { code: "AUTH_FAILED", message: "Not authorized, no user" },
-  });
-}
-
-const userRole = String(req.user.role || "").toLowerCase();
-const allowed = roles.map((r) => String(r || "").toLowerCase());
-
-if (!allowed.includes(userRole)) {
-  return res.status(403).json({
-    error: { code: "FORBIDDEN", message: "Not authorized for this action" },
-  });
-}
+        if (!req.user || !roles.some(role => role.toLowerCase() === req.user.role.toLowerCase())) {
             return res.status(403).json({
                 error: {
                     code: 'FORBIDDEN',
-                    message: `Role '${req.user.role}' is not allowed. Required: ${roles.join(' or ')}.`
+                    message: `User role ${req.user ? req.user.role : 'Unknown'} is not authorized to access this route`
                 }
             });
         }

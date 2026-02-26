@@ -9,11 +9,6 @@ const reviewResearcherRules = () => [
   body("reviewNotes").optional().trim(),
 ];
 
-/** Rules for admin delete researcher: researcher id */
-const deleteResearcherRules = () => [
-  param("id").isMongoId().withMessage("Invalid researcher ID"),
-];
-
 /** Rules for admin delete experiment: experiment id + optional rejectResearcher, reassignToParticipant (booleans) */
 const deleteExperimentRules = () => [
   param("id").isMongoId().withMessage("Invalid experiment ID"),
@@ -30,7 +25,6 @@ const validate = (req, res, next) => {
 
 module.exports = {
   reviewResearcherRules,
-  deleteResearcherRules,
   deleteExperimentRules,
   validate,
 };
