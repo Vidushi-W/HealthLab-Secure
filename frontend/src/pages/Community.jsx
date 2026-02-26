@@ -9,6 +9,7 @@ import {
   savePost,
   unsavePost,
   getSavedPosts,
+  deletePost,
 } from '../api/posts';
 
 const Community = () => {
@@ -143,6 +144,22 @@ const Community = () => {
 
   const isLiked = (post) => likedPostIds.has(post._id);
 
+  const isAuthor = (post) => {
+    if (!userId || !post.author) return false;
+    const authorId = post.author._id || post.author;
+    return String(authorId) === String(userId);
+  };
+
+  const handleDeletePost = async (postId) => {
+    if (!window.confirm('Delete this post? This cannot be undone.')) return;
+    try {
+      await deletePost(postId);
+      setPosts((prev) => prev.filter((p) => p._id !== postId));
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to delete post');
+    }
+  };
+
   if (!token) return null;
 
   return (
@@ -251,6 +268,12 @@ const Community = () => {
                     {post.author?.name || 'Unknown'} · {(post.author?.role || '').toLowerCase()}
                   </span>
                   <span className="post-date">{new Date(post.createdAt).toLocaleDateString()}</span>
+                  {isAuthor(post) && (
+                    <div className="post-card-author-actions">
+                      <Link to={`/community/${post._id}`} className="post-action post-action-edit">Edit</Link>
+                      <button type="button" className="post-action post-action-delete" onClick={() => handleDeletePost(post._id)}>Delete</button>
+                    </div>
+                  )}
                 </div>
                 <h3 className="post-title">
                   <Link to={`/community/${post._id}`}>{post.title}</Link>

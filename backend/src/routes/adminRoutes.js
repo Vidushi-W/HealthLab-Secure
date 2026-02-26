@@ -5,6 +5,7 @@ const {
   getResearcherById,
   approveResearcher,
   rejectResearcher,
+  deleteResearcher,
   getUsers,
   getUnapprovedResearchers,
   approveUser,
@@ -50,6 +51,7 @@ router.get("/researchers/export/pdf", adminGuard, exportResearchersPdf);
 router.get("/researchers/:id", adminGuard, getResearcherById);
 router.put("/researchers/:id/approve", adminGuard, reviewResearcherRules ? reviewResearcherRules() : [], validate || ((req, res, next) => next()), approveResearcher);
 router.put("/researchers/:id/reject", adminGuard, reviewResearcherRules ? reviewResearcherRules() : [], validate || ((req, res, next) => next()), rejectResearcher);
+router.delete("/researchers/:id", adminGuard, deleteResearcher);
 
 /** Experiment Management */
 router.delete("/experiments/:id", adminGuard, deleteExperimentRules ? deleteExperimentRules() : [], validate || ((req, res, next) => next()), deleteExperiment);

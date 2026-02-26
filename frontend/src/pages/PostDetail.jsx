@@ -10,6 +10,8 @@ import {
   savePost,
   unsavePost,
   deleteComment,
+  updatePost,
+  deletePost as deletePostApi,
 } from '../api/posts';
 
 const PostDetail = () => {
@@ -22,6 +24,8 @@ const PostDetail = () => {
   const [submitting, setSubmitting] = useState(false);
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ title: '', content: '', tags: [] });
 
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -37,7 +41,7 @@ const PostDetail = () => {
   const fetchPost = () => {
     getPostById(id)
       .then(({ data }) => {
-        const p = data.post;
+        const p = data.post ?? data;
         setPost(p);
         setLiked(p?.likes?.some((l) => String(l && (l._id || l)) === String(user._id)) || false);
         return getSavedPosts();
@@ -101,6 +105,45 @@ const PostDetail = () => {
     } catch (_) {}
   };
 
+  const isAuthor = post && user._id && (String((post.author && (post.author._id || post.author))) === String(user._id));
+
+  const handleStartEdit = () => {
+    setEditForm({
+      title: post.title || '',
+      content: post.content || '',
+      tags: Array.isArray(post.tags) ? post.tags.join(', ') : '',
+    });
+    setEditing(true);
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        title: editForm.title.trim(),
+        content: editForm.content.trim(),
+        tags: editForm.tags ? editForm.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
+      };
+      const { data } = await updatePost(id, payload);
+      const updated = data.post ?? data;
+      setPost(updated);
+      setEditForm({ title: updated.title || '', content: updated.content || '', tags: Array.isArray(updated.tags) ? updated.tags.join(', ') : '' });
+      setEditing(false);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to update post');
+    }
+  };
+
+  const handleDeletePost = async () => {
+    if (!window.confirm('Delete this post? This cannot be undone.')) return;
+    try {
+      await deletePostApi(id);
+      navigate('/community');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to delete post');
+    }
+  };
+
   if (!token) return null;
   if (loading) return <div className="community-loading">Loading...</div>;
   if (error && !post) return <div className="community-error">{error}</div>;
@@ -121,9 +164,52 @@ const PostDetail = () => {
             {post.author?.name || 'Unknown'} · {(post.author?.role || '').toLowerCase()}
           </span>
           <span className="post-date">{new Date(post.createdAt).toLocaleString()}</span>
+          {isAuthor && (
+            <div className="post-author-actions">
+              {!editing ? (
+                <>
+                  <button type="button" className="btn btn-edit" onClick={handleStartEdit}>Edit</button>
+                  <button type="button" className="btn btn-danger-sm" onClick={handleDeletePost}>Delete</button>
+                </>
+              ) : (
+                <button type="button" className="btn" onClick={() => setEditing(false)}>Cancel</button>
+              )}
+            </div>
+          )}
         </div>
-        <h1 className="post-detail-title">{post.title}</h1>
-        <p className="post-detail-content">{post.content}</p>
+        {!editing ? (
+          <>
+            <h1 className="post-detail-title">{post.title}</h1>
+            <p className="post-detail-content">{post.content}</p>
+          </>
+        ) : (
+          <form onSubmit={handleSaveEdit} className="post-edit-form">
+            <input
+              type="text"
+              className="form-input"
+              value={editForm.title}
+              onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
+              placeholder="Title"
+              required
+            />
+            <textarea
+              className="form-input"
+              rows={6}
+              value={editForm.content}
+              onChange={(e) => setEditForm((f) => ({ ...f, content: e.target.value }))}
+              placeholder="Content"
+              required
+            />
+            <input
+              type="text"
+              className="form-input"
+              value={editForm.tags}
+              onChange={(e) => setEditForm((f) => ({ ...f, tags: e.target.value }))}
+              placeholder="Tags (comma-separated)"
+            />
+            <button type="submit" className="btn btn-primary">Save changes</button>
+          </form>
+        )}
         {post.tags && post.tags.length > 0 && (
           <div className="post-tags">
             {post.tags.map((t) => (
@@ -133,17 +219,19 @@ const PostDetail = () => {
             ))}
           </div>
         )}
-        <div className="post-actions">
-          <button type="button" className={`post-action ${liked ? 'liked' : ''}`} onClick={handleLike}>
-            ♥ {post.likeCount || 0}
-          </button>
-          <button type="button" className="post-action" onClick={handleShare}>
-            ↗ Share ({post.shareCount || 0})
-          </button>
-          <button type="button" className={`post-action ${saved ? 'saved' : ''}`} onClick={handleSave}>
-            {saved ? '✓ Saved' : 'Save'}
-          </button>
-        </div>
+        {!editing && (
+          <div className="post-actions">
+            <button type="button" className={`post-action ${liked ? 'liked' : ''}`} onClick={handleLike}>
+              ♥ {post.likeCount || 0}
+            </button>
+            <button type="button" className="post-action" onClick={handleShare}>
+              ↗ Share ({post.shareCount || 0})
+            </button>
+            <button type="button" className={`post-action ${saved ? 'saved' : ''}`} onClick={handleSave}>
+              {saved ? '✓ Saved' : 'Save'}
+            </button>
+          </div>
+        )}
       </article>
 
       <section className="post-detail-comments">

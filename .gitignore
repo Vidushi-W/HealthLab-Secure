@@ -1,12 +1,15 @@
 # Dependency directories
 node_modules/
-package-lock.json
 
-# Environment variables
+# Environment variables (never commit secrets)
 .env
 .env.local
+.env.development.local
+.env.test.local
+.env.production.local
 .env.*.local
 *.env
+!*.env.example
 
 # Logs
 *.log
@@ -19,10 +22,12 @@ yarn-error.log*
 # IDE / OS
 .vscode/
 .idea/
+.cursor/
 .DS_Store
 Thumbs.db
 *.swp
 *.swo
+*~
 
 # Build / Temp
 dist/
@@ -31,8 +36,16 @@ coverage/
 .tmp/
 *.tmp
 .cache/
+*.tsbuildinfo
 
-# Project specific
+# Backend uploads (user-uploaded files)
+backend/uploads/
+
+# Lock files (optional: remove to commit for reproducible installs)
+# package-lock.json
+# yarn.lock
+
+# Project specific – debug / test outputs
 backend/server_debug.log
 backend/test_output.txt
 backend/debug_final.txt
@@ -40,10 +53,18 @@ backend/tmp*.log
 backend/server_error.log
 backend/e2e_out.txt
 backend/test_result.log
+backend/db_error.txt
+backend/verify_out.txt
+backend/verify_final.txt
+backend/test_data_full.txt
+backend/test_users.txt
+backend/exp_id.txt
+backend/db-structure.json
 backend/final_run.js
 backend/get_my_ip.js
 backend/fix_db.js
 backend/test_db.js
 backend/fix_dns.ps1
+backend/log-env.js
 error.log
 test-db.js
