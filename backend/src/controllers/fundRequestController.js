@@ -51,7 +51,9 @@ const updateRequest = async (req, res, next) => {
         res.json(request);
     } catch (error) {
         if (error.message.includes('not found')) res.status(404);
-        else if (error.message.includes('current status')) res.status(400);
+        else if (error.message.includes('authorized')) res.status(403);
+        else if (error.message.includes('locked') || error.message.includes('current status')) res.status(400);
+        else res.status(400);
         next(error);
     }
 };
@@ -67,11 +69,24 @@ const cancelRequest = async (req, res, next) => {
     }
 };
 
+const deleteRequest = async (req, res, next) => {
+    try {
+        const result = await fundRequestService.deleteRequest(req.params.id, req.user);
+        res.json(result);
+    } catch (error) {
+        if (error.message.includes('not found')) res.status(404);
+        else if (error.message.includes('authorized')) res.status(403);
+        else if (error.message.includes('locked') || error.message.includes('current status')) res.status(400);
+        next(error);
+    }
+};
+
 module.exports = {
     createRequest,
     getMyRequests,
     getOpenRequests,
     getRequestById,
     updateRequest,
+    deleteRequest,
     cancelRequest
 };

@@ -13,16 +13,21 @@ const {
 
 const { getReviewsByExperiment } = require("../controllers/reviewController");
 
-router.post("/", createExperiment);
+const { protect, authorize } = require('../middlewares/authMiddleware');
+const { getWallet } = require('../controllers/walletController');
+
 router.get("/", getExperiments);
-
-// List reviews for an experiment (must be before /:id)
-router.get("/:experimentId/reviews", optionalAuth, getReviewsByExperiment);
-
-// GET /experiments/:id
 router.get("/:id", getExperimentById);
 
-router.put("/:id", updateExperiment);
-router.delete("/:id", deleteExperiment);
+// Protected routes (Researcher / Admin)
+router.use(protect);
+
+router.post("/", authorize('researcher'), createExperiment);
+router.get("/:experimentId/wallet", getWallet); // Service handles ownership check
+router.put("/:id", authorize('researcher', 'admin'), updateExperiment);
+router.delete("/:id", authorize('researcher', 'admin'), deleteExperiment);
+
+// List reviews for an experiment
+router.get("/:experimentId/reviews", optionalAuth, getReviewsByExperiment);
 
 module.exports = router;

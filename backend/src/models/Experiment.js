@@ -56,6 +56,13 @@ const experimentSchema = new mongoose.Schema(
     // ✅ Keep ONE counter only (recommended)
     currentParticipantCount: { type: Number, default: 0 },
 
+    // ✅ Researcher Authorization
+    ownerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+
     // ✅ Conflict tags
     conflictTags: { type: [String], default: [] },
 

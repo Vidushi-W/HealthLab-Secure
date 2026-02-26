@@ -6,6 +6,9 @@
 const User = require("../models/User");
 const Researcher = require("../models/Researcher");
 const Experiment = require("../models/Experiment");
+const FundRequest = require("../models/FundRequest");
+const ExperimentWallet = require("../models/ExperimentWallet");
+const Contribution = require("../models/Contribution");
 const { RESEARCHER_STATUS, USER_ROLE } = require("../config/constants");
 const { RESEARCHER_TYPES } = require("../models/Researcher");
 
@@ -67,9 +70,15 @@ async function deleteExperimentWithOptions(experimentId, options, adminUserId) {
 
   const experiment = await Experiment.findById(experimentId);
   if (!experiment) return null;
-  const createdBy = experiment.createdBy;
+  const createdBy = experiment.createdBy || experiment.ownerId; // Support both creator fields
 
-  await Experiment.findByIdAndDelete(experimentId);
+  // Cascade delete all related records
+  await Promise.all([
+    Experiment.findByIdAndDelete(experimentId),
+    ExperimentWallet.findOneAndDelete({ experimentId }),
+    FundRequest.deleteMany({ experimentId }),
+    Contribution.deleteMany({ experimentId })
+  ]);
 
   if (createdBy && (doReject || doReassign)) {
     const researcher = await Researcher.findOne({ user: createdBy });

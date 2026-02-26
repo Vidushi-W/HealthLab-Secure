@@ -24,7 +24,7 @@ const getExperimentWallet = async (experimentId, userId, userRole) => {
     }
 
     // Check ownership if not admin
-    if (userRole !== 'ADMIN' && experiment.ownerId.toString() !== userId.toString()) {
+    if (userRole?.toLowerCase() !== 'admin' && experiment.ownerId?.toString() !== userId.toString()) {
         throw new Error('Not authorized to view this wallet');
     }
 

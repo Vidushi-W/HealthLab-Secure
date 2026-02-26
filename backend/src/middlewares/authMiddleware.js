@@ -46,14 +46,20 @@ const protect = async (req, res, next) => {
 
 const authorize = (...roles) => {
     return (req, res, next) => {
-        if (!req.user) {
-            return res.status(401).json({
-                error: { code: 'AUTH_FAILED', message: 'Not authorized, no user' }
-            });
-        }
-        const userRole = (req.user.role || '').toUpperCase();
-        const allowed = roles.map(r => (r || '').toUpperCase());
-        if (!allowed.includes(userRole)) {
+if (!req.user) {
+  return res.status(401).json({
+    error: { code: "AUTH_FAILED", message: "Not authorized, no user" },
+  });
+}
+
+const userRole = String(req.user.role || "").toLowerCase();
+const allowed = roles.map((r) => String(r || "").toLowerCase());
+
+if (!allowed.includes(userRole)) {
+  return res.status(403).json({
+    error: { code: "FORBIDDEN", message: "Not authorized for this action" },
+  });
+}
             return res.status(403).json({
                 error: {
                     code: 'FORBIDDEN',
