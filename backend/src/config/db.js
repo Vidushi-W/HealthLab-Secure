@@ -1,52 +1,63 @@
 const mongoose = require("mongoose");
 
-let userDB;
-let experimentDB;
+const DB_NAME = "af_project_db";
+let dbInstance = null;
 
+/**
+ * Single MongoDB connection to af_project_db.
+ * All models are registered on this connection.
+ */
 const connectDB = async () => {
-  const uri = process.env.MONGODB_URI;
-  const userDBName = process.env.MONGO_DB_NAME || "af_project_db";
-  const experimentDBName = process.env.EXPERIMENT_DB_NAME || "healthlab_fund_mgmt";
+  const uri = process.env.MONGODB_URI || process.env.MONGO_URI;
+  const dbName = process.env.MONGO_DB_NAME || DB_NAME;
 
-  if (!uri) throw new Error("MONGODB_URI missing");
+  if (!uri) throw new Error("MONGODB_URI or MONGO_URI missing");
 
   console.log(`⏳ MongoDB: Connecting to ${uri}...`);
 
   try {
-    // Correctly build final URI: insert DB name BEFORE query string
+    // Build URI with dbName: replace existing path or append if missing
+    const queryIdx = uri.indexOf("?");
+    const queryPart = queryIdx >= 0 ? uri.slice(queryIdx) : "";
+    let baseUri = queryIdx >= 0 ? uri.slice(0, queryIdx) : uri;
+
+    // Remove any trailing slashes to avoid double slashes
+    baseUri = baseUri.replace(/\/+$/, "");
+
+    // Find where the credentials/host ends and the path starts
+    const protocolEnd = baseUri.indexOf("://");
+    const firstSlashAfterProtocol = baseUri.indexOf("/", protocolEnd + 3);
+
     let finalUri;
-    const queryIdx = uri.indexOf('?');
-    if (queryIdx !== -1) {
-      // URI has query params: insert db name before the '?'
-      const beforeQuery = uri.slice(0, queryIdx).replace(/\/+$/, '');
-      const queryPart = uri.slice(queryIdx);
-      finalUri = `${beforeQuery}/${userDBName}${queryPart}`;
+    if (firstSlashAfterProtocol === -1) {
+      // No path present, append it safely
+      finalUri = `${baseUri}/${dbName}${queryPart}`;
     } else {
-      const baseUri = uri.replace(/\/+$/, '');
-      finalUri = `${baseUri}/${userDBName}`;
+      // Replace the existing path with the desired dbName
+      finalUri = `${baseUri.slice(0, firstSlashAfterProtocol + 1)}${dbName}${queryPart}`;
     }
     console.log(`🔌 Mongoose: Connecting to ${finalUri.replace(/:([^:@]+)@/, ":****@")}...`);
-    const connection = await mongoose.connect(finalUri, {
+    await mongoose.connect(finalUri, {
       serverSelectionTimeoutMS: 15000,
     });
-    console.log(`✅ MongoDB: Main connection connected to ${userDBName}`);
-
-    // Set references
-    userDB = mongoose.connection.useDb(userDBName, { useCache: true });
-    experimentDB = mongoose.connection.useDb(experimentDBName, { useCache: true });
-
-    console.log(`✅ MongoDB: useDb for userDB -> ${userDB.name}`);
-    console.log(`✅ MongoDB: useDb for experimentDB -> ${experimentDB.name}`);
-
-    return { userDB, experimentDB };
+    dbInstance = mongoose.connection.useDb(dbName, { useCache: true });
+    console.log(`✅ MongoDB: Connected to ${dbName} (single database)`);
+    return dbInstance;
   } catch (error) {
     console.error(`❌ MongoDB Error: ${error.message}`);
     throw error;
   }
 };
 
+/** @returns {mongoose.mongo.MongoClient} Mongoose connection useDb(af_project_db) */
+function getDb() {
+  const dbName = process.env.MONGO_DB_NAME || DB_NAME;
+  return dbInstance || mongoose.connection.useDb(dbName, { useCache: true });
+}
+
 module.exports = {
   connectDB,
-  get userDB() { return userDB || mongoose.connection.useDb(process.env.MONGO_DB_NAME || "af_project_db", { useCache: true }); },
-  get experimentDB() { return experimentDB || mongoose.connection.useDb(process.env.EXPERIMENT_DB_NAME || "healthlab_fund_mgmt", { useCache: true }); }
+  get db() {
+    return getDb();
+  },
 };

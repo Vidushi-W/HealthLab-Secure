@@ -84,6 +84,21 @@ const rejectResearcher = asyncHandler(async (req, res) => {
   }
 });
 
+/** Delete researcher: remove Researcher record and set User role to participant (ordinary user) */
+const deleteResearcher = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const researcher = await Researcher.findById(id);
+  if (!researcher) {
+    return errorResponse(res, HTTP_STATUS.NOT_FOUND, "Researcher not found");
+  }
+  const userId = researcher.user ? (researcher.user._id || researcher.user) : null;
+  await Researcher.findByIdAndDelete(id);
+  if (userId) {
+    await User.findByIdAndUpdate(userId, { role: "participant" });
+  }
+  return successResponse(res, HTTP_STATUS.OK, null, "Researcher removed; user is now a participant");
+});
+
 const getUsers = asyncHandler(async (req, res) => {
   const { role } = req.query;
   const list = await adminService.getUsersWithResearcherStatus(role || null);
@@ -208,6 +223,7 @@ module.exports = {
   getResearcherById,
   approveResearcher,
   rejectResearcher,
+  deleteResearcher,
   getUsers,
   getUnapprovedResearchers,
   approveUser,

@@ -165,12 +165,19 @@ const registerUser = async (req, res, next) => {
 
 /**
  * Login (unifying loginUser from fund_management)
+ * Returns { user: { _id, name, email, role }, token } so frontend can read data.user.role for redirects.
  */
 const loginUser = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    const user = await authService.loginUser(email, password);
-    res.json(user);
+    const result = await authService.loginUser(email, password);
+    const user = {
+      _id: result._id,
+      name: result.name,
+      email: result.email,
+      role: result.role,
+    };
+    res.status(200).json({ user, token: result.token });
   } catch (error) {
     res.status(401);
     next(error);

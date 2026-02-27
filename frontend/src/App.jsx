@@ -7,6 +7,10 @@ import Home from './pages/Home';
 import RecommendationPage from './pages/RecommendationPage';
 import MyStudies from './pages/MyStudies';
 import StudyDashboard from './pages/StudyDashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import ResearcherExperiments from './pages/ResearcherExperiments';
+import Community from './pages/Community';
+import PostDetail from './pages/PostDetail';
 import { getCurrentUser, logoutUser } from './api/auth';
 
 
@@ -30,9 +34,13 @@ function App() {
         <nav>
           <Link to="/" className="nav-btn">Home</Link>
           <Link to="/experiments" className="nav-btn">Experiments</Link>
+          <Link to="/community" className="nav-btn">Community</Link>
           <Link to="/recommended" className="nav-btn">Recommended</Link>
           <Link to="/my-studies" className="nav-btn">My Studies</Link>
-          {user && user.role === 'admin' && (
+          {user && (user.role || '').toLowerCase() === 'researcher' && (
+            <Link to="/researcher/experiments" className="nav-btn">My Experiments</Link>
+          )}
+          {user && (user.role || '').toLowerCase() === 'admin' && (
             <Link to="/admin" className="nav-btn admin-link">Admin Dashboard</Link>
           )}
           {user ? (
@@ -54,11 +62,13 @@ function App() {
       <Route path="/signup" element={<Signup />} />
       <Route path="/" element={<Layout><Home /></Layout>} />
       <Route path="/experiments" element={<Layout><ExperimentList /></Layout>} />
+      <Route path="/community" element={<Layout><Community /></Layout>} />
+      <Route path="/community/:id" element={<Layout><PostDetail /></Layout>} />
       <Route path="/recommended" element={<Layout><RecommendationPage /></Layout>} />
       <Route path="/my-studies" element={<Layout><MyStudies /></Layout>} />
       <Route path="/dashboard/:participationId" element={<Layout><StudyDashboard /></Layout>} />
-      {user && user.role === 'admin' && (
-
+      <Route path="/researcher/experiments" element={<Layout><ResearcherExperiments /></Layout>} />
+      {user && (user.role || '').toLowerCase() === 'admin' && (
         <Route path="/admin" element={<Layout><AdminDashboard /></Layout>} />
       )}
     </Routes>

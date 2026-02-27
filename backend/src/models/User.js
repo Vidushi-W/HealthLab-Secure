@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const db = require("../config/db");
+const { db } = require("../config/db");
 
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -45,14 +45,7 @@ userSchema.pre("save", async function () {
 });
 
 // Register on userDB (primary)
-const userModel = db.userDB.model("User", userSchema);
+const userModel = db.models.User || db.model("User", userSchema);
 console.log(`📁 Model: 'User' loaded on DB: ${userModel.db.name}`);
-
-// Also register on experimentDB so FundRequest.populate('researcherId') works
-// (FundRequest lives on experimentDB and uses ref: 'User')
-if (!db.experimentDB.models["User"]) {
-  db.experimentDB.model("User", userSchema);
-  console.log(`📁 Model: 'User' also registered on experimentDB for cross-DB populate`);
-}
 
 module.exports = userModel;

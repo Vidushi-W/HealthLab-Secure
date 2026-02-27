@@ -51,5 +51,5 @@ const fundRequestSchema = new mongoose.Schema({
     timestamps: true
 });
 
-const { experimentDB } = require("../config/db");
-module.exports = experimentDB.model('FundRequest', fundRequestSchema);
+const { db } = require("../config/db");
+module.exports = db.model("FundRequest", fundRequestSchema);
