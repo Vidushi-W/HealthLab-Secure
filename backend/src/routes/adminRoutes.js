@@ -1,0 +1,59 @@
+const router = require("express").Router();
+const {
+  getPendingResearchers,
+  getResearchers,
+  getResearcherById,
+  approveResearcher,
+  rejectResearcher,
+  deleteResearcher,
+  getUsers,
+  getUnapprovedResearchers,
+  approveUser,
+  rejectUser,
+  deleteExperiment,
+  exportResearchersPdf,
+  getAnalytics, // Note: conflict in adminController between analytics and fund-analytics
+  getAllRequests,
+  updateStatus,
+  disburseRequest,
+  getReports
+} = require("../controllers/adminController");
+const { getWallet } = require('../controllers/walletController');
+
+// Consolidated middleware
+const { protect, authorize } = require("../middleware/authMiddleware");
+
+const { reviewResearcherRules, deleteExperimentRules, validate } = require("../validators/adminValidators");
+
+const adminGuard = [protect, authorize('admin')];
+
+/** Dashboard analytics */
+router.get("/analytics", adminGuard, getAnalytics);
+
+/** Get all users */
+router.get("/users", adminGuard, getUsers);
+router.get("/users/unapproved", adminGuard, getUnapprovedResearchers);
+router.patch("/users/approve/:id", adminGuard, approveUser);
+router.patch("/users/reject/:id", adminGuard, rejectUser);
+
+/** Researcher Review Routes */
+router.get("/researchers/pending", adminGuard, getPendingResearchers);
+router.get("/researchers", adminGuard, getResearchers);
+router.get("/researchers/export/pdf", adminGuard, exportResearchersPdf);
+router.get("/researchers/:id", adminGuard, getResearcherById);
+router.put("/researchers/:id/approve", adminGuard, reviewResearcherRules ? reviewResearcherRules() : [], validate || ((req, res, next) => next()), approveResearcher);
+router.put("/researchers/:id/reject", adminGuard, reviewResearcherRules ? reviewResearcherRules() : [], validate || ((req, res, next) => next()), rejectResearcher);
+router.delete("/researchers/:id", adminGuard, deleteResearcher);
+
+/** Experiment Management */
+router.delete("/experiments/:id", adminGuard, deleteExperimentRules ? deleteExperimentRules() : [], validate || ((req, res, next) => next()), deleteExperiment);
+
+/** Fund Management Admin Routes */
+router.get('/fund-requests', adminGuard, getAllRequests);
+router.patch('/fund-requests/:id/status', adminGuard, updateStatus);
+router.get('/experiments/:experimentId/wallet', adminGuard, getWallet);
+router.get('/fund-analytics', adminGuard, getAnalytics);
+router.get('/fund-reports', adminGuard, getReports);
+
+module.exports = router;
+

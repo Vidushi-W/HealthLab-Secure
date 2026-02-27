@@ -1,5 +1,8 @@
 const router = require("express").Router();
 
+// Note: checking which middleware folder to use (middlewares vs middleware)
+const { protect, authorize, optionalAuth } = require('../middleware/authMiddleware');
+
 const {
   createExperiment,
   getExperiments,
@@ -8,14 +11,22 @@ const {
   deleteExperiment,
 } = require("../controllers/experimentController");
 
-router.post("/", createExperiment);
-router.get("/", getExperiments);
+const { getReviewsByExperiment } = require("../controllers/reviewController");
 
-// IMPORTANT: this enables GET /experiments/:id
+const { getWallet } = require('../controllers/walletController');
+
+router.get("/", getExperiments);
 router.get("/:id", getExperimentById);
 
-router.put("/:id", updateExperiment);
-router.delete("/:id", deleteExperiment);
+// Protected routes (Researcher / Admin)
+router.use(protect);
+
+router.post("/", authorize('researcher'), createExperiment);
+router.get("/:experimentId/wallet", getWallet); // Service handles ownership check
+router.put("/:id", authorize('researcher', 'admin'), updateExperiment);
+router.delete("/:id", authorize('researcher', 'admin'), deleteExperiment);
+
+// List reviews for an experiment
+router.get("/:experimentId/reviews", optionalAuth, getReviewsByExperiment);
 
 module.exports = router;
-

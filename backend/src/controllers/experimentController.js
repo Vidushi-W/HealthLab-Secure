@@ -1,27 +1,54 @@
+const mongoose = require("mongoose");
 const Experiment = require("../models/Experiment");
 
 // POST /experiments
 const createExperiment = async (req, res, next) => {
   try {
-    const { title, description } = req.body;
+    const userId =
+      (req.user && (req.user.id || req.user._id)) || req.headers["x-user-id"];
 
-    const experiment = await Experiment.create({
-      title,
-      description,
-      status: "draft",
+    if (!userId) {
+      return res.status(400).json({ message: "User ID not found in request" });
+    }
+
+    const experiment = new Experiment({
+      ...req.body,
+      ownerId: userId  // 🔥 assign owner automatically
     });
 
-    return res.status(201).json(experiment);
+    await experiment.save();
+
+    return res.status(201).json({
+      success: true,
+      data: experiment
+    });
+
   } catch (err) {
     next(err);
   }
 };
-
 // GET /experiments
 const getExperiments = async (req, res, next) => {
   try {
     const experiments = await Experiment.find().sort({ createdAt: -1 });
-    return res.status(200).json(experiments);
+
+    // Check for enrollment if user is logged in
+    const user = req.user;
+    let joinedExpIds = new Set();
+
+    if (user && user._id) {
+      const Participations = require("../models/Participation");
+      const userParticipations = await Participations.find({ userId: user._id, status: "joined" });
+      joinedExpIds = new Set(userParticipations.map(p => p.experimentId.toString()));
+    }
+
+    const experimentsWithStatus = experiments.map(exp => ({
+      ...exp.toObject(),
+      enrolled: joinedExpIds.has(exp._id.toString())
+    }));
+
+    console.log(`📊 API /experiments: Found ${experiments.length} experiments`);
+    return res.status(200).json(experimentsWithStatus);
   } catch (err) {
     next(err);
   }
@@ -42,11 +69,11 @@ const getExperimentById = async (req, res, next) => {
 const updateExperiment = async (req, res, next) => {
   try {
     console.log("PUT body:", req.body);
+
     const updated = await Experiment.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true, runValidators: true }
-      
+      { returnDocument: "after", runValidators: true }
     );
 
     if (!updated) return res.status(404).json({ message: "Experiment not found" });
@@ -67,7 +94,6 @@ const deleteExperiment = async (req, res, next) => {
   }
 };
 
-
 module.exports = {
   createExperiment,
   getExperiments,
@@ -75,4 +101,3 @@ module.exports = {
   updateExperiment,
   deleteExperiment,
 };
-
