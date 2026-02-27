@@ -31,8 +31,24 @@ const createExperiment = async (req, res, next) => {
 const getExperiments = async (req, res, next) => {
   try {
     const experiments = await Experiment.find().sort({ createdAt: -1 });
-    console.log(`📊 API /experiments: Found ${experiments.length} experiments in DB: ${Experiment.db.name}`);
-    return res.status(200).json(experiments);
+
+    // Check for enrollment if user is logged in
+    const user = req.user;
+    let joinedExpIds = new Set();
+
+    if (user && user._id) {
+      const Participations = require("../models/Participation");
+      const userParticipations = await Participations.find({ userId: user._id, status: "joined" });
+      joinedExpIds = new Set(userParticipations.map(p => p.experimentId.toString()));
+    }
+
+    const experimentsWithStatus = experiments.map(exp => ({
+      ...exp.toObject(),
+      enrolled: joinedExpIds.has(exp._id.toString())
+    }));
+
+    console.log(`📊 API /experiments: Found ${experiments.length} experiments`);
+    return res.status(200).json(experimentsWithStatus);
   } catch (err) {
     next(err);
   }

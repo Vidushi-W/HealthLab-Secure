@@ -8,9 +8,18 @@ const userSchema = new mongoose.Schema({
   role: { type: String, default: "participant" },
   isApproved: { type: Boolean, default: false },
   age: Number,
+  gender: String,
+  location: String,
+  height: Number,
+  weight: Number,
+  bloodGroup: String,
   medicalConditions: [String],
+  medications: [String],
+  smokingStatus: String,
+  alcoholStatus: String,
+  sleepPatterns: String,
   activityLevel: String,
-  // Add other fields as needed for recommendations
+  bmi: Number,
 }, { timestamps: true });
 
 // Add matchPassword method to schema
@@ -19,14 +28,20 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// Pre-save hook for password hashing
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) {
-    next();
+// Pre-save hook for password hashing and BMI calculation
+userSchema.pre("save", async function () {
+  // Hash password if modified
+  if (this.isModified("password")) {
+    const bcrypt = require("bcryptjs");
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
   }
-  const bcrypt = require("bcryptjs");
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
+
+  // Calculate BMI if height and weight are provided
+  if (this.height && this.weight) {
+    const heightInMeters = this.height / 100;
+    this.bmi = parseFloat((this.weight / (heightInMeters * heightInMeters)).toFixed(1));
+  }
 });
 
 // Register on userDB (primary)

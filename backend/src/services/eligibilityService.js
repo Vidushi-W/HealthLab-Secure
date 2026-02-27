@@ -19,30 +19,50 @@ class EligibilityService {
    * Validates user eligibility against experiment requirements
    */
   async validateProtocol(user, experiment) {
-    // Extract protocol requirements from experiment
-    const { eligibilityRules } = experiment;
+    // Check both legacy rules and new structured criteria
+    const rules = experiment.eligibilityRules || {};
+    const criteria = experiment.eligibilityCriteria || {};
 
-    if (!eligibilityRules || Object.keys(eligibilityRules).length === 0) {
-      return { valid: true, reason: "No eligibility rules defined" };
+    // 1. AGE VALIDATION
+    const minAge = criteria.minAge !== undefined ? criteria.minAge : rules.minAge;
+    const maxAge = criteria.maxAge !== undefined ? criteria.maxAge : rules.maxAge;
+
+    if (minAge && user.age < minAge) {
+      throw new IneligibleAgeError(user.age, minAge);
+    }
+    if (maxAge && user.age > maxAge) {
+      throw new IneligibleAgeError(user.age, maxAge);
     }
 
-    // Check minimum age requirement
-    if (eligibilityRules.minAge && user.age < eligibilityRules.minAge) {
-      throw new IneligibleAgeError(user.age, eligibilityRules.minAge);
+    // 2. GENDER VALIDATION (New)
+    if (criteria.genders && criteria.genders.length > 0) {
+      console.log(`🕵️ Eligibility: User gender [${user.gender}], Required genders [${criteria.genders.join(", ")}]`);
+
+      const userGender = (user.gender || "").toLowerCase().trim();
+      const allowedGenders = criteria.genders.map(g => g.toLowerCase().trim());
+
+      if (!userGender || !allowedGenders.includes(userGender)) {
+        console.log(`❌ Eligibility: Gender mismatch. User: ${userGender}, Allowed: ${allowedGenders.join(", ")}`);
+        throw new Error(`This study is only open to specific genders: ${criteria.genders.join(", ")}`);
+      }
     }
 
-    // Check maximum age requirement
-    if (eligibilityRules.maxAge && user.age > eligibilityRules.maxAge) {
-      throw new IneligibleAgeError(user.age, eligibilityRules.maxAge);
-    }
-
-    // Check other custom rules
-    if (eligibilityRules.requiredConditions && Array.isArray(eligibilityRules.requiredConditions)) {
-      for (const condition of eligibilityRules.requiredConditions) {
+    // 3. MEDICAL CONDITIONS (Required)
+    const requiredConditions = criteria.requiredConditions || rules.requiredConditions || [];
+    if (requiredConditions.length > 0) {
+      for (const condition of requiredConditions) {
         if (!user.medicalConditions || !user.medicalConditions.includes(condition)) {
           throw new Error(`User must have ${condition} to participate`);
         }
       }
+    }
+
+    // 4. BMI VALIDATION (New)
+    if (criteria.minBMI && user.bmi < criteria.minBMI) {
+      throw new Error(`Your BMI (${user.bmi}) is below the minimum required (${criteria.minBMI})`);
+    }
+    if (criteria.maxBMI && user.bmi > criteria.maxBMI) {
+      throw new Error(`Your BMI (${user.bmi}) is above the maximum allowed (${criteria.maxBMI})`);
     }
 
     return { valid: true, reason: "User passed all protocol checks" };
@@ -112,7 +132,7 @@ class EligibilityService {
     const conflicts = [];
     for (const participation of activeParticipations) {
       const existingExperiment = participation.experimentId;
-      
+
       // Check if new experiment conflicts with existing ones
       if (
         newExperiment.eligibilityRules.conflictsWith &&

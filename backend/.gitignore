@@ -12,6 +12,17 @@ backend/.env.*
 *.log
 npm-debug.log*
 diag_out.txt
+*.txt
+verify_api.js
+test_setup.js
+check-exp-status.js
+check-user-model.js
+fetch-experiments.js
+inspect-atlas.js
+list-atlas.js
+log-env.js
+test-recommendations.js
+verify-all.js
 
 # OS / editor files
 .DS_Store

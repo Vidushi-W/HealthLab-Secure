@@ -5,13 +5,18 @@ const { JWT_SECRET } = require("../config/constants");
 const protect = async (req, res, next) => {
   let token;
 
+  console.log(`📡 Auth Middleware: Checking headers...`);
+  console.log(`   Authorization: ${req.headers.authorization ? 'Present' : 'MISSING'}`);
+
   if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
     try {
       // Get token from header
       token = req.headers.authorization.split(" ")[1];
+      console.log(`   Token found. Verifying...`);
 
       // Verify token
       const decoded = jwt.verify(token, JWT_SECRET);
+      console.log(`   Token verified for user ID: ${decoded.id || decoded.userId}`);
 
       // Get user from the token - handle both 'id' and 'userId' for compatibility
       const id = decoded.id || decoded.userId;
@@ -29,15 +34,18 @@ const protect = async (req, res, next) => {
       }
 
       console.log(`✅ Auth: Authenticated user ${req.user.email}`);
+      console.log(`   Profile: Gender [${req.user.gender}], Age [${req.user.age}], BMI [${req.user.bmi}]`);
       return next();
     } catch (error) {
-      console.error("❌ Auth Error:", error.message);
+      console.error("❌ Auth Error during verification:", error.message);
       return res.status(401).json({ message: "Not authorized", error: error.message });
     }
   }
 
   if (!token) {
-    return res.status(401).json({ message: "Not authorized, no token" });
+    console.log("❌ Auth: No Bearer token found in headers");
+    console.log("   Full Authorization Header:", req.headers.authorization);
+    return res.status(401).json({ message: "Authentication required", error: "No token provided" });
   }
 };
 
@@ -51,7 +59,7 @@ const requireAuth = (req, res, next) => {
   next();
 };
 
-const roleMiddleware = (allowedRoles = []) => {
+const authorize = (allowedRoles = []) => {
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ error: "Unauthorized", message: "Authentication required" });
@@ -67,8 +75,27 @@ const roleMiddleware = (allowedRoles = []) => {
   };
 };
 
+const optionalAuth = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (!token) {
+      req.user = null;
+      return next();
+    }
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findById(decoded.id).select("_id name email role");
+    req.user = user || null;
+    next();
+  } catch {
+    req.user = null;
+    next();
+  }
+};
+
 module.exports = {
   protect,
   requireAuth,
-  roleMiddleware,
+  authorize,
+  optionalAuth,
 };

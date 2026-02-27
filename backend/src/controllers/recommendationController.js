@@ -1,7 +1,9 @@
 const Experiment = require("../models/Experiment");
+const Participation = require("../models/Participation");
 const recommendationService = require("../services/recommendationService");
+const asyncHandler = require("../utils/asyncHandler");
 
-exports.getRecommendations = async (req, res) => {
+exports.getRecommendations = asyncHandler(async (req, res) => {
     console.log("🔍 API /recommendations hit");
     console.log("Headers:", JSON.stringify(req.headers, null, 2));
     console.log("User in request:", req.user ? req.user.email : "NULL");
@@ -20,14 +22,18 @@ exports.getRecommendations = async (req, res) => {
         const experiments = await Experiment.find({});
         console.log(`📊 Recommendations: Found ${experiments.length} experiments in ${Experiment.db.name}`);
 
-        // 2. Calculate scores for each experiment
+        // 3. Check for existing participations to mark as 'enrolled'
+        const userParticipations = await Participation.find({ userId: user._id, status: "joined" });
+        const joinedExpIds = new Set(userParticipations.map(p => p.experimentId.toString()));
+
         const recommendations = experiments.map(exp => {
             try {
                 const matchInfo = recommendationService.calculateMatchScore(user, exp);
                 return {
-                    ...exp.toObject(),
+                    ...exp.toJSON(),
                     matchScore: matchInfo.score,
-                    matchReason: matchInfo.reason
+                    matchReason: matchInfo.reason,
+                    enrolled: joinedExpIds.has(exp._id.toString())
                 };
             } catch (err) {
                 console.error(`❌ Recommendations: Failed to score experiment ${exp._id}:`, err.message);
@@ -44,4 +50,4 @@ exports.getRecommendations = async (req, res) => {
         console.error("❌ Recommendations error:", error);
         res.status(500).json({ message: "Error fetching recommendations", error: error.message });
     }
-};
+});

@@ -19,20 +19,12 @@ const {
 } = require("../controllers/adminController");
 const { getWallet } = require('../controllers/walletController');
 
-// Using middleware from both branches (they might serve different purposes)
-const { requiredAuth } = require("../middleware/auth");
-const adminOnly = require("../middleware/adminOnly");
-const { protect, authorize } = require('../middlewares/authMiddleware');
+// Consolidated middleware
+const { protect, authorize } = require("../middleware/authMiddleware");
 
 const { reviewResearcherRules, deleteExperimentRules, validate } = require("../validators/adminValidators");
 
-/** 
- * Merging Middlewares: 
- * Using protect/authorize for Fund Management 
- * Using requiredAuth/adminOnly for Researcher review
- * We'll unify them here assuming they guard similarly.
- */
-const adminGuard = [protect || requiredAuth, authorize ? authorize('admin') : adminOnly];
+const adminGuard = [protect, authorize('admin')];
 
 /** Dashboard analytics */
 router.get("/analytics", adminGuard, getAnalytics);

@@ -5,8 +5,10 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Home from './pages/Home';
 import RecommendationPage from './pages/RecommendationPage';
-import AdminDashboard from './pages/AdminDashboard';
+import MyStudies from './pages/MyStudies';
+import StudyDashboard from './pages/StudyDashboard';
 import { getCurrentUser, logoutUser } from './api/auth';
+
 
 function App() {
   const [user, setUser] = useState(getCurrentUser());
@@ -29,7 +31,7 @@ function App() {
           <Link to="/" className="nav-btn">Home</Link>
           <Link to="/experiments" className="nav-btn">Experiments</Link>
           <Link to="/recommended" className="nav-btn">Recommended</Link>
-          <button className="nav-btn">My Studies</button>
+          <Link to="/my-studies" className="nav-btn">My Studies</Link>
           {user && user.role === 'admin' && (
             <Link to="/admin" className="nav-btn admin-link">Admin Dashboard</Link>
           )}
@@ -53,7 +55,10 @@ function App() {
       <Route path="/" element={<Layout><Home /></Layout>} />
       <Route path="/experiments" element={<Layout><ExperimentList /></Layout>} />
       <Route path="/recommended" element={<Layout><RecommendationPage /></Layout>} />
+      <Route path="/my-studies" element={<Layout><MyStudies /></Layout>} />
+      <Route path="/dashboard/:participationId" element={<Layout><StudyDashboard /></Layout>} />
       {user && user.role === 'admin' && (
+
         <Route path="/admin" element={<Layout><AdminDashboard /></Layout>} />
       )}
     </Routes>

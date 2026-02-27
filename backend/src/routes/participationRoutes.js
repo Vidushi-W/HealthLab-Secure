@@ -1,33 +1,42 @@
 const router = require("express").Router();
-const { extractUserFromHeader } = require("../middleware/rbacMiddleware");
-const { requireAuth, roleMiddleware } = require("../middleware/authMiddleware");
+const { protect, requireAuth, authorize } = require("../middleware/authMiddleware");
 
 const {
   joinExperiment,
   getMyStudies,
   leaveExperiment,
   getParticipantsList,
+  getParticipationDetail,
+  submitDailyLog,
+  deleteDailyLog,
 } = require("../controllers/participationController");
 
-// Extract user info from header (for development/testing)
-router.use(extractUserFromHeader);
 
 // POST /participations/join - Join an experiment (authenticated users)
-router.post("/join", requireAuth, joinExperiment);
+router.post("/join", protect, requireAuth, joinExperiment);
 
 // GET /participations/my-studies - Get user's studies (authenticated users)
-router.get("/my-studies", requireAuth, getMyStudies);
+router.get("/my-studies", protect, requireAuth, getMyStudies);
 
 // PUT /participations/:id/leave - Leave a study (authenticated users)
-router.put("/:id/leave", requireAuth, leaveExperiment);
+router.put("/:id/leave", protect, requireAuth, leaveExperiment);
 
-// GET /participations/experiment/:experimentId/participants - Get participant list (Researchers only)
-// This requires researcher or admin role
 router.get(
   "/experiment/:experimentId/participants",
+  protect,
   requireAuth,
-  roleMiddleware(["researcher", "admin"]),
+  authorize(["researcher", "admin"]),
   getParticipantsList
 );
 
+// GET /participations/:id - Get specific study dashboard data
+router.get("/:id", protect, requireAuth, getParticipationDetail);
+
+// POST /participations/:id/logs - Submit daily log
+router.post("/:id/logs", protect, requireAuth, submitDailyLog);
+
+// DELETE /participations/:id/logs/today - Delete today's log
+router.delete("/:id/logs/today", protect, requireAuth, deleteDailyLog);
+
 module.exports = router;
+

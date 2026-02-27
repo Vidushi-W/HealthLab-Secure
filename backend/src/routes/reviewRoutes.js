@@ -1,5 +1,5 @@
 const router = require("express").Router();
-const { requireAuth, requireRole, optionalAuth } = require("../middlewares/auth");
+const { requireAuth, authorize, optionalAuth } = require("../middleware/authMiddleware");
 const {
   createReview,
   getReviews,
@@ -15,10 +15,10 @@ router.get("/", optionalAuth, getReviews);
 router.get("/:id", optionalAuth, getReviewById);
 
 // Create: authenticated researcher or admin only
-router.post("/", requireAuth, requireRole(["researcher", "admin"]), createReview);
+router.post("/", requireAuth, authorize(["researcher", "admin"]), createReview);
 
 // Update / Delete: require auth; author or admin check is done in service
-router.put("/:id", requireAuth, requireRole(["researcher", "admin"]), updateReview);
-router.delete("/:id", requireAuth, requireRole(["researcher", "admin"]), deleteReview);
+router.put("/:id", requireAuth, authorize(["researcher", "admin"]), updateReview);
+router.delete("/:id", requireAuth, authorize(["researcher", "admin"]), deleteReview);
 
 module.exports = router;

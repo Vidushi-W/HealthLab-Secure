@@ -1,7 +1,7 @@
 const express = require('express');
 const { createRequest, getMyRequests, getRequestById, updateRequest, deleteRequest, cancelRequest, getOpenRequests } = require('../controllers/fundRequestController');
 const { contribute } = require('../controllers/contributionController');
-const { protect, authorize } = require('../middlewares/authMiddleware');
+const { protect, authorize } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 

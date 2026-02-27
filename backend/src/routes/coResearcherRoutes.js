@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router({ mergeParams: true });
 
-const { requireAuth, requireRole, optionalAuth } = require("../middlewares/auth");
+const { requireAuth, authorize, optionalAuth } = require("../middleware/authMiddleware");
 const {
   addCoResearcher,
   listCoResearchers,
@@ -13,13 +13,13 @@ const {
 router.get("/", optionalAuth, listCoResearchers);
 
 // POST /experiments/:experimentId/co-researchers
-router.post("/", requireAuth, requireRole(["researcher", "admin"]), addCoResearcher);
+router.post("/", requireAuth, authorize(["researcher", "admin"]), addCoResearcher);
 
 // PUT /experiments/:experimentId/co-researchers/:coResearcherId
 router.put(
   "/:coResearcherId",
   requireAuth,
-  requireRole(["researcher", "admin"]),
+  authorize(["researcher", "admin"]),
   updateCoResearcher
 );
 
@@ -27,7 +27,7 @@ router.put(
 router.delete(
   "/:coResearcherId",
   requireAuth,
-  requireRole(["researcher", "admin"]),
+  authorize(["researcher", "admin"]),
   removeCoResearcher
 );
 

@@ -1,7 +1,7 @@
 const router = require("express").Router();
 
 // Note: checking which middleware folder to use (middlewares vs middleware)
-const { optionalAuth } = require("../middleware/auth");
+const { protect, authorize, optionalAuth } = require('../middleware/authMiddleware');
 
 const {
   createExperiment,
@@ -13,7 +13,6 @@ const {
 
 const { getReviewsByExperiment } = require("../controllers/reviewController");
 
-const { protect, authorize } = require('../middlewares/authMiddleware');
 const { getWallet } = require('../controllers/walletController');
 
 router.get("/", getExperiments);

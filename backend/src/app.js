@@ -4,7 +4,7 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 
 // Middleware imports
-const { optionalAuth } = require("./middleware/auth");
+const { optionalAuth } = require("./middleware/authMiddleware");
 const researcherApprovedForPublish = require("./middleware/researcherApproved");
 const { extractUserFromHeader } = require("./middleware/rbacMiddleware");
 const { errorHandler, notFound } = require("./middleware/errorMiddleware");
@@ -45,9 +45,6 @@ app.get("/health", (req, res) => {
 
 // 🛡️ Database Readiness Guard - Applied to all API routes
 app.use("/api", dbReadyMiddleware);
-
-// Extract user info from headers (RBAC)
-app.use(extractUserFromHeader);
 
 // 🚀 Routes
 app.use("/api/auth", authRoutes);

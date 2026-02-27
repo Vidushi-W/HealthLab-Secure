@@ -224,10 +224,50 @@ const login = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * Update User Profile (to fix missing details or update stats)
+ */
+const updateProfile = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+
+  if (user) {
+    user.name = req.body.name || user.name;
+    user.age = req.body.age || user.age;
+    user.gender = req.body.gender || user.gender;
+    user.location = req.body.location || user.location;
+    user.height = req.body.height || user.height;
+    user.weight = req.body.weight || user.weight;
+    user.bloodGroup = req.body.bloodGroup || user.bloodGroup;
+    user.medicalConditions = req.body.medicalConditions || user.medicalConditions;
+    user.medications = req.body.medications || user.medications;
+    user.smokingStatus = req.body.smokingStatus || user.smokingStatus;
+    user.alcoholStatus = req.body.alcoholStatus || user.alcoholStatus;
+    user.sleepPatterns = req.body.sleepPatterns || user.sleepPatterns;
+    user.activityLevel = req.body.activityLevel || user.activityLevel;
+
+    const updatedUser = await user.save();
+
+    res.json({
+      success: true,
+      user: {
+        _id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        gender: updatedUser.gender,
+        bmi: updatedUser.bmi,
+      },
+    });
+  } else {
+    res.status(404).json({ success: false, message: "User not found" });
+  }
+});
+
 module.exports = {
   registerParticipant,
   registerResearcher,
   registerUser,
   login,
   loginUser,
+  updateProfile,
 };

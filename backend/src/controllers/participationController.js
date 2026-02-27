@@ -11,27 +11,35 @@ const {
 // POST /participations/join - Join an experiment (with Eligibility Engine + Cohort Management)
 const joinExperiment = async (req, res, next) => {
   try {
-    const { userId, userAge, userEmail, experimentId } = req.body;
+    const { experimentId } = req.body;
 
-    // Validate input
-    if (!userId || !userAge || !experimentId) {
-      return res.status(400).json({
-        message: "Missing required fields: userId, userAge, experimentId",
-      });
+    // Get user from auth middleware (req.user is set by protect/extractUserFromHeader)
+    const currentUser = req.user;
+
+    if (!currentUser || !currentUser._id) {
+      return res.status(401).json({ message: "You must be logged in to join an experiment." });
     }
 
+    if (!experimentId) {
+      return res.status(400).json({ message: "Missing required field: experimentId" });
+    }
+
+    const userId = currentUser._id;
+    const userAge = currentUser.age;
+    const userEmail = currentUser.email;
+
     // PART B.1: COHORT MANAGEMENT - Atomic seat reservation
-    // We'll attempt to atomically increment `currentParticipants` on the Experiment
-    // only if there is capacity (participantLimit === 0 means unlimited).
+    // Standardizing on 'currentParticipantCount' as per Experiment model
     const seatReservedExperiment = await Experiment.findOneAndUpdate(
       {
         _id: experimentId,
         $or: [
+          { participantLimit: { $exists: false } },
           { participantLimit: 0 },
-          { $expr: { $lt: ["$currentParticipants", "$participantLimit"] } },
+          { $expr: { $lt: ["$currentParticipantCount", "$participantLimit"] } },
         ],
       },
-      { $inc: { currentParticipants: 1 } },
+      { $inc: { currentParticipantCount: 1 } },
       { new: true }
     );
 
@@ -49,22 +57,26 @@ const joinExperiment = async (req, res, next) => {
     });
 
     if (existingParticipation) {
+      // rollback reserved seat since they already joined
+      await Experiment.findByIdAndUpdate(experimentId, { $inc: { currentParticipantCount: -1 } });
       throw new DuplicateParticipationError();
     }
 
-    // 2. ELIGIBILITY ENGINE: Run all three validation checks
-    // This includes: Protocol Validation, Medical Term Verification, and Conflict Detection
-    const user = { id: userId, age: userAge, email: userEmail };
-
-    await eligibilityService.runEligibilityCheck(user, experimentId);
+    // 2. ELIGIBILITY ENGINE: Run all validation checks
+    try {
+      await eligibilityService.runEligibilityCheck(currentUser, experimentId);
+    } catch (eligibilityErr) {
+      // rollback reserved seat if eligibility fails
+      await Experiment.findByIdAndUpdate(experimentId, { $inc: { currentParticipantCount: -1 } });
+      throw eligibilityErr;
+    }
 
     // 3. CREATION: Create new participation record if all checks pass
-    // If creation fails we must rollback the reserved seat above.
     let participation;
     try {
       participation = await Participation.create({
         userId,
-        userAge,
+        userAge: userAge || 0, // Fallback if age not set
         userEmail,
         experimentId,
         status: "joined",
@@ -72,8 +84,8 @@ const joinExperiment = async (req, res, next) => {
         isAnonymized: false,
       });
     } catch (createErr) {
-      // rollback reserved seat
-      await Experiment.findByIdAndUpdate(experimentId, { $inc: { currentParticipants: -1 } });
+      // rollback reserved seat if record creation fails
+      await Experiment.findByIdAndUpdate(experimentId, { $inc: { currentParticipantCount: -1 } });
       throw createErr;
     }
 
@@ -82,46 +94,27 @@ const joinExperiment = async (req, res, next) => {
       participation,
     });
   } catch (err) {
-    // Handle custom business logic errors with appropriate HTTP status codes
-    if (err instanceof IneligibleAgeError) {
-      return res.status(err.statusCode).json({
-        error: err.name,
-        message: err.message,
-      });
-    }
-    if (err instanceof InvalidMedicalTermError) {
-      return res.status(err.statusCode).json({
-        error: err.name,
-        message: err.message,
-      });
-    }
-    if (err instanceof ConflictingStudyError) {
-      return res.status(err.statusCode).json({
-        error: err.name,
-        message: err.message,
-        conflictingStudies: err.conflictingStudies,
-      });
-    }
-    if (err instanceof DuplicateParticipationError) {
-      return res.status(err.statusCode).json({
-        error: err.name,
-        message: err.message,
-      });
-    }
+    console.error("Join Experiment Error:", err);
 
-    // Pass other errors to next middleware
-    next(err);
+    // Handle specific business logic errors
+    const statusCode = err.statusCode || 400;
+
+    return res.status(statusCode).json({
+      error: err.name || "JoinError",
+      message: err.message,
+      ...(err.conflictingStudies && { conflictingStudies: err.conflictingStudies })
+    });
   }
 };
 
 // GET /participations/my-studies - Get all studies for logged-in user (with Populate)
 const getMyStudies = async (req, res, next) => {
   try {
-    // In a real app, userId would come from req.user (JWT auth)
-    const { userId } = req.query;
+    // Get userId from authenticated user (req.user is set by auth middleware)
+    const userId = req.user._id;
 
     if (!userId) {
-      return res.status(400).json({ message: "User ID required" });
+      return res.status(401).json({ message: "Authentication required" });
     }
 
     // DATA RETRIEVAL: Find all participations for this user
@@ -129,7 +122,7 @@ const getMyStudies = async (req, res, next) => {
 
     // MANUAL POPULATE: Across different database connections
     const enrichedStudies = await Promise.all(myStudies.map(async (p) => {
-      const pObj = p.toObject();
+      const pObj = p.toJSON();
       const experiment = await Experiment.findById(p.experimentId).select("title description status eligibilityRules");
       pObj.experimentId = experiment;
       return pObj;
@@ -144,53 +137,128 @@ const getMyStudies = async (req, res, next) => {
   }
 };
 
-// PUT /participations/:participationId/leave - Leave a study (Anonymization/Withdrawal)
+// PUT /participations/:participationId/leave - Leave a study (Hard Delete / Unenroll)
 const leaveExperiment = async (req, res, next) => {
   try {
-    const { participationId } = req.params;
+    const { id } = req.params;
+    const userId = req.user._id;
 
-    // PART B.2: WITHDRAWAL & ANONYMIZATION
-    // Instead of deleting, we:
-    // 1. Mark status as 'dropped' (preserves database history for researchers)
-    // 2. Anonymize personal data for GDPR/ethics compliance
-    // 3. Keep aggregated data for analytics
-
-    // Fetch previous participation to know if we should decrement experiment count
-    const previous = await Participation.findById(participationId);
-
-    const participation = await Participation.findByIdAndUpdate(
-      participationId,
-      {
-        status: "dropped",
-        dateLeft: new Date(),
-        isAnonymized: true,
-        // Clear PII when user withdraws
-        userEmail: "anonymized@withdrawn.local",
-        userId: null, // Remove link to actual user for privacy
-      },
-      { new: true }
-    );
-
-    // If the user was previously 'joined', decrement the experiment's currentParticipants
-    if (previous && previous.status === "joined") {
-      await Experiment.findByIdAndUpdate(participation.experimentId, { $inc: { currentParticipants: -1 } });
-    }
+    // 1. Find the participation record and ensure it belongs to the user
+    const participation = await Participation.findOne({ _id: id, userId });
 
     if (!participation) {
-      return res.status(404).json({ message: "Participation record not found" });
+      return res.status(404).json({ message: "Participation record not found or access denied." });
     }
 
+    // 2. Decrement the experiment's currentParticipantCount
+    await Experiment.findByIdAndUpdate(participation.experimentId, { $inc: { currentParticipantCount: -1 } });
+
+    // 3. HARD DELETE: Remove the participation record and all its logs
+    await Participation.findByIdAndDelete(id);
+
     return res.status(200).json({
-      message: "You have successfully left the study. Your personal data has been anonymized.",
-      participation: {
-        _id: participation._id,
-        experimentId: participation.experimentId,
-        status: participation.status,
-        dateJoined: participation.dateJoined,
-        dateLeft: participation.dateLeft,
-        isAnonymized: participation.isAnonymized,
-        // Note: userEmail, userId, userAge are not returned to user after anonymization
-      },
+      message: "You have successfully left the study and all your data has been removed.",
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /participations/:id - Get specific participation detail with experiment info
+const getParticipationDetail = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    const participation = await Participation.findOne({ _id: id, userId });
+
+    if (!participation) {
+      return res.status(404).json({ message: "Participation not found or access denied." });
+    }
+
+    // Populate experiment details manually (across DBs)
+    const participationObj = participation.toJSON();
+    const experiment = await Experiment.findById(participation.experimentId)
+      .select("title description status logFieldDefinitions publishedAt startDate endDate");
+
+    participationObj.experimentId = experiment;
+
+    return res.status(200).json(participationObj);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /participations/:id/logs - Submit a daily log entry
+const submitDailyLog = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { logData } = req.body;
+    const userId = req.user._id;
+
+    // 1. Find the participation
+    const participation = await Participation.findOne({ _id: id, userId });
+
+    if (!participation) {
+      return res.status(404).json({ message: "Participation not found." });
+    }
+
+    // 2. Frequency Control - Support Updating today's log until midnight
+    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    const existingLogIndex = participation.logs.findIndex(log => log.date === today);
+
+    if (existingLogIndex !== -1) {
+      // Update existing log
+      participation.logs[existingLogIndex].data = logData;
+      participation.logs[existingLogIndex].submittedAt = new Date();
+    } else {
+      // Add new log entry
+      participation.logs.push({
+        date: today,
+        data: logData,
+        submittedAt: new Date()
+      });
+    }
+
+    await participation.save();
+
+    return res.status(201).json({
+      message: "Daily log submitted successfully!",
+      participation
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * DELETE /api/participations/:id/logs/today
+ * Deletes today's log entry
+ */
+const deleteDailyLog = async (req, res, next) => {
+  try {
+    const participationId = req.params.id;
+    const userId = req.user._id;
+
+    const participation = await Participation.findOne({ _id: participationId, userId });
+
+    if (!participation) {
+      return res.status(404).json({ message: "Participation not found." });
+    }
+
+    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    const initialLength = participation.logs.length;
+    participation.logs = participation.logs.filter(log => log.date !== today);
+
+    if (participation.logs.length === initialLength) {
+      return res.status(404).json({ message: "No log entry found for today to delete." });
+    }
+
+    await participation.save();
+
+    res.status(200).json({
+      message: "Today's log entry has been deleted.",
+      logs: participation.logs
     });
   } catch (err) {
     next(err);
@@ -203,18 +271,14 @@ const getParticipantsList = async (req, res, next) => {
     const { experimentId } = req.params;
     const { includeWithdrawn } = req.query;
 
-    // PART B.3: RBAC protected endpoint - only researchers can access
-    // This check is enforced by middleware in routes
-
     const query = { experimentId };
 
-    // By default, only show active participants
     if (includeWithdrawn !== "true") {
       query.status = "joined";
     }
 
     const participants = await Participation.find(query)
-      .select("-userEmail -userId") // Don't show PII unless needed
+      .select("-userEmail -userId")
       .populate("experimentId", "title")
       .sort({ dateJoined: -1 });
 
@@ -233,7 +297,7 @@ const getParticipantsList = async (req, res, next) => {
         dateJoined: p.dateJoined,
         dateLeft: p.dateLeft,
         isAnonymized: p.isAnonymized,
-        age: p.userAge, // Age is safe to show (anonymized)
+        age: p.userAge,
       })),
     });
   } catch (err) {
@@ -246,4 +310,7 @@ module.exports = {
   getMyStudies,
   leaveExperiment,
   getParticipantsList,
+  getParticipationDetail,
+  submitDailyLog,
+  deleteDailyLog,
 };

@@ -1,3 +1,6 @@
+const asyncHandler = require("../utils/asyncHandler");
+const Review = require("../models/Review");
+const Experiment = require("../models/Experiment");
 const reviewService = require("../services/reviewService");
 const mongoose = require("mongoose");
 
@@ -68,7 +71,7 @@ function sendError(res, err) {
 // --- Handlers ---
 
 // POST /reviews
-const createReview = async (req, res) => {
+const createReview = asyncHandler(async (req, res) => {
   try {
     validateCreateUpdateBody(req.body, false);
     const review = await reviewService.createReview(req.body, req.user.id);
@@ -84,10 +87,10 @@ const createReview = async (req, res) => {
     }
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
-};
+});
 
 // GET /reviews
-const getReviews = async (req, res) => {
+const getReviews = asyncHandler(async (req, res) => {
   try {
     const opts = {
       page: req.query.page,
@@ -105,10 +108,10 @@ const getReviews = async (req, res) => {
     if (err.statusCode) return sendError(res, err);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
-};
+});
 
 // GET /reviews/:id
-const getReviewById = async (req, res) => {
+const getReviewById = asyncHandler(async (req, res) => {
   try {
     validateObjectId(req.params.id, "review id");
     const viewerId = req.user ? req.user.id : null;
@@ -119,10 +122,10 @@ const getReviewById = async (req, res) => {
     if (err.statusCode) return sendError(res, err);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
-};
+});
 
 // PUT /reviews/:id
-const updateReview = async (req, res) => {
+const updateReview = asyncHandler(async (req, res) => {
   try {
     validateObjectId(req.params.id, "review id");
     validateCreateUpdateBody(req.body, true);
@@ -144,10 +147,10 @@ const updateReview = async (req, res) => {
     }
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
-};
+});
 
 // DELETE /reviews/:id
-const deleteReview = async (req, res) => {
+const deleteReview = asyncHandler(async (req, res) => {
   try {
     validateObjectId(req.params.id, "review id");
     await reviewService.deleteReview(req.params.id, req.user.id, req.user.role);
@@ -156,10 +159,10 @@ const deleteReview = async (req, res) => {
     if (err.statusCode) return sendError(res, err);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
-};
+});
 
 // GET /experiments/:experimentId/reviews
-const getReviewsByExperiment = async (req, res) => {
+const getReviewsByExperiment = asyncHandler(async (req, res) => {
   try {
     validateObjectId(req.params.experimentId, "experiment id");
     const opts = {
@@ -182,7 +185,7 @@ const getReviewsByExperiment = async (req, res) => {
     if (err.statusCode) return sendError(res, err);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
-};
+});
 
 module.exports = {
   createReview,

@@ -1,6 +1,6 @@
 const express = require('express');
 const { getMyContributions, getAllContributions, updateStatus, voidContribution } = require('../controllers/contributionController');
-const { protect, authorize } = require('../middlewares/authMiddleware');
+const { protect, authorize } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 

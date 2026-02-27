@@ -15,6 +15,13 @@ const participationSchema = new mongoose.Schema(
     dateJoined: { type: Date, default: Date.now },
     dateLeft: { type: Date, default: null },
     isAnonymized: { type: Boolean, default: false },
+    logs: [
+      {
+        date: { type: String, required: true }, // Format: YYYY-MM-DD
+        data: { type: Map, of: mongoose.Schema.Types.Mixed }, // Store dynamic log fields
+        submittedAt: { type: Date, default: Date.now }
+      }
+    ],
   },
   { timestamps: true }
 );
