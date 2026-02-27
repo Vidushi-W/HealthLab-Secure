@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { loginUser } from '../api/auth';
+import { Link } from 'react-router-dom';
+import { loginUser, getCurrentUser } from '../api/auth';
 
 const Login = () => {
     const [formData, setFormData] = useState({
@@ -8,7 +8,6 @@ const Login = () => {
         password: ''
     });
     const [error, setError] = useState('');
-    const navigate = useNavigate();
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -17,8 +16,21 @@ const Login = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await loginUser(formData);
-            navigate('/experiments'); // Redirect to experiments
+            const data = await loginUser(formData);
+            // Role from stored user first, then from response (user or flat)
+            const user = getCurrentUser();
+            const role = (
+                (user?.role ?? data?.user?.role ?? data?.role) || ''
+            ).toString().toLowerCase();
+            if (role === 'researcher') {
+                window.location.href = '/researcher/experiments';
+                return;
+            }
+            if (role === 'admin') {
+                window.location.href = '/admin';
+                return;
+            }
+            window.location.href = '/experiments';
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed');
         }

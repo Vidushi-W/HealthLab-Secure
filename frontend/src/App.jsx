@@ -6,6 +6,7 @@ import Signup from './pages/Signup';
 import Home from './pages/Home';
 import RecommendationPage from './pages/RecommendationPage';
 import AdminDashboard from './pages/AdminDashboard';
+import ResearcherExperiments from './pages/ResearcherExperiments';
 import Community from './pages/Community';
 import PostDetail from './pages/PostDetail';
 import { getCurrentUser, logoutUser } from './api/auth';
@@ -33,7 +34,10 @@ function App() {
           <Link to="/community" className="nav-btn">Community</Link>
           <Link to="/recommended" className="nav-btn">Recommended</Link>
           <button className="nav-btn">My Studies</button>
-          {user && user.role === 'admin' && (
+          {user && (user.role || '').toLowerCase() === 'researcher' && (
+            <Link to="/researcher/experiments" className="nav-btn">My Experiments</Link>
+          )}
+          {user && (user.role || '').toLowerCase() === 'admin' && (
             <Link to="/admin" className="nav-btn admin-link">Admin Dashboard</Link>
           )}
           {user ? (
@@ -58,7 +62,8 @@ function App() {
       <Route path="/community" element={<Layout><Community /></Layout>} />
       <Route path="/community/:id" element={<Layout><PostDetail /></Layout>} />
       <Route path="/recommended" element={<Layout><RecommendationPage /></Layout>} />
-      {user && user.role === 'admin' && (
+      <Route path="/researcher/experiments" element={<Layout><ResearcherExperiments /></Layout>} />
+      {user && (user.role || '').toLowerCase() === 'admin' && (
         <Route path="/admin" element={<Layout><AdminDashboard /></Layout>} />
       )}
     </Routes>
