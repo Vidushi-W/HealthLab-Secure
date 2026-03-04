@@ -14,6 +14,7 @@ const AdminDashboard = () => {
     const [researcherStatusFilter, setResearcherStatusFilter] = useState('');
     const [researchersLoading, setResearchersLoading] = useState(false);
     const [reviewModal, setReviewModal] = useState(null); // { type: 'approve'|'reject', researcher }
+    const [detailModalResearcher, setDetailModalResearcher] = useState(null); // full info + approve/reject in modal
     const [deleteResearcherModal, setDeleteResearcherModal] = useState(null); // researcher to delete
 
     // All Users
@@ -242,11 +243,7 @@ const AdminDashboard = () => {
                                 <thead>
                                     <tr>
                                         <th>Name</th>
-                                        <th>Email</th>
-                                        <th>Workplace</th>
                                         <th>Qualification</th>
-                                        <th>Type</th>
-                                        <th>Published?</th>
                                         <th>Purpose</th>
                                         <th>Status</th>
                                         <th>Actions</th>
@@ -254,58 +251,54 @@ const AdminDashboard = () => {
                                 </thead>
                                 <tbody>
                                     {researchers.length > 0 ? (
-                                        researchers.map((r) => (
-                                            <tr key={r._id}>
-                                                <td>{r.fullName || (r.user && r.user.name) || '—'}</td>
-                                                <td>{r.user && r.user.email ? r.user.email : '—'}</td>
-                                                <td>{r.currentWorkplace || '—'}</td>
-                                                <td>{r.highestAcademicQualification || '—'}</td>
-                                                <td>{r.researcherType || '—'}</td>
-                                                <td>{r.hasPublishedResearch ? 'Yes' : 'No'}</td>
-                                                <td className="cell-purpose">{r.purpose ? (r.purpose.length > 50 ? r.purpose.slice(0, 50) + '…' : r.purpose) : '—'}</td>
-                                                <td>
-                                                    <span className={`badge ${getStatusBadgeClass(r.status)}`}>
-                                                        {r.status || 'pending'}
-                                                    </span>
-                                                </td>
-                                                <td className="actions">
-                                                    {(() => {
-                                                        const s = (r.status || '').toLowerCase();
-                                                        const isPending = s === 'pending' || s === '';
-                                                        return (
+                                        researchers.map((r) => {
+                                            const s = (r.status || '').toLowerCase();
+                                            const isPending = s === 'pending' || s === '';
+                                            return (
+                                                <tr
+                                                    key={r._id}
+                                                    className="researcher-row-clickable"
+                                                    onClick={() => setDetailModalResearcher(r)}
+                                                >
+                                                    <td>{r.fullName || (r.user && r.user.name) || '—'}</td>
+                                                    <td>{r.highestAcademicQualification || '—'}</td>
+                                                    <td className="cell-purpose">{r.purpose ? (r.purpose.length > 60 ? r.purpose.slice(0, 60) + '…' : r.purpose) : '—'}</td>
+                                                    <td>
+                                                        <span className={`badge ${getStatusBadgeClass(r.status)}`}>
+                                                            {r.status || 'pending'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="actions" onClick={(e) => e.stopPropagation()}>
+                                                        {isPending && (
                                                             <>
-                                                                {isPending && (
-                                                                    <>
-                                                                        <button
-                                                                            className="btn approve"
-                                                                            onClick={() => setReviewModal({ type: 'approve', researcher: r })}
-                                                                        >
-                                                                            Approve
-                                                                        </button>
-                                                                        <button
-                                                                            className="btn reject"
-                                                                            onClick={() => setReviewModal({ type: 'reject', researcher: r })}
-                                                                        >
-                                                                            Reject
-                                                                        </button>
-                                                                    </>
-                                                                )}
                                                                 <button
-                                                                    className="btn btn-danger btn-sm"
-                                                                    onClick={() => setDeleteResearcherModal(r)}
-                                                                    title="Remove researcher; user becomes ordinary user"
+                                                                    className="btn approve"
+                                                                    onClick={() => setReviewModal({ type: 'approve', researcher: r })}
                                                                 >
-                                                                    Delete
+                                                                    Approve
+                                                                </button>
+                                                                <button
+                                                                    className="btn reject"
+                                                                    onClick={() => setReviewModal({ type: 'reject', researcher: r })}
+                                                                >
+                                                                    Reject
                                                                 </button>
                                                             </>
-                                                        );
-                                                    })()}
-                                                </td>
-                                            </tr>
-                                        ))
+                                                        )}
+                                                        <button
+                                                            className="btn btn-danger btn-sm"
+                                                            onClick={() => setDeleteResearcherModal(r)}
+                                                            title="Remove researcher; user becomes ordinary user"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
                                     ) : (
                                         <tr>
-                                            <td colSpan="9" className="empty-msg">No researchers found.</td>
+                                            <td colSpan="5" className="empty-msg">No researchers found.</td>
                                         </tr>
                                     )}
                                 </tbody>
@@ -438,7 +431,117 @@ const AdminDashboard = () => {
                 </>
             )}
 
-            {/* Review modal (approve/reject researcher) */}
+            {/* Researcher detail modal – full info + approve/reject */}
+            {detailModalResearcher && (
+                <div className="modal-overlay" onClick={() => setDetailModalResearcher(null)}>
+                    <div className="modal-content researcher-detail-modal" onClick={(e) => e.stopPropagation()}>
+                        <h3>Researcher details</h3>
+                        <div className="researcher-detail-grid">
+                            <div className="researcher-detail-item">
+                                <span className="detail-label">Name</span>
+                                <span className="detail-value">{detailModalResearcher.fullName || (detailModalResearcher.user && detailModalResearcher.user.name) || '—'}</span>
+                            </div>
+                            <div className="researcher-detail-item">
+                                <span className="detail-label">Email</span>
+                                <span className="detail-value">{detailModalResearcher.user && detailModalResearcher.user.email ? detailModalResearcher.user.email : '—'}</span>
+                            </div>
+                            <div className="researcher-detail-item">
+                                <span className="detail-label">NIC</span>
+                                <span className="detail-value">{detailModalResearcher.nic || '—'}</span>
+                            </div>
+                            <div className="researcher-detail-item">
+                                <span className="detail-label">Gender</span>
+                                <span className="detail-value">{detailModalResearcher.gender || '—'}</span>
+                            </div>
+                            <div className="researcher-detail-item">
+                                <span className="detail-label">Current workplace</span>
+                                <span className="detail-value">{detailModalResearcher.currentWorkplace || '—'}</span>
+                            </div>
+                            <div className="researcher-detail-item">
+                                <span className="detail-label">Highest qualification</span>
+                                <span className="detail-value">{detailModalResearcher.highestAcademicQualification || '—'}</span>
+                            </div>
+                            <div className="researcher-detail-item">
+                                <span className="detail-label">Researcher type</span>
+                                <span className="detail-value">{detailModalResearcher.researcherType || '—'}</span>
+                            </div>
+                            {detailModalResearcher.researcherType === 'Other' && detailModalResearcher.otherResearcherTypeExplanation && (
+                                <div className="researcher-detail-item full-width">
+                                    <span className="detail-label">Other (explanation)</span>
+                                    <span className="detail-value">{detailModalResearcher.otherResearcherTypeExplanation}</span>
+                                </div>
+                            )}
+                            <div className="researcher-detail-item">
+                                <span className="detail-label">Published research</span>
+                                <span className="detail-value">{detailModalResearcher.hasPublishedResearch ? 'Yes' : 'No'}</span>
+                            </div>
+                            {detailModalResearcher.hasPublishedResearch && detailModalResearcher.publicationSiteOrLink && (
+                                <div className="researcher-detail-item full-width">
+                                    <span className="detail-label">Publication site / link</span>
+                                    <span className="detail-value">{detailModalResearcher.publicationSiteOrLink}</span>
+                                </div>
+                            )}
+                            <div className="researcher-detail-item full-width">
+                                <span className="detail-label">Purpose</span>
+                                <span className="detail-value detail-purpose">{detailModalResearcher.purpose || '—'}</span>
+                            </div>
+                            <div className="researcher-detail-item">
+                                <span className="detail-label">Status</span>
+                                <span className={`badge ${getStatusBadgeClass(detailModalResearcher.status)}`}>{detailModalResearcher.status || 'pending'}</span>
+                            </div>
+                            {detailModalResearcher.reviewNotes && (
+                                <div className="researcher-detail-item full-width">
+                                    <span className="detail-label">Review notes</span>
+                                    <span className="detail-value">{detailModalResearcher.reviewNotes}</span>
+                                </div>
+                            )}
+                            {detailModalResearcher.reviewedAt && (
+                                <div className="researcher-detail-item">
+                                    <span className="detail-label">Reviewed at</span>
+                                    <span className="detail-value">{new Date(detailModalResearcher.reviewedAt).toLocaleString()}</span>
+                                </div>
+                            )}
+                        </div>
+                        {(() => {
+                            const s = (detailModalResearcher.status || '').toLowerCase();
+                            const isPending = s === 'pending' || s === '';
+                            return isPending ? (
+                                <>
+                                    <label className="modal-label">Review notes (optional)</label>
+                                    <textarea id="detail-review-notes" rows={3} placeholder="Add notes for your decision..." className="modal-textarea" />
+                                    <div className="modal-actions">
+                                        <button className="btn" onClick={() => setDetailModalResearcher(null)}>Close</button>
+                                        <button
+                                            className="btn approve"
+                                            onClick={() => {
+                                                handleApproveResearcher(detailModalResearcher._id, document.getElementById('detail-review-notes')?.value);
+                                                setDetailModalResearcher(null);
+                                            }}
+                                        >
+                                            Approve
+                                        </button>
+                                        <button
+                                            className="btn reject"
+                                            onClick={() => {
+                                                handleRejectResearcher(detailModalResearcher._id, document.getElementById('detail-review-notes')?.value);
+                                                setDetailModalResearcher(null);
+                                            }}
+                                        >
+                                            Reject
+                                        </button>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="modal-actions">
+                                    <button className="btn" onClick={() => setDetailModalResearcher(null)}>Close</button>
+                                </div>
+                            );
+                        })()}
+                    </div>
+                </div>
+            )}
+
+            {/* Review modal (approve/reject researcher – quick action from table) */}
             {reviewModal && (
                 <div className="modal-overlay" onClick={() => setReviewModal(null)}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>

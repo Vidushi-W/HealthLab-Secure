@@ -10,6 +10,7 @@ import {
   unsavePost,
   getSavedPosts,
   deletePost,
+  sendChatMessage,
 } from '../api/posts';
 
 const Community = () => {
@@ -25,6 +26,11 @@ const Community = () => {
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('feed'); // 'feed' | 'saved'
   const [likedPostIds, setLikedPostIds] = useState(new Set());
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatError, setChatError] = useState('');
 
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -160,6 +166,27 @@ const Community = () => {
     }
   };
 
+  const handleSendChat = async (e) => {
+    e.preventDefault();
+    const text = (chatInput || '').trim();
+    if (!text || chatLoading) return;
+    setChatError('');
+    setChatMessages((prev) => [...prev, { role: 'user', content: text }]);
+    setChatInput('');
+    setChatLoading(true);
+    try {
+      const history = chatMessages.map((m) => ({ role: m.role, content: m.content }));
+      const { data } = await sendChatMessage({ message: text, history });
+      const reply = (data && data.reply) ? data.reply : 'No response.';
+      setChatMessages((prev) => [...prev, { role: 'model', content: reply }]);
+    } catch (err) {
+      setChatError(err.response?.data?.message || 'Failed to get reply');
+      setChatMessages((prev) => prev.slice(0, -1));
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
   if (!token) return null;
 
   return (
@@ -263,6 +290,11 @@ const Community = () => {
           ) : (
             posts.map((post) => (
               <article key={post._id} className="post-card">
+                {post.category && (
+                  <div className="post-card-category-wrap">
+                    <span className="post-card-category" title="AI category">{post.category}</span>
+                  </div>
+                )}
                 <div className="post-card-header">
                   <span className="post-author">
                     {post.author?.name || 'Unknown'} · {(post.author?.role || '').toLowerCase()}
@@ -279,13 +311,18 @@ const Community = () => {
                   <Link to={`/community/${post._id}`}>{post.title}</Link>
                 </h3>
                 <p className="post-content">{post.content.length > 200 ? post.content.slice(0, 200) + '...' : post.content}</p>
-                {post.tags && post.tags.length > 0 && (
-                  <div className="post-tags">
-                    {post.tags.map((t) => (
-                      <span key={t} className="post-tag">
-                        {t}
-                      </span>
-                    ))}
+                {((post.aiTags && post.aiTags.length > 0) || (post.tags && post.tags.length > 0)) && (
+                  <div className="post-tags-wrap">
+                    {post.aiTags && post.aiTags.length > 0 && (
+                      post.aiTags.map((t) => (
+                        <span key={t} className="post-tag post-tag-ai" title="AI tag">{t}</span>
+                      ))
+                    )}
+                    {post.tags && post.tags.length > 0 && (
+                      post.tags.map((t) => (
+                        <span key={'u-' + t} className="post-tag">{t}</span>
+                      ))
+                    )}
                   </div>
                 )}
                 <div className="post-actions">
@@ -315,6 +352,52 @@ const Community = () => {
               </article>
             ))
           )}
+        </div>
+      )}
+
+      {/* AI Chatbot */}
+      <button
+        type="button"
+        className="community-chat-fab"
+        onClick={() => setChatOpen((o) => !o)}
+        title="AI assistant"
+        aria-label="Open AI chat"
+      >
+        {chatOpen ? '✕' : '💬'}
+      </button>
+      {chatOpen && (
+        <div className="community-chat-panel">
+          <div className="community-chat-header">
+            <h3>Community AI Assistant</h3>
+            <button type="button" className="community-chat-close" onClick={() => setChatOpen(false)} aria-label="Close">✕</button>
+          </div>
+          <div className="community-chat-messages">
+            {chatMessages.length === 0 && (
+              <p className="community-chat-placeholder">Ask about health, research, or community. I’m here to help.</p>
+            )}
+            {chatMessages.map((m, i) => (
+              <div key={i} className={`community-chat-msg community-chat-msg-${m.role}`}>
+                <span className="community-chat-msg-role">{m.role === 'user' ? 'You' : 'AI'}</span>
+                <p className="community-chat-msg-content">{m.content}</p>
+              </div>
+            ))}
+            {chatLoading && <div className="community-chat-msg community-chat-msg-model"><p className="community-chat-msg-content">Thinking…</p></div>}
+          </div>
+          {chatError && <p className="community-chat-error">{chatError}</p>}
+          <form onSubmit={handleSendChat} className="community-chat-form">
+            <input
+              type="text"
+              className="form-input community-chat-input"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              placeholder="Type a message..."
+              disabled={chatLoading}
+              maxLength={4000}
+            />
+            <button type="submit" className="btn btn-primary community-chat-send" disabled={chatLoading || !chatInput.trim()}>
+              Send
+            </button>
+          </form>
         </div>
       )}
     </div>
