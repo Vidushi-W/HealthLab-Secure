@@ -37,7 +37,7 @@ router.post(
   createExperimentRules ? createExperimentRules() : [],
   validate || ((req, res, next) => next()),
   createExperiment
-);
+
 
 router.get("/:experimentId/wallet", getWallet); // Service handles ownership check
 router.put("/:id", authorize('researcher', 'admin'), researcherApprovedForPublish, updateExperiment);
