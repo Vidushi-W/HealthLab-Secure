@@ -5,6 +5,20 @@ import './ResearcherExperiments.css';
 
 const STATUS_OPTIONS = ['draft', 'published', 'closed'];
 
+// Auto-generate a safe key from a label
+function generateKey(label) {
+    return label
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9 ]/g, '')
+        .split(' ')
+        .filter(Boolean)
+        .map((word, index) =>
+            index === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1)
+        )
+        .join('');
+}
+
 const ResearcherExperiments = () => {
     const navigate = useNavigate();
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -26,6 +40,17 @@ const ResearcherExperiments = () => {
         startDate: '',
         endDate: '',
         applicationDeadline: '',
+        conflictTagsInput: '',
+        logFieldDefinitions: [
+            {
+                label: '',
+                key: '',
+                type: 'text',
+                required: false,
+                unit: '',
+                optionsInput: '',
+            },
+        ],
     });
 
     useEffect(() => {
@@ -62,6 +87,17 @@ const ResearcherExperiments = () => {
             startDate: '',
             endDate: '',
             applicationDeadline: '',
+            conflictTagsInput: '',
+            logFieldDefinitions: [
+                {
+                    label: '',
+                    key: '',
+                    type: 'text',
+                    required: false,
+                    unit: '',
+                    optionsInput: '',
+                },
+            ],
         });
         setFormOpen(true);
     };
@@ -77,6 +113,27 @@ const ResearcherExperiments = () => {
             startDate: exp.startDate ? exp.startDate.slice(0, 10) : '',
             endDate: exp.endDate ? exp.endDate.slice(0, 10) : '',
             applicationDeadline: exp.applicationDeadline ? exp.applicationDeadline.slice(0, 10) : '',
+            conflictTagsInput: Array.isArray(exp.conflictTags) ? exp.conflictTags.join(', ') : '',
+            logFieldDefinitions:
+                Array.isArray(exp.logFieldDefinitions) && exp.logFieldDefinitions.length > 0
+                    ? exp.logFieldDefinitions.map((f) => ({
+                        label: f.label || '',
+                        key: f.key || '',
+                        type: f.type || 'text',
+                        required: !!f.required,
+                        unit: f.unit || '',
+                        optionsInput: Array.isArray(f.options) ? f.options.join(', ') : '',
+                    }))
+                    : [
+                        {
+                            label: '',
+                            key: '',
+                            type: 'text',
+                            required: false,
+                            unit: '',
+                            optionsInput: '',
+                        },
+                    ],
         });
         setFormOpen(true);
     };
@@ -92,6 +149,27 @@ const ResearcherExperiments = () => {
             startDate: exp.startDate ? exp.startDate.slice(0, 10) : '',
             endDate: exp.endDate ? exp.endDate.slice(0, 10) : '',
             applicationDeadline: exp.applicationDeadline ? exp.applicationDeadline.slice(0, 10) : '',
+            conflictTagsInput: Array.isArray(exp.conflictTags) ? exp.conflictTags.join(', ') : '',
+            logFieldDefinitions:
+                Array.isArray(exp.logFieldDefinitions) && exp.logFieldDefinitions.length > 0
+                    ? exp.logFieldDefinitions.map((f) => ({
+                        label: f.label || '',
+                        key: f.key || '',
+                        type: f.type || 'text',
+                        required: !!f.required,
+                        unit: f.unit || '',
+                        optionsInput: Array.isArray(f.options) ? f.options.join(', ') : '',
+                    }))
+                    : [
+                        {
+                            label: '',
+                            key: '',
+                            type: 'text',
+                            required: false,
+                            unit: '',
+                            optionsInput: '',
+                        },
+                    ],
         });
         setFormOpen(true);
     };
@@ -111,6 +189,58 @@ const ResearcherExperiments = () => {
         }));
     };
 
+    const handleLogFieldChange = (index, field, value) => {
+        setForm((prev) => ({
+            ...prev,
+            logFieldDefinitions: prev.logFieldDefinitions.map((f, i) => {
+                if (i !== index) return f;
+                // When label changes, also regenerate the key automatically
+                if (field === 'label') {
+                    const newLabel = value;
+                    const newKey = generateKey(newLabel);
+                    return { ...f, label: newLabel, key: newKey };
+                }
+                return { ...f, [field]: value };
+            }),
+        }));
+    };
+
+    const handleLogFieldToggleRequired = (index) => {
+        setForm((prev) => ({
+            ...prev,
+            logFieldDefinitions: prev.logFieldDefinitions.map((f, i) =>
+                i === index ? { ...f, required: !f.required } : f
+            ),
+        }));
+    };
+
+    const addLogField = () => {
+        setForm((prev) => ({
+            ...prev,
+            logFieldDefinitions: [
+                ...prev.logFieldDefinitions,
+                {
+                    label: '',
+                    key: '',
+                    type: 'text',
+                    required: false,
+                    unit: '',
+                    optionsInput: '',
+                },
+            ],
+        }));
+    };
+
+    const removeLogField = (index) => {
+        setForm((prev) => {
+            if (prev.logFieldDefinitions.length === 1) return prev;
+            return {
+                ...prev,
+                logFieldDefinitions: prev.logFieldDefinitions.filter((_, i) => i !== index),
+            };
+        });
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!form.title.trim()) {
@@ -120,6 +250,19 @@ const ResearcherExperiments = () => {
         try {
             setSubmitting(true);
             setError('');
+            const conflictTags = form.conflictTagsInput
+                ? form.conflictTagsInput.split(',').map((t) => t.trim()).filter(Boolean)
+                : [];
+            const logFieldDefinitions = form.logFieldDefinitions.map((f) => ({
+                label: f.label.trim(),
+                key: f.key.trim(),
+                type: f.type,
+                required: !!f.required,
+                unit: f.unit?.trim() || undefined,
+                options: f.optionsInput
+                    ? f.optionsInput.split(',').map((o) => o.trim()).filter(Boolean)
+                    : undefined,
+            }));
             const payload = {
                 title: form.title.trim(),
                 description: form.description.trim() || undefined,
@@ -128,6 +271,8 @@ const ResearcherExperiments = () => {
                 startDate: form.startDate || undefined,
                 endDate: form.endDate || undefined,
                 applicationDeadline: form.applicationDeadline || undefined,
+                conflictTags,
+                logFieldDefinitions,
             };
             if (editingId) {
                 await api.put(`/experiments/${editingId}`, payload);
@@ -268,6 +413,101 @@ const ResearcherExperiments = () => {
                                 <label className="form-label">Application deadline</label>
                                 <input name="applicationDeadline" type="date" className="form-input" value={form.applicationDeadline} onChange={handleChange} readOnly={isView} />
                             </div>
+                            <div className="form-group">
+                                <label className="form-label">Conflict tags (comma-separated)</label>
+                                <input
+                                    name="conflictTagsInput"
+                                    className="form-input"
+                                    placeholder="e.g. cardio, strength"
+                                    value={form.conflictTagsInput}
+                                    onChange={handleChange}
+                                    readOnly={isView}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Participant input fields</label>
+                                <p className="helper-text">
+                                    Define the fields participants will fill in their daily logs (label, key, type, etc.).
+                                </p>
+                                {form.logFieldDefinitions.map((field, index) => (
+                                    <div key={index} className="log-field-row">
+                                        <div className="form-row">
+                                            <div className="form-group">
+                                                <label className="form-label">Label</label>
+                                                <input
+                                                    className="form-input"
+                                                    value={field.label}
+                                                    onChange={(e) => handleLogFieldChange(index, 'label', e.target.value)}
+                                                    readOnly={isView}
+                                                />
+                                            </div>
+                                            <div className="form-group">
+                                                <label className="form-label">Type</label>
+                                                <select
+                                                    className="form-select"
+                                                    value={field.type}
+                                                    onChange={(e) => handleLogFieldChange(index, 'type', e.target.value)}
+                                                    disabled={isView}
+                                                >
+                                                    <option value="number">number</option>
+                                                    <option value="text">text</option>
+                                                    <option value="boolean">boolean</option>
+                                                    <option value="date">date</option>
+                                                    <option value="time">time</option>
+                                                    <option value="select">select</option>
+                                                    <option value="multi-select">multi-select</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="form-row">
+                                            <div className="form-group">
+                                                <label className="form-label">Unit (optional)</label>
+                                                <input
+                                                    className="form-input"
+                                                    value={field.unit}
+                                                    onChange={(e) => handleLogFieldChange(index, 'unit', e.target.value)}
+                                                    readOnly={isView}
+                                                />
+                                            </div>
+                                            <div className="form-group">
+                                                <label className="form-label">Options (for select, comma-separated)</label>
+                                                <input
+                                                    className="form-input"
+                                                    value={field.optionsInput}
+                                                    onChange={(e) => handleLogFieldChange(index, 'optionsInput', e.target.value)}
+                                                    readOnly={isView}
+                                                />
+                                            </div>
+                                            <div className="form-group checkbox-group">
+                                                <label className="form-label">Required</label>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={field.required}
+                                                    onChange={() => handleLogFieldToggleRequired(index)}
+                                                    disabled={isView}
+                                                />
+                                            </div>
+                                        </div>
+                                        {!isView && (
+                                            <div className="log-field-actions">
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-secondary"
+                                                    onClick={() => removeLogField(index)}
+                                                    disabled={form.logFieldDefinitions.length === 1}
+                                                >
+                                                    Remove field
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                                {!isView && (
+                                    <button type="button" className="btn btn-secondary" onClick={addLogField}>
+                                        + Add field
+                                    </button>
+                                )}
+                            </div>
                             {!isView && (
                                 <div className="researcher-form-actions">
                                     <button type="button" className="btn btn-secondary" onClick={closeForm}>Cancel</button>
@@ -278,7 +518,49 @@ const ResearcherExperiments = () => {
                             )}
                             {isView && (
                                 <div className="researcher-form-actions">
-                                    <button type="button" className="btn btn-secondary" onClick={() => { const exp = experiments.find((e) => e._id === viewingId); if (exp) { setViewingId(null); setEditingId(exp._id); setForm({ title: exp.title || '', description: exp.description || '', status: exp.status || 'draft', participantLimit: exp.participantLimit ?? 0, startDate: exp.startDate ? exp.startDate.slice(0, 10) : '', endDate: exp.endDate ? exp.endDate.slice(0, 10) : '', applicationDeadline: exp.applicationDeadline ? exp.applicationDeadline.slice(0, 10) : '' }); } }}>Edit</button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary"
+                                        onClick={() => {
+                                            const exp = experiments.find((e) => e._id === viewingId);
+                                            if (exp) {
+                                                setViewingId(null);
+                                                setEditingId(exp._id);
+                                                setForm({
+                                                    title: exp.title || '',
+                                                    description: exp.description || '',
+                                                    status: exp.status || 'draft',
+                                                    participantLimit: exp.participantLimit ?? 0,
+                                                    startDate: exp.startDate ? exp.startDate.slice(0, 10) : '',
+                                                    endDate: exp.endDate ? exp.endDate.slice(0, 10) : '',
+                                                    applicationDeadline: exp.applicationDeadline ? exp.applicationDeadline.slice(0, 10) : '',
+                                                    conflictTagsInput: Array.isArray(exp.conflictTags) ? exp.conflictTags.join(', ') : '',
+                                                    logFieldDefinitions:
+                                                        Array.isArray(exp.logFieldDefinitions) && exp.logFieldDefinitions.length > 0
+                                                            ? exp.logFieldDefinitions.map((f) => ({
+                                                                label: f.label || '',
+                                                                key: f.key || '',
+                                                                type: f.type || 'text',
+                                                                required: !!f.required,
+                                                                unit: f.unit || '',
+                                                                optionsInput: Array.isArray(f.options) ? f.options.join(', ') : '',
+                                                            }))
+                                                            : [
+                                                                {
+                                                                    label: '',
+                                                                    key: '',
+                                                                    type: 'text',
+                                                                    required: false,
+                                                                    unit: '',
+                                                                    optionsInput: '',
+                                                                },
+                                                            ],
+                                                });
+                                            }
+                                        }}
+                                    >
+                                        Edit
+                                    </button>
                                     <button type="button" className="btn btn-primary" onClick={closeForm}>Close</button>
                                 </div>
                             )}
