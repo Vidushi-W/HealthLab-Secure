@@ -32,6 +32,7 @@ const ResearcherExperiments = () => {
     const [viewingId, setViewingId] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+    const [generatingAiSummaryId, setGeneratingAiSummaryId] = useState(null);
     const [form, setForm] = useState({
         title: '',
         description: '',
@@ -41,6 +42,8 @@ const ResearcherExperiments = () => {
         endDate: '',
         applicationDeadline: '',
         conflictTagsInput: '',
+        aiSummary: '',
+        aiSummaryUpdatedAt: null,
         logFieldDefinitions: [
             {
                 label: '',
@@ -88,6 +91,8 @@ const ResearcherExperiments = () => {
             endDate: '',
             applicationDeadline: '',
             conflictTagsInput: '',
+            aiSummary: '',
+            aiSummaryUpdatedAt: null,
             logFieldDefinitions: [
                 {
                     label: '',
@@ -114,6 +119,8 @@ const ResearcherExperiments = () => {
             endDate: exp.endDate ? exp.endDate.slice(0, 10) : '',
             applicationDeadline: exp.applicationDeadline ? exp.applicationDeadline.slice(0, 10) : '',
             conflictTagsInput: Array.isArray(exp.conflictTags) ? exp.conflictTags.join(', ') : '',
+            aiSummary: exp.aiSummary || '',
+            aiSummaryUpdatedAt: exp.aiSummaryUpdatedAt || null,
             logFieldDefinitions:
                 Array.isArray(exp.logFieldDefinitions) && exp.logFieldDefinitions.length > 0
                     ? exp.logFieldDefinitions.map((f) => ({
@@ -150,6 +157,8 @@ const ResearcherExperiments = () => {
             endDate: exp.endDate ? exp.endDate.slice(0, 10) : '',
             applicationDeadline: exp.applicationDeadline ? exp.applicationDeadline.slice(0, 10) : '',
             conflictTagsInput: Array.isArray(exp.conflictTags) ? exp.conflictTags.join(', ') : '',
+            aiSummary: exp.aiSummary || '',
+            aiSummaryUpdatedAt: exp.aiSummaryUpdatedAt || null,
             logFieldDefinitions:
                 Array.isArray(exp.logFieldDefinitions) && exp.logFieldDefinitions.length > 0
                     ? exp.logFieldDefinitions.map((f) => ({
@@ -239,6 +248,31 @@ const ResearcherExperiments = () => {
                 logFieldDefinitions: prev.logFieldDefinitions.filter((_, i) => i !== index),
             };
         });
+    };
+
+    const handleGenerateAiSummary = async () => {
+        if (!viewingId) return;
+        try {
+            setGeneratingAiSummaryId(viewingId);
+            setError('');
+            const { data } = await api.post(`/experiments/${viewingId}/ai-summary`);
+            setForm((prev) => ({
+                ...prev,
+                aiSummary: data.aiSummary || '',
+                aiSummaryUpdatedAt: data.aiSummaryUpdatedAt || null,
+            }));
+            setExperiments((prev) =>
+                prev.map((e) =>
+                    e._id === viewingId
+                        ? { ...e, aiSummary: data.aiSummary, aiSummaryUpdatedAt: data.aiSummaryUpdatedAt }
+                        : e
+                )
+            );
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to generate AI summary.');
+        } finally {
+            setGeneratingAiSummaryId(null);
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -424,6 +458,27 @@ const ResearcherExperiments = () => {
                                     readOnly={isView}
                                 />
                             </div>
+                            {isView && (
+                                <div className="form-group ai-summary-section">
+                                    <label className="form-label">AI Summary</label>
+                                    {form.aiSummary ? (
+                                        <div className="ai-summary-content">{form.aiSummary}</div>
+                                    ) : (
+                                        <p className="ai-summary-placeholder">No AI summary yet. Generate one from participant data.</p>
+                                    )}
+                                    {form.aiSummaryUpdatedAt && (
+                                        <p className="ai-summary-meta">Last updated: {new Date(form.aiSummaryUpdatedAt).toLocaleString()}</p>
+                                    )}
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary"
+                                        onClick={handleGenerateAiSummary}
+                                        disabled={generatingAiSummaryId === viewingId}
+                                    >
+                                        {generatingAiSummaryId === viewingId ? 'Generating...' : 'Generate AI summary'}
+                                    </button>
+                                </div>
+                            )}
                             <div className="form-group">
                                 <label className="form-label">Participant input fields</label>
                                 <p className="helper-text">
@@ -535,6 +590,8 @@ const ResearcherExperiments = () => {
                                                     endDate: exp.endDate ? exp.endDate.slice(0, 10) : '',
                                                     applicationDeadline: exp.applicationDeadline ? exp.applicationDeadline.slice(0, 10) : '',
                                                     conflictTagsInput: Array.isArray(exp.conflictTags) ? exp.conflictTags.join(', ') : '',
+                                                    aiSummary: exp.aiSummary || '',
+                                                    aiSummaryUpdatedAt: exp.aiSummaryUpdatedAt || null,
                                                     logFieldDefinitions:
                                                         Array.isArray(exp.logFieldDefinitions) && exp.logFieldDefinitions.length > 0
                                                             ? exp.logFieldDefinitions.map((f) => ({

@@ -9,6 +9,7 @@ const {
   getExperimentById,
   updateExperiment,
   deleteExperiment,
+  generateExperimentAiSummary,
 } = require("../controllers/experimentController");
 
 const { getReviewsByExperiment } = require("../controllers/reviewController");
@@ -34,14 +35,11 @@ router.post(
   validate || ((req, res, next) => next()),
   createExperiment
 );
-  createExperimentRules ? createExperimentRules() : [],
-  validate || ((req, res, next) => next()),
-  createExperiment
-
 
 router.get("/:experimentId/wallet", getWallet); // Service handles ownership check
-router.put("/:id", authorize('researcher', 'admin'), researcherApprovedForPublish, updateExperiment);
-router.delete("/:id", authorize('researcher', 'admin'), researcherApprovedForPublish, deleteExperiment);
+router.post("/:id/ai-summary", authorize(["researcher", "admin"]), generateExperimentAiSummary);
+router.put("/:id", authorize(["researcher", "admin"]), researcherApprovedForPublish, updateExperiment);
+router.delete("/:id", authorize(["researcher", "admin"]), researcherApprovedForPublish, deleteExperiment);
 
 // List reviews for an experiment
 router.get("/:experimentId/reviews", optionalAuth, getReviewsByExperiment);
