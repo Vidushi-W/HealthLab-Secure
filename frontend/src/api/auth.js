@@ -11,6 +11,14 @@ export const registerUser = async (userData) => {
     return response.data;
 };
 
+/** Researcher registration: sends FormData (supports optional affiliationProof file). Returns { success, message, researcher }. */
+export const registerResearcher = async (formData) => {
+    const response = await axios.post(`${API_URL}/register`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+};
+
 export const loginUser = async (credentials) => {
     const response = await axios.post(`${API_URL}/login`, credentials);
     const data = response.data;

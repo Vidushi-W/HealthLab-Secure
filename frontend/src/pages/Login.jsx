@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { loginUser, getCurrentUser } from '../api/auth';
 
 const Login = () => {
+    const location = useLocation();
+    const successMessage = location.state?.message;
     const [formData, setFormData] = useState({
         email: '',
         password: ''
@@ -42,6 +44,7 @@ const Login = () => {
                 <h2 className="auth-title">Welcome Back</h2>
                 <p className="auth-subtitle">Sign in to continue your health journey</p>
 
+                {successMessage && <div className="text-center mb-4" style={{ color: 'var(--secondary-color)', fontWeight: 600 }}>{successMessage}</div>}
                 {error && <div className="text-error text-center mb-4">{error}</div>}
 
                 <form onSubmit={handleSubmit}>

@@ -59,6 +59,7 @@ const PostDetail = () => {
     if (!commentText.trim()) return;
     try {
       setSubmitting(true);
+      setError('');
       await addComment(id, commentText.trim());
       setCommentText('');
       fetchPost();
@@ -159,6 +160,11 @@ const PostDetail = () => {
       </Link>
 
       <article className="post-detail-card">
+        {post.category && !editing && (
+          <div className="post-detail-category-wrap">
+            <span className="post-detail-category" title="AI category">{post.category}</span>
+          </div>
+        )}
         <div className="post-card-header">
           <span className="post-author">
             {post.author?.name || 'Unknown'} · {(post.author?.role || '').toLowerCase()}
@@ -180,6 +186,21 @@ const PostDetail = () => {
         {!editing ? (
           <>
             <h1 className="post-detail-title">{post.title}</h1>
+            {(post.aiTags && post.aiTags.length > 0) && (
+              <div className="post-detail-ai-meta">
+                <span className="post-ai-label">AI tags:</span>
+                {post.aiTags.map((t) => (
+                  <span key={t} className="post-tag post-tag-ai">{t}</span>
+                ))}
+              </div>
+            )}
+            {post.tags && post.tags.length > 0 && (
+              <div className="post-tags">
+                {post.tags.map((t) => (
+                  <span key={t} className="post-tag">{t}</span>
+                ))}
+              </div>
+            )}
             <p className="post-detail-content">{post.content}</p>
           </>
         ) : (
@@ -209,15 +230,6 @@ const PostDetail = () => {
             />
             <button type="submit" className="btn btn-primary">Save changes</button>
           </form>
-        )}
-        {post.tags && post.tags.length > 0 && (
-          <div className="post-tags">
-            {post.tags.map((t) => (
-              <span key={t} className="post-tag">
-                {t}
-              </span>
-            ))}
-          </div>
         )}
         {!editing && (
           <div className="post-actions">
