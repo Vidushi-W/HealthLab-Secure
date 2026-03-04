@@ -25,14 +25,20 @@ router.get("/:id", getExperimentById);
 // Protected routes (Researcher / Admin)
 router.use(protect);
 
+// POST /api/experiments - Create a new experiment (researcher only)
 router.post(
   "/",
-  authorize('researcher'),
+  authorize("researcher"),
   researcherApprovedForPublish,
   createExperimentRules ? createExperimentRules() : [],
   validate || ((req, res, next) => next()),
   createExperiment
 );
+  createExperimentRules ? createExperimentRules() : [],
+  validate || ((req, res, next) => next()),
+  createExperiment
+);
+
 router.get("/:experimentId/wallet", getWallet); // Service handles ownership check
 router.put("/:id", authorize('researcher', 'admin'), researcherApprovedForPublish, updateExperiment);
 router.delete("/:id", authorize('researcher', 'admin'), researcherApprovedForPublish, deleteExperiment);
