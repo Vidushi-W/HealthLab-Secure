@@ -57,6 +57,7 @@ app.use("/api/contributions", contributionRoutes);
 app.use("/api/posts", communityRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/external", externalRoutes);
+app.use("/api/reviews", reviewRoutes);
 
 // Backward compatibility or direct routes
 app.use("/experiments", experimentRoutes);

@@ -14,6 +14,10 @@ const {
 const { getReviewsByExperiment } = require("../controllers/reviewController");
 
 const { getWallet } = require('../controllers/walletController');
+const {
+  createExperimentRules,
+  validate,
+} = require("../validators/experimentValidators");
 
 router.get("/", getExperiments);
 router.get("/:id", getExperimentById);
@@ -21,7 +25,14 @@ router.get("/:id", getExperimentById);
 // Protected routes (Researcher / Admin)
 router.use(protect);
 
-router.post("/", authorize('researcher'), researcherApprovedForPublish, createExperiment);
+router.post(
+  "/",
+  authorize('researcher'),
+  researcherApprovedForPublish,
+  createExperimentRules ? createExperimentRules() : [],
+  validate || ((req, res, next) => next()),
+  createExperiment
+);
 router.get("/:experimentId/wallet", getWallet); // Service handles ownership check
 router.put("/:id", authorize('researcher', 'admin'), researcherApprovedForPublish, updateExperiment);
 router.delete("/:id", authorize('researcher', 'admin'), researcherApprovedForPublish, deleteExperiment);
@@ -30,3 +41,4 @@ router.delete("/:id", authorize('researcher', 'admin'), researcherApprovedForPub
 router.get("/:experimentId/reviews", optionalAuth, getReviewsByExperiment);
 
 module.exports = router;
+
