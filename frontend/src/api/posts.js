@@ -16,3 +16,6 @@ export const sharePost = (postId) => api.post(`/posts/${postId}/share`);
 export const savePost = (postId) => api.post(`/posts/${postId}/save`);
 export const unsavePost = (postId) => api.delete(`/posts/${postId}/save`);
 export const reportPost = (postId, reason) => api.post(`/posts/${postId}/report`, { reason });
+
+/** Community AI chatbot: { message, history?: { role, content }[] } => { reply } */
+export const sendChatMessage = (payload) => api.post('/posts/chat', payload);

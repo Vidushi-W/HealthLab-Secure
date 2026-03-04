@@ -1,8 +1,3 @@
-/**
- * Admin business logic.
- * Keeps controllers thin and improves testability and reuse.
- */
-
 const User = require("../models/User");
 const Researcher = require("../models/Researcher");
 const Experiment = require("../models/Experiment");
@@ -15,19 +10,12 @@ const { RESEARCHER_TYPES } = require("../models/Researcher");
 const POPULATE_USER = "name email role";
 const POPULATE_REVIEWED_BY = "name email";
 
-/**
- * Find researcher by id with populated refs. Returns null if not found.
- */
 async function findResearcherById(id) {
   return Researcher.findById(id)
     .populate("user", POPULATE_USER)
     .populate("reviewedBy", POPULATE_REVIEWED_BY);
 }
 
-/**
- * Update researcher review status (approve/reject). Throws if not found or not pending.
- * @returns {Promise<object>} Updated researcher document (populated)
- */
 async function updateResearcherReview(researcherId, { status, reviewNotes }, reviewedByUserId) {
   const researcher = await Researcher.findById(researcherId);
   if (!researcher) return null;
@@ -44,16 +32,12 @@ async function updateResearcherReview(researcherId, { status, reviewNotes }, rev
   return findResearcherById(researcherId);
 }
 
-/**
- * Get all users with optional role filter; enrich with researcherStatus where applicable.
- */
 async function getUsersWithResearcherStatus(roleFilter = null) {
   const filter = roleFilter ? { role: roleFilter } : {};
   const users = await User.find(filter).select("-password").sort({ createdAt: -1 });
   const userIds = users.map((u) => u._id);
   const researchers = await Researcher.find({ user: { $in: userIds } });
   const researcherByUser = new Map(researchers.map((r) => [r.user.toString(), r]));
-
   return users.map((u) => {
     const uObj = u.toObject();
     const r = researcherByUser.get(u._id.toString());
@@ -62,30 +46,24 @@ async function getUsersWithResearcherStatus(roleFilter = null) {
   });
 }
 
-/**
- * Delete experiment and optionally reject creator as researcher and/or reassign to participant.
- */
 async function deleteExperimentWithOptions(experimentId, options, adminUserId) {
   const { rejectResearcher: doReject, reassignToParticipant: doReassign } = options || {};
-
   const experiment = await Experiment.findById(experimentId);
   if (!experiment) return null;
-  const createdBy = experiment.createdBy || experiment.ownerId; // Support both creator fields
+  const createdBy = experiment.createdBy || experiment.ownerId;
 
-  // Cascade delete all related records
   await Promise.all([
     Experiment.findByIdAndDelete(experimentId),
     ExperimentWallet.findOneAndDelete({ experimentId }),
     FundRequest.deleteMany({ experimentId }),
-    Contribution.deleteMany({ experimentId })
+    Contribution.deleteMany({ experimentId }),
   ]);
 
   if (createdBy && (doReject || doReassign)) {
     const researcher = await Researcher.findOne({ user: createdBy });
     if (researcher && doReject) {
       researcher.status = RESEARCHER_STATUS.REJECTED;
-      researcher.reviewNotes = (researcher.reviewNotes || "") +
-        " [Rejected due to experiment policy violation - experiment deleted by admin]";
+      researcher.reviewNotes = (researcher.reviewNotes || "") + " [Rejected due to experiment policy violation - experiment deleted by admin]";
       researcher.reviewedAt = new Date();
       researcher.reviewedBy = adminUserId;
       await researcher.save();
@@ -97,11 +75,8 @@ async function deleteExperimentWithOptions(experimentId, options, adminUserId) {
   return true;
 }
 
-/**
- * Get researcher analytics for admin dashboard: total registered, by status, by type, pending backlog, overdue count.
- * @param {number} overdueDays - Pending registrations older than this many days count as "overdue" (default 7)
- */
 async function getResearcherAnalytics(overdueDays = 7) {
+  const cutoff = new Date(Date.now() - overdueDays * 24 * 60 * 60 * 1000);
   const [totalResearchers, pendingCount, approvedCount, rejectedCount, byTypeResult, overdueCount] = await Promise.all([
     Researcher.countDocuments(),
     Researcher.countDocuments({ status: RESEARCHER_STATUS.PENDING }),
@@ -111,25 +86,13 @@ async function getResearcherAnalytics(overdueDays = 7) {
       { $group: { _id: "$researcherType", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
     ]),
-    Researcher.countDocuments({
-      status: RESEARCHER_STATUS.PENDING,
-      createdAt: { $lt: new Date(Date.now() - overdueDays * 24 * 60 * 60 * 1000) },
-    }),
+    Researcher.countDocuments({ status: RESEARCHER_STATUS.PENDING, createdAt: { $lt: cutoff } }),
   ]);
 
-  const byStatus = {
-    pending: pendingCount,
-    approved: approvedCount,
-    rejected: rejectedCount,
-  };
-
+  const byStatus = { pending: pendingCount, approved: approvedCount, rejected: rejectedCount };
   const researcherTypeDistribution = {};
-  RESEARCHER_TYPES.forEach((t) => {
-    researcherTypeDistribution[t] = 0;
-  });
-  byTypeResult.forEach((row) => {
-    researcherTypeDistribution[row._id] = row.count;
-  });
+  RESEARCHER_TYPES.forEach((t) => (researcherTypeDistribution[t] = 0));
+  byTypeResult.forEach((row) => (researcherTypeDistribution[row._id] = row.count));
 
   return {
     totalResearchers,

@@ -167,6 +167,10 @@
     background-color: #f8fafc;
 }
 
+.researcher-row-clickable {
+    cursor: pointer;
+}
+
 .badge {
     padding: 0.15rem 0.5rem;
     border-radius: 9999px;
@@ -273,7 +277,55 @@
     padding: 1.5rem 2rem;
     max-width: 480px;
     width: 90%;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.researcher-detail-modal {
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.researcher-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem 1.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.researcher-detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.researcher-detail-item.full-width {
+    grid-column: 1 / -1;
+}
+
+.researcher-detail-item .detail-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #718096;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.researcher-detail-item .detail-value {
+    font-size: 0.95rem;
+    color: #2d3748;
+}
+
+.researcher-detail-item .detail-value.detail-purpose {
+    white-space: pre-wrap;
+    line-height: 1.4;
+}
+
+.modal-label {
+    display: block;
+    font-weight: 600;
+    color: #4a5568;
+    margin-bottom: 0.25rem;
+    margin-top: 0.5rem;
 }
 
 .modal-content h3 {

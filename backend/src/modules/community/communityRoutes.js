@@ -1,9 +1,14 @@
-/**
- * Community module - Routes.
- * Mount at /api/posts (same as before for frontend compatibility).
- */
 const router = require("express").Router();
 const { protect } = require("../../middleware/authMiddleware");
+const {
+  postIdRules,
+  createPostRules,
+  updatePostRules,
+  commentIdRules,
+  addCommentRules,
+  updateCommentRules,
+  validate,
+} = require("./communityValidators");
 const {
   getPosts,
   getSavedPosts,
@@ -15,19 +20,30 @@ const {
   sharePost,
   savePost,
   unsavePost,
+  addComment,
+  updateComment,
+  deleteComment,
 } = require("./communityController");
+const { chat } = require("./chatbot/chatbotController");
+const { chatRules, validate: validateChat } = require("./chatbot/chatbotValidators");
 
 router.get("/", protect, getPosts);
 router.get("/saved", protect, getSavedPosts);
-router.get("/:id", protect, getPostById);
+router.post("/chat", protect, chatRules(), validateChat, chat);
 
-router.post("/", protect, createPost);
-router.put("/:id", protect, updatePost);
-router.delete("/:id", protect, deletePost);
+router.get("/:id", protect, postIdRules(), validate, getPostById);
 
-router.put("/:id/like", protect, likeToggle);
-router.post("/:id/share", protect, sharePost);
-router.post("/:id/save", protect, savePost);
-router.delete("/:id/save", protect, unsavePost);
+router.post("/", protect, createPostRules(), validate, createPost);
+router.put("/:id", protect, updatePostRules(), validate, updatePost);
+router.delete("/:id", protect, postIdRules(), validate, deletePost);
+
+router.put("/:id/like", protect, postIdRules(), validate, likeToggle);
+router.post("/:id/share", protect, postIdRules(), validate, sharePost);
+router.post("/:id/save", protect, postIdRules(), validate, savePost);
+router.delete("/:id/save", protect, postIdRules(), validate, unsavePost);
+
+router.post("/:id/comments", protect, addCommentRules(), validate, addComment);
+router.put("/:id/comments/:commentId", protect, updateCommentRules(), validate, updateComment);
+router.delete("/:id/comments/:commentId", protect, commentIdRules(), validate, deleteComment);
 
 module.exports = router;
