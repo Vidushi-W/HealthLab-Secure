@@ -1,17 +1,22 @@
 const Experiment = require('../models/Experiment');
 const ExperimentWallet = require('../models/ExperimentWallet');
+const {
+    pickAllowedCreateFields,
+} = require("../validators/experimentValidators");
 
 const createExperiment = async (userId, data) => {
+    const payload = pickAllowedCreateFields(data || {});
+
     const experiment = await Experiment.create({
         ownerId: userId,
-        ...data
+        ...payload,
     });
 
     // Create wallet automatically
     await ExperimentWallet.create({
         experimentId: experiment._id,
         currency: experiment.currency,
-        balance: 0
+        balance: 0,
     });
 
     return experiment;

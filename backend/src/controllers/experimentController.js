@@ -1,5 +1,8 @@
 const mongoose = require("mongoose");
 const Experiment = require("../models/Experiment");
+const {
+  pickAllowedCreateFields,
+} = require("../validators/experimentValidators");
 
 // POST /experiments
 const createExperiment = async (req, res, next) => {
@@ -11,18 +14,21 @@ const createExperiment = async (req, res, next) => {
       return res.status(400).json({ message: "User ID not found in request" });
     }
 
+    // Only accept whitelisted fields from the frontend
+    const payload = pickAllowedCreateFields(req.body);
+
+    // Rely on Mongoose defaults for system-managed fields
     const experiment = new Experiment({
-      ...req.body,
-      ownerId: userId  // 🔥 assign owner automatically
+      ...payload,
+      ownerId: userId, // assign owner automatically
     });
 
     await experiment.save();
 
     return res.status(201).json({
       success: true,
-      data: experiment
+      data: experiment,
     });
-
   } catch (err) {
     next(err);
   }

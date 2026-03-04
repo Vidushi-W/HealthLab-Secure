@@ -8,7 +8,15 @@ const ROLES = { ADMIN: "admin", RESEARCHER: "researcher" };
 function canSeeDraft(viewerId, viewerRole, authorId) {
   if (!viewerId) return false;
   if (viewerRole === ROLES.ADMIN) return true;
-  return authorId && viewerId.equals(authorId);
+  const vId =
+    viewerId instanceof mongoose.Types.ObjectId
+      ? viewerId
+      : new mongoose.Types.ObjectId(viewerId);
+  const aId =
+    authorId instanceof mongoose.Types.ObjectId
+      ? authorId
+      : new mongoose.Types.ObjectId(authorId);
+  return vId.equals(aId);
 }
 
 /**
@@ -126,26 +134,33 @@ async function getReviewById(id, viewerId, viewerRole) {
 }
 
 async function createReview(data, authorId) {
-  if (!mongoose.Types.ObjectId.isValid(data.experiment)) {
-    const err = new Error("Invalid experiment id");
-    err.code = "VALIDATION";
-    err.statusCode = 400;
-    throw err;
+  // Experiment link is optional for Research Reviews UI; validate only if present
+  let experiment = null;
+  if (data.experiment) {
+    if (!mongoose.Types.ObjectId.isValid(data.experiment)) {
+      const err = new Error("Invalid experiment id");
+      err.code = "VALIDATION";
+      err.statusCode = 400;
+      throw err;
+    }
+    experiment = await Experiment.findById(data.experiment);
+    if (!experiment) {
+      const err = new Error("Experiment not found");
+      err.code = "NOT_FOUND";
+      err.statusCode = 404;
+      throw err;
+    }
   }
-  const experiment = await Experiment.findById(data.experiment);
-  if (!experiment) {
-    const err = new Error("Experiment not found");
-    err.code = "NOT_FOUND";
-    err.statusCode = 404;
-    throw err;
-  }
+  const summary = data.summary ?? data.abstract;
   const review = await Review.create({
     title: data.title,
-    abstract: data.abstract,
+    summary,
+    abstract: summary,
     content: data.content,
     keywords: data.keywords || [],
-    experiment: data.experiment,
+    experiment: experiment ? experiment._id : undefined,
     author: authorId,
+    authorId,
     status: data.status || STATUS.DRAFT,
   });
   return Review.findById(review._id)
