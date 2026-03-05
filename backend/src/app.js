@@ -21,12 +21,14 @@ const adminRoutes = require("./routes/adminRoutes");
 const externalRoutes = require("./routes/externalRoutes");
 const fundRequestRoutes = require("./routes/fundRequestRoutes");
 const contributionRoutes = require("./routes/contributionRoutes");
+const paymentRoutes = require("./routes/paymentRoutes");
 const communityRoutes = require("./modules/community/communityRoutes");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Static uploads
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
@@ -54,6 +56,7 @@ app.use("/api/experiments", experimentRoutes);
 app.use("/api/participations", participationRoutes);
 app.use("/api/fund-requests", fundRequestRoutes);
 app.use("/api/contributions", contributionRoutes);
+app.use("/api/payments", paymentRoutes);
 app.use("/api/posts", communityRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/external", externalRoutes);
