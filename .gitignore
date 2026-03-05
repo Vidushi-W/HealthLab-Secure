@@ -1,7 +1,10 @@
-# Dependency directories
+# Dependencies
 node_modules/
+.pnpm-store/
+.npm/
+.yarn/
 
-# Environment variables (never commit secrets)
+# Environment and secrets
 .env
 .env.local
 .env.development.local
@@ -11,15 +14,26 @@ node_modules/
 *.env
 !*.env.example
 
-# Logs
+# Logs and debug
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 **/logs/
-**/*.log
+backend/server_debug.log
+backend/server_error.log
+backend/*_out.txt
+backend/*_final.txt
+backend/tmp*.log
+backend/test_result.log
+backend/db_error.txt
+backend/verify_out.txt
+backend/test_data_full.txt
+backend/test_users.txt
+backend/exp_id.txt
+error.log
 
-# IDE / OS
+# IDE and OS
 .vscode/
 .idea/
 .cursor/
@@ -29,36 +43,22 @@ Thumbs.db
 *.swo
 *~
 
-# Build / Temp
+# Build and cache
 dist/
 build/
+out/
 coverage/
 .tmp/
 *.tmp
 .cache/
+.eslintcache
+.stylelintcache
 *.tsbuildinfo
+.turbo/
+.parcel-cache/
 
-# Backend uploads (user-uploaded files)
+# Backend
 backend/uploads/
-
-# Lock files (optional: remove to commit for reproducible installs)
-# package-lock.json
-# yarn.lock
-
-# Project specific – debug / test outputs
-backend/server_debug.log
-backend/test_output.txt
-backend/debug_final.txt
-backend/tmp*.log
-backend/server_error.log
-backend/e2e_out.txt
-backend/test_result.log
-backend/db_error.txt
-backend/verify_out.txt
-backend/verify_final.txt
-backend/test_data_full.txt
-backend/test_users.txt
-backend/exp_id.txt
 backend/db-structure.json
 backend/final_run.js
 backend/get_my_ip.js
@@ -66,7 +66,6 @@ backend/fix_db.js
 backend/test_db.js
 backend/fix_dns.ps1
 backend/log-env.js
-error.log
 test-db.js
 
 # Utility scripts

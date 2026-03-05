@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Home from './pages/Home';
 import RecommendationPage from './pages/RecommendationPage';
+import ResearchReviews from './pages/ResearchReviews';
 import MyStudies from './pages/MyStudies';
 import StudyDashboard from './pages/StudyDashboard';
 import AdminDashboard from './pages/AdminDashboard';
@@ -36,6 +37,9 @@ function App() {
           <Link to="/experiments" className="nav-btn">Experiments</Link>
           <Link to="/community" className="nav-btn">Community</Link>
           <Link to="/recommended" className="nav-btn">Recommended</Link>
+          {user && (user.role || '').toLowerCase() === 'researcher' && (
+            <Link to="/researcher/reviews" className="nav-btn">Research Reviews</Link>
+          )}
           <Link to="/my-studies" className="nav-btn">My Studies</Link>
           {user && (user.role || '').toLowerCase() === 'researcher' && (
             <Link to="/researcher/experiments" className="nav-btn">My Experiments</Link>
@@ -65,6 +69,9 @@ function App() {
       <Route path="/community" element={<Layout><Community /></Layout>} />
       <Route path="/community/:id" element={<Layout><PostDetail /></Layout>} />
       <Route path="/recommended" element={<Layout><RecommendationPage /></Layout>} />
+      {user && (user.role || '').toLowerCase() === 'researcher' && (
+        <Route path="/researcher/reviews" element={<Layout><ResearchReviews /></Layout>} />
+      )}
       <Route path="/my-studies" element={<Layout><MyStudies /></Layout>} />
       <Route path="/dashboard/:participationId" element={<Layout><StudyDashboard /></Layout>} />
       <Route path="/researcher/experiments" element={<Layout><ResearcherExperiments /></Layout>} />

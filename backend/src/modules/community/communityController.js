@@ -1,220 +1,170 @@
-/**
- * Community module - Controller.
- * Handles posts: list, get by id, create, update, delete, like, share, save.
- */
-const Post = require("./model/Post");
+const { HTTP_STATUS } = require("../../config/constants");
+const { error: errorResponse } = require("../../utils/response");
+const communityService = require("./services/communityService");
 
-const getPosts = async (req, res, next) => {
+function getUserId(req) {
+  return req.user && (req.user.id || req.user._id);
+}
+
+async function getPosts(req, res, next) {
   try {
-    const { sort = "latest", q } = req.query;
-    const match = {};
-    if (q && q.trim()) {
-      match.$or = [
-        { title: new RegExp(q.trim(), "i") },
-        { content: new RegExp(q.trim(), "i") },
-        { tags: new RegExp(q.trim(), "i") },
-      ];
-    }
-    const sortStage =
-      sort === "popular"
-        ? { $sort: { likeCount: -1, createdAt: -1 } }
-        : sort === "most_commented"
-          ? { $sort: { commentCount: -1, createdAt: -1 } }
-          : { $sort: { createdAt: -1 } };
-    const pipeline = [
-      { $match: Object.keys(match).length ? match : {} },
-      { $addFields: { likeCount: { $size: { $ifNull: ["$likes", []] } }, commentCount: { $size: { $ifNull: ["$comments", []] } } } },
-      sortStage,
-      { $lookup: { from: "users", localField: "author", foreignField: "_id", as: "authorDoc" } },
-      { $unwind: { path: "$authorDoc", preserveNullAndEmptyArrays: true } },
-      { $addFields: { author: "$authorDoc" } },
-      {
-        $project: {
-          _id: 1,
-          title: 1,
-          content: 1,
-          tags: 1,
-          likes: 1,
-          shareCount: 1,
-          savedBy: 1,
-          createdAt: 1,
-          updatedAt: 1,
-          likeCount: 1,
-          commentCount: 1,
-          author: { _id: 1, name: 1, email: 1 },
-        },
-      },
-    ];
-    const posts = await Post.aggregate(pipeline);
-    res.status(200).json({ posts });
+    const posts = await communityService.getPosts(req.query);
+    return res.status(HTTP_STATUS.OK).json({ success: true, posts });
   } catch (err) {
     next(err);
   }
-};
+}
 
-const getSavedPosts = async (req, res, next) => {
+async function getSavedPosts(req, res, next) {
   try {
-    const userId = req.user?.id || req.user?._id;
-    if (!userId) {
-      return res.status(401).json({ message: "Authentication required" });
-    }
-    const posts = await Post.find({ savedBy: userId })
-      .populate("author", "name email")
-      .sort({ createdAt: -1 })
-      .lean();
-    const withCounts = posts.map((p) => ({
-      ...p,
-      likeCount: (p.likes && p.likes.length) || 0,
-      commentCount: (p.comments && p.comments.length) || 0,
-    }));
-    res.status(200).json({ posts: withCounts });
+    const userId = getUserId(req);
+    if (!userId) return errorResponse(res, HTTP_STATUS.UNAUTHORIZED, "Authentication required");
+    const posts = await communityService.getSavedPosts(userId);
+    return res.status(HTTP_STATUS.OK).json({ success: true, posts });
   } catch (err) {
     next(err);
   }
-};
+}
 
-const getPostById = async (req, res, next) => {
+async function getPostById(req, res, next) {
   try {
-    const post = await Post.findById(req.params.id).populate("author", "name email").lean();
-    if (!post) return res.status(404).json({ message: "Post not found" });
-    const withCounts = {
-      ...post,
-      likeCount: (post.likes && post.likes.length) || 0,
-      commentCount: (post.comments && post.comments.length) || 0,
-    };
-    res.status(200).json(withCounts);
+    const post = await communityService.getPostById(req.params.id);
+    if (!post) return errorResponse(res, HTTP_STATUS.NOT_FOUND, "Post not found");
+    return res.status(HTTP_STATUS.OK).json({ success: true, post });
   } catch (err) {
     next(err);
   }
-};
+}
 
-const createPost = async (req, res, next) => {
+async function createPost(req, res, next) {
   try {
-    const userId = req.user?.id || req.user?._id;
-    if (!userId) {
-      return res.status(401).json({ message: "Authentication required" });
-    }
-    const { title, content, tags } = req.body;
-    const post = await Post.create({
-      title: title || "",
-      content: content || "",
-      tags: Array.isArray(tags) ? tags : [],
-      author: userId,
-    });
-    const populated = await Post.findById(post._id).populate("author", "name email").lean();
-    res.status(201).json({
-      ...populated,
-      likeCount: 0,
-      commentCount: 0,
+    const userId = getUserId(req);
+    if (!userId) return errorResponse(res, HTTP_STATUS.UNAUTHORIZED, "Authentication required");
+    const result = await communityService.createPost(userId, req.body);
+    return res.status(HTTP_STATUS.CREATED).json({
+      success: true,
+      post: result.post,
+      ai: result.ai ? { category: result.ai.category, tags: result.ai.aiTags } : undefined,
     });
   } catch (err) {
     next(err);
   }
-};
+}
 
-const updatePost = async (req, res, next) => {
+async function updatePost(req, res, next) {
   try {
-    const userId = req.user?.id || req.user?._id;
-    const post = await Post.findById(req.params.id);
-    if (!post) return res.status(404).json({ message: "Post not found" });
-    if (String(post.author) !== String(userId)) {
-      return res.status(403).json({ message: "Not authorized to update this post" });
-    }
-    const { title, content, tags } = req.body;
-    if (title !== undefined) post.title = title;
-    if (content !== undefined) post.content = content;
-    if (tags !== undefined) post.tags = Array.isArray(tags) ? tags : [];
-    await post.save();
-    const populated = await Post.findById(post._id).populate("author", "name email").lean();
-    res.status(200).json({
-      ...populated,
-      likeCount: (post.likes && post.likes.length) || 0,
-      commentCount: (post.comments && post.comments.length) || 0,
-    });
+    const userId = getUserId(req);
+    if (!userId) return errorResponse(res, HTTP_STATUS.UNAUTHORIZED, "Authentication required");
+    const result = await communityService.updatePost(req.params.id, userId, req.body);
+    if (!result) return errorResponse(res, HTTP_STATUS.NOT_FOUND, "Post not found");
+    if (result.forbidden) return errorResponse(res, HTTP_STATUS.FORBIDDEN, "Not authorized to update this post");
+    return res.status(HTTP_STATUS.OK).json({ success: true, post: result });
   } catch (err) {
     next(err);
   }
-};
+}
 
-const deletePost = async (req, res, next) => {
+async function deletePost(req, res, next) {
   try {
-    const userId = req.user?.id || req.user?._id;
-    const post = await Post.findById(req.params.id);
-    if (!post) return res.status(404).json({ message: "Post not found" });
-    if (String(post.author) !== String(userId)) {
-      return res.status(403).json({ message: "Not authorized to delete this post" });
-    }
-    await Post.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: "Post deleted" });
+    const userId = getUserId(req);
+    if (!userId) return errorResponse(res, HTTP_STATUS.UNAUTHORIZED, "Authentication required");
+    const result = await communityService.deletePost(req.params.id, userId);
+    if (!result) return errorResponse(res, HTTP_STATUS.NOT_FOUND, "Post not found");
+    if (result.forbidden) return errorResponse(res, HTTP_STATUS.FORBIDDEN, "Not authorized to delete this post");
+    return res.status(HTTP_STATUS.OK).json({ success: true, message: "Post deleted" });
   } catch (err) {
     next(err);
   }
-};
+}
 
-const likeToggle = async (req, res, next) => {
+async function likeToggle(req, res, next) {
   try {
-    const userId = req.user?.id || req.user?._id;
-    if (!userId) return res.status(401).json({ message: "Authentication required" });
-    const post = await Post.findById(req.params.id);
-    if (!post) return res.status(404).json({ message: "Post not found" });
-    const likes = post.likes || [];
-    const idx = likes.findIndex((id) => String(id) === String(userId));
-    let liked;
-    if (idx >= 0) {
-      likes.splice(idx, 1);
-      liked = false;
-    } else {
-      likes.push(userId);
-      liked = true;
-    }
-    post.likes = likes;
-    await post.save();
-    res.status(200).json({ likeCount: post.likes.length, liked });
+    const userId = getUserId(req);
+    if (!userId) return errorResponse(res, HTTP_STATUS.UNAUTHORIZED, "Authentication required");
+    const result = await communityService.likeToggle(req.params.id, userId);
+    if (!result) return errorResponse(res, HTTP_STATUS.NOT_FOUND, "Post not found");
+    return res.status(HTTP_STATUS.OK).json({ success: true, ...result });
   } catch (err) {
     next(err);
   }
-};
+}
 
-const sharePost = async (req, res, next) => {
+async function sharePost(req, res, next) {
   try {
-    const post = await Post.findByIdAndUpdate(
-      req.params.id,
-      { $inc: { shareCount: 1 } },
-      { new: true }
-    );
-    if (!post) return res.status(404).json({ message: "Post not found" });
-    res.status(200).json({ shareCount: post.shareCount });
+    const result = await communityService.sharePost(req.params.id);
+    if (!result) return errorResponse(res, HTTP_STATUS.NOT_FOUND, "Post not found");
+    return res.status(HTTP_STATUS.OK).json({ success: true, ...result });
   } catch (err) {
     next(err);
   }
-};
+}
 
-const savePost = async (req, res, next) => {
+async function savePost(req, res, next) {
   try {
-    const userId = req.user?.id || req.user?._id;
-    if (!userId) return res.status(401).json({ message: "Authentication required" });
-    const post = await Post.findByIdAndUpdate(
-      req.params.id,
-      { $addToSet: { savedBy: userId } },
-      { new: true }
-    );
-    if (!post) return res.status(404).json({ message: "Post not found" });
-    res.status(200).json({ message: "Post saved" });
+    const userId = getUserId(req);
+    if (!userId) return errorResponse(res, HTTP_STATUS.UNAUTHORIZED, "Authentication required");
+    const result = await communityService.savePost(req.params.id, userId);
+    if (!result) return errorResponse(res, HTTP_STATUS.NOT_FOUND, "Post not found");
+    return res.status(HTTP_STATUS.OK).json({ success: true, message: "Post saved" });
   } catch (err) {
     next(err);
   }
-};
+}
 
-const unsavePost = async (req, res, next) => {
+async function unsavePost(req, res, next) {
   try {
-    const userId = req.user?.id || req.user?._id;
-    if (!userId) return res.status(401).json({ message: "Authentication required" });
-    await Post.findByIdAndUpdate(req.params.id, { $pull: { savedBy: userId } });
-    res.status(200).json({ message: "Post unsaved" });
+    const userId = getUserId(req);
+    if (!userId) return errorResponse(res, HTTP_STATUS.UNAUTHORIZED, "Authentication required");
+    await communityService.unsavePost(req.params.id, userId);
+    return res.status(HTTP_STATUS.OK).json({ success: true, message: "Post unsaved" });
   } catch (err) {
     next(err);
   }
-};
+}
+
+async function addComment(req, res, next) {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return errorResponse(res, HTTP_STATUS.UNAUTHORIZED, "Authentication required");
+    const content = (req.body && req.body.content) ? String(req.body.content).trim() : "";
+    if (!content) return errorResponse(res, HTTP_STATUS.BAD_REQUEST, "Comment content is required");
+    const result = await communityService.addComment(req.params.id, userId, content);
+    if (!result) return errorResponse(res, HTTP_STATUS.NOT_FOUND, "Post not found");
+    return res.status(HTTP_STATUS.CREATED).json({ success: true, post: result, commentCount: result.commentCount });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function updateComment(req, res, next) {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return errorResponse(res, HTTP_STATUS.UNAUTHORIZED, "Authentication required");
+    const content = (req.body && req.body.content) ? String(req.body.content).trim() : "";
+    if (!content) return errorResponse(res, HTTP_STATUS.BAD_REQUEST, "Comment content is required");
+    const result = await communityService.updateComment(req.params.id, req.params.commentId, userId, content);
+    if (!result) return errorResponse(res, HTTP_STATUS.NOT_FOUND, "Post not found");
+    if (result.notFound) return errorResponse(res, HTTP_STATUS.NOT_FOUND, "Comment not found");
+    if (result.forbidden) return errorResponse(res, HTTP_STATUS.FORBIDDEN, "Not authorized to update this comment");
+    return res.status(HTTP_STATUS.OK).json({ success: true, message: "Comment updated" });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function deleteComment(req, res, next) {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return errorResponse(res, HTTP_STATUS.UNAUTHORIZED, "Authentication required");
+    const result = await communityService.deleteComment(req.params.id, req.params.commentId, userId);
+    if (!result) return errorResponse(res, HTTP_STATUS.NOT_FOUND, "Post not found");
+    if (result.notFound) return errorResponse(res, HTTP_STATUS.NOT_FOUND, "Comment not found");
+    if (result.forbidden) return errorResponse(res, HTTP_STATUS.FORBIDDEN, "Not authorized to delete this comment");
+    return res.status(HTTP_STATUS.OK).json({ success: true, message: "Comment deleted" });
+  } catch (err) {
+    next(err);
+  }
+}
 
 module.exports = {
   getPosts,
@@ -227,4 +177,7 @@ module.exports = {
   sharePost,
   savePost,
   unsavePost,
+  addComment,
+  updateComment,
+  deleteComment,
 };

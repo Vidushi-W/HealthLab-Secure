@@ -77,6 +77,10 @@ const experimentSchema = new mongoose.Schema(
     // Existing lifecycle fields
     publishedAt: { type: Date, default: null },
     closedAt: { type: Date, default: null },
+
+    // AI-generated summary (Gemini) based on experiment + participant log data
+    aiSummary: { type: String, default: "" },
+    aiSummaryUpdatedAt: { type: Date },
   },
   {
     timestamps: true,
