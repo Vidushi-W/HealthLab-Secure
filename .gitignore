@@ -68,10 +68,16 @@ backend/fix_dns.ps1
 backend/log-env.js
 test-db.js
 
-# Utility scripts
-backend/check_*.js
-backend/test_*.js
-backend/inspect_*.js
-backend/fix_*.js
-backend/list_*.js
+# Utility scripts and debug output
+backend/check*.js
+backend/test*.js
+backend/inspect*.js
+backend/fix*.js
+backend/list*.js
+backend/verify*.js
+backend/*.log
+backend/*.txt
+backend/db-structure.json
+!backend/package.json
+
 

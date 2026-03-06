@@ -9,8 +9,12 @@ const {
   getParticipationDetail,
   submitDailyLog,
   deleteDailyLog,
+  getPreJoinAnalysis,
 } = require("../controllers/participationController");
 
+
+// GET /participations/preview-analysis/:experimentId - Get clinical insight before joining
+router.get("/preview-analysis/:experimentId", protect, requireAuth, getPreJoinAnalysis);
 
 // POST /participations/join - Join an experiment (authenticated users)
 router.post("/join", protect, requireAuth, joinExperiment);

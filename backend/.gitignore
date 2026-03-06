@@ -13,6 +13,15 @@ backend/.env.*
 npm-debug.log*
 diag_out.txt
 *.txt
+
+# Temporary health/test scripts
+check_*.js
+test_*.js
+inspect_*.js
+fix_*.js
+list_*.js
+verify_*.js
+
 verify_api.js
 test_setup.js
 check-exp-status.js

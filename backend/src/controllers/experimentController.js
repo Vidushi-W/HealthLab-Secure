@@ -190,6 +190,23 @@ Provide the summary now:`;
   }
 };
 
+// GET /experiments/:id/safety-guidelines
+const getSafetyGuidelines = async (req, res, next) => {
+  try {
+    const experiment = await Experiment.findById(req.params.id);
+    if (!experiment) {
+      return res.status(404).json({ message: "Experiment not found" });
+    }
+
+    const protocolService = require("../services/protocolService");
+    const result = await protocolService.getGuidelinesForExperiment(experiment);
+
+    return res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   createExperiment,
   getExperiments,
@@ -197,4 +214,5 @@ module.exports = {
   updateExperiment,
   deleteExperiment,
   generateExperimentAiSummary,
+  getSafetyGuidelines,
 };

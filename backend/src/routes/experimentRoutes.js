@@ -10,6 +10,7 @@ const {
   updateExperiment,
   deleteExperiment,
   generateExperimentAiSummary,
+  getSafetyGuidelines,
 } = require("../controllers/experimentController");
 
 const { getReviewsByExperiment } = require("../controllers/reviewController");
@@ -43,6 +44,9 @@ router.delete("/:id", authorize(["researcher", "admin"]), researcherApprovedForP
 
 // List reviews for an experiment
 router.get("/:experimentId/reviews", optionalAuth, getReviewsByExperiment);
+
+// GET /api/experiments/:id/safety-guidelines (WGER API Integration)
+router.get("/:id/safety-guidelines", optionalAuth, getSafetyGuidelines);
 
 module.exports = router;
 

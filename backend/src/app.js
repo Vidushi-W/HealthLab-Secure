@@ -30,6 +30,12 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// 📝 Debug Logger
+app.use((req, res, next) => {
+  console.log(`📡 [API Log] ${req.method} ${req.url}`);
+  next();
+});
+
 // Static uploads
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 

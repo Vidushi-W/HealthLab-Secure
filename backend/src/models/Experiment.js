@@ -62,6 +62,12 @@ const experimentSchema = new mongoose.Schema(
       required: true
     },
 
+    // ✅ Metadata tags for discovery and insights
+    tags: { type: [String], default: [] },
+
+    // ✅ Associated Exercises for Safety Preview (WGER API)
+    associatedExercises: { type: [String], default: [] },
+
     // ✅ Conflict tags
     conflictTags: { type: [String], default: [] },
 
