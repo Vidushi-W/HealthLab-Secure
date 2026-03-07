@@ -1,5 +1,6 @@
-const { connectDB } = require('./src/config/db');
-const User = require('./src/models/User');
+require('dotenv').config({ path: require('path').resolve(__dirname, '..', '.env') });
+const { connectDB } = require('../src/config/db');
+const User = require('../src/models/User');
 
 const check = async () => {
     await connectDB();
