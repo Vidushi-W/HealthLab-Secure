@@ -24,6 +24,12 @@ const {
 router.get("/", getExperiments);
 router.get("/:id", getExperimentById);
 
+// List reviews for an experiment
+router.get("/:experimentId/reviews", optionalAuth, getReviewsByExperiment);
+
+// GET /api/experiments/:id/safety-guidelines (WGER API Integration)
+router.get("/:id/safety-guidelines", optionalAuth, getSafetyGuidelines);
+
 // Protected routes (Researcher / Admin)
 router.use(protect);
 
@@ -42,11 +48,7 @@ router.post("/:id/ai-summary", authorize(["researcher", "admin"]), generateExper
 router.put("/:id", authorize(["researcher", "admin"]), researcherApprovedForPublish, updateExperiment);
 router.delete("/:id", authorize(["researcher", "admin"]), researcherApprovedForPublish, deleteExperiment);
 
-// List reviews for an experiment
-router.get("/:experimentId/reviews", optionalAuth, getReviewsByExperiment);
 
-// GET /api/experiments/:id/safety-guidelines (WGER API Integration)
-router.get("/:id/safety-guidelines", optionalAuth, getSafetyGuidelines);
 
 module.exports = router;
 
