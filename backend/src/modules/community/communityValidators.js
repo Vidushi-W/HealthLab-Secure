@@ -5,8 +5,7 @@ const postIdRules = () => [param("id").isMongoId().withMessage("Invalid post ID"
 const createPostRules = () => [
   body("title").trim().notEmpty().withMessage("Title is required"),
   body("content").trim().notEmpty().withMessage("Content is required"),
-  body("tags").optional().isArray().withMessage("tags must be an array"),
-  body("tags.*").optional().isString().withMessage("tags must be an array of strings"),
+  body("tags").optional(),
 ];
 
 const updatePostRules = () => [

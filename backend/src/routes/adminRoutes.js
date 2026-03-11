@@ -18,6 +18,7 @@ const {
   getUnapprovedResearchers,
   approveUser,
   rejectUser,
+  deleteUser,
   deleteExperiment,
   exportResearchersPdf,
   getAnalytics,
@@ -38,6 +39,7 @@ router.get("/users", adminGuard, getUsers);
 router.get("/users/unapproved", adminGuard, getUnapprovedResearchers);
 router.patch("/users/approve/:id", adminGuard, userActionRules(), validate, approveUser);
 router.patch("/users/reject/:id", adminGuard, userActionRules(), validate, rejectUser);
+router.delete("/users/:id", adminGuard, userActionRules(), validate, deleteUser);
 
 router.get("/researchers/pending", adminGuard, getPendingResearchers);
 router.get("/researchers", adminGuard, getResearchers);

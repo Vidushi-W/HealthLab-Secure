@@ -1,5 +1,6 @@
 const router = require("express").Router();
 const { protect } = require("../../middleware/authMiddleware");
+const { uploadPostImage } = require("../../middleware/upload");
 const {
   postIdRules,
   createPostRules,
@@ -33,7 +34,7 @@ router.post("/chat", protect, chatRules(), validateChat, chat);
 
 router.get("/:id", protect, postIdRules(), validate, getPostById);
 
-router.post("/", protect, createPostRules(), validate, createPost);
+router.post("/", protect, uploadPostImage, createPostRules(), validate, createPost);
 router.put("/:id", protect, updatePostRules(), validate, updatePost);
 router.delete("/:id", protect, postIdRules(), validate, deletePost);
 

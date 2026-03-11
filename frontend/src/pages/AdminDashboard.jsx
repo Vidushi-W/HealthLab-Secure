@@ -29,9 +29,13 @@ const AdminDashboard = () => {
   const [experiments, setExperiments] = useState([]);
   const [experimentsLoading, setExperimentsLoading] = useState(false);
   const [deleteModal, setDeleteModal] = useState(null);
+  const [deleteUserModal, setDeleteUserModal] = useState(null);
   const [error, setError] = useState(null);
   const [reviewNotes, setReviewNotes] = useState('');
   const [detailReviewNotes, setDetailReviewNotes] = useState('');
+
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const currentUserId = currentUser._id;
 
   useEffect(() => {
     if (activeTab === TAB_RESEARCHERS) fetchResearchers();
@@ -130,6 +134,18 @@ const AdminDashboard = () => {
       fetchAllUsers();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to reject.');
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deleteUserModal) return;
+    const userId = deleteUserModal._id;
+    try {
+      await api.delete(`/admin/users/${userId}`);
+      setDeleteUserModal(null);
+      fetchAllUsers();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete user.');
     }
   };
 
@@ -397,14 +413,26 @@ const AdminDashboard = () => {
                             {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—'}
                           </td>
                           <td className="px-4 py-3 text-right">
-                            {isResearcherPending ? (
-                              <div className="flex justify-end gap-1">
-                                <Button size="sm" variant="success" onClick={() => handleApproveUser(user._id)}>Approve</Button>
-                                <Button size="sm" variant="danger" onClick={() => handleRejectUser(user._id)}>Reject</Button>
-                              </div>
-                            ) : (
-                              role === 'researcher' ? <span className="text-sm text-gray-400">Reviewed</span> : '—'
-                            )}
+                            <div className="flex justify-end items-center gap-1 flex-wrap">
+                              {isResearcherPending && (
+                                <>
+                                  <Button size="sm" variant="success" onClick={() => handleApproveUser(user._id)}>Approve</Button>
+                                  <Button size="sm" variant="danger" onClick={() => handleRejectUser(user._id)}>Reject</Button>
+                                </>
+                              )}
+                              {String(user._id) === String(currentUserId) ? (
+                                <span className="text-xs text-gray-400">(you)</span>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="danger"
+                                  onClick={() => setDeleteUserModal(user)}
+                                  title="Permanently delete this user"
+                                >
+                                  Delete
+                                </Button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -665,6 +693,27 @@ const AdminDashboard = () => {
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setDeleteResearcherModal(null)}>Cancel</Button>
               <Button variant="danger" onClick={handleDeleteResearcher}>Delete researcher</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete user modal */}
+      <Modal
+        open={!!deleteUserModal}
+        onClose={() => setDeleteUserModal(null)}
+        title="Delete user"
+        size="md"
+      >
+        {deleteUserModal && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Permanently delete <strong>{deleteUserModal.name}</strong> ({deleteUserModal.email})? This will remove their account
+              and, if they are a researcher, their researcher record. This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setDeleteUserModal(null)}>Cancel</Button>
+              <Button variant="danger" onClick={handleDeleteUser}>Delete user</Button>
             </div>
           </div>
         )}

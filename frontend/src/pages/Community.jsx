@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   getPosts,
   createPost,
+  getPostImageUrl,
   likeToggle,
   sharePost,
   savePost,
@@ -32,6 +33,7 @@ const Community = () => {
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [formData, setFormData] = useState({ title: '', content: '', tags: '' });
+  const [postImageFile, setPostImageFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('feed');
   const [likedPostIds, setLikedPostIds] = useState(new Set());
@@ -108,8 +110,10 @@ const Community = () => {
         content: formData.content.trim(),
         tags: formData.tags ? formData.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
       };
+      if (postImageFile) payload.imageFile = postImageFile;
       await createPost(payload);
       setFormData({ title: '', content: '', tags: '' });
+      setPostImageFile(null);
       setCreateOpen(false);
       fetchFeed();
     } catch (err) {
@@ -279,6 +283,20 @@ const Community = () => {
             placeholder="What would you like to share?"
             required
           />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Image (optional)</label>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              onChange={(e) => setPostImageFile(e.target.files?.[0] || null)}
+              className="block w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white hover:file:bg-primary-hover"
+            />
+            {postImageFile && (
+              <p className="mt-1 text-xs text-gray-500">
+                {postImageFile.name} ({(postImageFile.size / 1024).toFixed(1)} KB)
+              </p>
+            )}
+          </div>
           <Input
             label="Tags (comma-separated)"
             value={formData.tags}
@@ -355,6 +373,15 @@ const Community = () => {
                     {post.title}
                   </Link>
                 </h3>
+                {post.image && (
+                  <div className="mb-3 rounded-lg overflow-hidden border border-gray-200">
+                    <img
+                      src={getPostImageUrl(post.image)}
+                      alt=""
+                      className="w-full max-h-64 object-cover"
+                    />
+                  </div>
+                )}
                 <p className="text-gray-600 text-sm leading-relaxed mb-3">
                   {post.content.length > 200 ? post.content.slice(0, 200) + '...' : post.content}
                 </p>

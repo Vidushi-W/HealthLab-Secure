@@ -130,6 +130,20 @@ const rejectUser = asyncHandler(async (req, res) => {
   return res.status(HTTP_STATUS.OK).json(user);
 });
 
+const deleteUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  if (String(req.user._id) === String(id)) {
+    return errorResponse(res, HTTP_STATUS.BAD_REQUEST, "You cannot delete your own account");
+  }
+  const user = await User.findById(id);
+  if (!user) {
+    return errorResponse(res, HTTP_STATUS.NOT_FOUND, "User not found");
+  }
+  await Researcher.findOneAndDelete({ user: id });
+  await User.findByIdAndDelete(id);
+  return successResponse(res, HTTP_STATUS.OK, null, "User deleted");
+});
+
 const deleteExperiment = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const body = req.body || {};
@@ -201,6 +215,7 @@ module.exports = {
   getUnapprovedResearchers,
   approveUser,
   rejectUser,
+  deleteUser,
   deleteExperiment,
   exportResearchersPdf,
   getAnalytics,

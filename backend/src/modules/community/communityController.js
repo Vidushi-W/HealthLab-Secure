@@ -40,7 +40,16 @@ async function createPost(req, res, next) {
   try {
     const userId = getUserId(req);
     if (!userId) return errorResponse(res, HTTP_STATUS.UNAUTHORIZED, "Authentication required");
-    const result = await communityService.createPost(userId, req.body);
+    const body = req.body || {};
+    const payload = {
+      title: body.title,
+      content: body.content,
+      tags: body.tags,
+    };
+    if (req.file && req.file.filename) {
+      payload.image = `post-images/${req.file.filename}`;
+    }
+    const result = await communityService.createPost(userId, payload);
     return res.status(HTTP_STATUS.CREATED).json({
       success: true,
       post: result.post,

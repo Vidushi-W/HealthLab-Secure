@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   getPostById,
+  getPostImageUrl,
   getSavedPosts,
   addComment,
   likeToggle,
@@ -251,6 +252,15 @@ const PostDetail = () => {
                     {t}
                   </span>
                 ))}
+              </div>
+            )}
+            {post.image && (
+              <div className="mb-4 rounded-lg overflow-hidden border border-gray-200">
+                <img
+                  src={getPostImageUrl(post.image)}
+                  alt=""
+                  className="w-full max-h-[400px] object-cover"
+                />
               </div>
             )}
             <p className="text-gray-700 whitespace-pre-wrap leading-relaxed mb-4">{post.content}</p>

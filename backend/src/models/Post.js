@@ -15,6 +15,7 @@ const postSchema = new mongoose.Schema(
     title: { type: String, required: true, trim: true },
     content: { type: String, required: true },
     tags: [{ type: String, trim: true }],
+    image: { type: String, trim: true, default: null },
     // AI-Based Discussion Categorization (Smart Tagging)
     category: {
       type: String,

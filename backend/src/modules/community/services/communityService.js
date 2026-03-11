@@ -1,15 +1,22 @@
 const Post = require("../model/Post");
 const { generateSmartTags } = require("./aiTaggingService");
 
+// Escape special regex characters so search term is matched literally (e.g. "C++", "health (study)")
+function escapeRegex(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 async function getPosts(query = {}) {
   const { sort = "latest", q } = query;
   const match = {};
   if (q && String(q).trim()) {
     const term = String(q).trim();
+    const regex = new RegExp(escapeRegex(term), "i");
     match.$or = [
-      { title: new RegExp(term, "i") },
-      { content: new RegExp(term, "i") },
-      { tags: new RegExp(term, "i") },
+      { title: regex },
+      { content: regex },
+      { tags: regex },
+      { aiTags: regex },
     ];
   }
   const sortStage =
@@ -32,6 +39,7 @@ async function getPosts(query = {}) {
         content: 1,
         tags: 1,
         aiTags: 1,
+        image: 1,
         category: 1,
         likes: 1,
         shareCount: 1,
@@ -67,7 +75,12 @@ async function getPostById(postId) {
 }
 
 async function createPost(userId, data) {
-  const { title, content, tags } = data;
+  const { title, content, tags, image } = data;
+  const tagArray = Array.isArray(tags)
+    ? tags
+    : typeof tags === "string"
+    ? tags.split(",").map((t) => t.trim()).filter(Boolean)
+    : [];
   let ai = null;
   try {
     ai = await generateSmartTags({ title, content });
@@ -75,7 +88,8 @@ async function createPost(userId, data) {
   const post = await Post.create({
     title: title || "",
     content: content || "",
-    tags: Array.isArray(tags) ? tags : [],
+    tags: tagArray,
+    image: image || null,
     category: (ai && ai.category) || null,
     aiTags: Array.isArray(ai && ai.aiTags) ? ai.aiTags : [],
     author: userId,
