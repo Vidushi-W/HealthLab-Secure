@@ -1,3 +1,4 @@
+// Admin service: business logic for researchers, users, experiments. No HTTP here.
 const User = require("../models/User");
 const Researcher = require("../models/Researcher");
 const Experiment = require("../models/Experiment");
@@ -10,12 +11,14 @@ const { RESEARCHER_TYPES } = require("../models/Researcher");
 const POPULATE_USER = "name email role";
 const POPULATE_REVIEWED_BY = "name email";
 
+// Fetch one researcher with user and reviewedBy populated
 async function findResearcherById(id) {
   return Researcher.findById(id)
     .populate("user", POPULATE_USER)
     .populate("reviewedBy", POPULATE_REVIEWED_BY);
 }
 
+// Set researcher status (approved/rejected), reviewNotes, reviewedAt, reviewedBy; only if still pending
 async function updateResearcherReview(researcherId, { status, reviewNotes }, reviewedByUserId) {
   const researcher = await Researcher.findById(researcherId);
   if (!researcher) return null;
@@ -32,6 +35,7 @@ async function updateResearcherReview(researcherId, { status, reviewNotes }, rev
   return findResearcherById(researcherId);
 }
 
+// List users with optional role filter; attach researcher status when user is a researcher
 async function getUsersWithResearcherStatus(roleFilter = null) {
   const filter = roleFilter ? { role: roleFilter } : {};
   const users = await User.find(filter).select("-password").sort({ createdAt: -1 });
@@ -46,6 +50,7 @@ async function getUsersWithResearcherStatus(roleFilter = null) {
   });
 }
 
+// Delete experiment and related data; optionally reject creator as researcher and/or set role to participant
 async function deleteExperimentWithOptions(experimentId, options, adminUserId) {
   const { rejectResearcher: doReject, reassignToParticipant: doReassign } = options || {};
   const experiment = await Experiment.findById(experimentId);
@@ -75,6 +80,7 @@ async function deleteExperimentWithOptions(experimentId, options, adminUserId) {
   return true;
 }
 
+// Counts by status, type, and overdue pending (older than overdueDays)
 async function getResearcherAnalytics(overdueDays = 7) {
   const cutoff = new Date(Date.now() - overdueDays * 24 * 60 * 60 * 1000);
   const [totalResearchers, pendingCount, approvedCount, rejectedCount, byTypeResult, overdueCount] = await Promise.all([

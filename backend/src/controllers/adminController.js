@@ -1,3 +1,4 @@
+// Admin controller: handles HTTP for users, researchers, experiments, fund requests. Uses services for logic.
 const User = require("../models/User");
 const Researcher = require("../models/Researcher");
 const asyncHandler = require("../utils/asyncHandler");
@@ -5,12 +6,13 @@ const { error: errorResponse, success: successResponse } = require("../utils/res
 const { HTTP_STATUS } = require("../config/constants");
 const adminService = require("../services/adminService");
 const pdfExportService = require("../services/pdfExportService");
-const fundRequestService = require('../services/fundRequestService');
-const analyticsService = require('../services/analyticsService');
+const fundRequestService = require("../services/fundRequestService");
+const analyticsService = require("../services/analyticsService");
 
 const { RESEARCHER_STATUS } = adminService;
 const POPULATE = { user: "name email role", reviewedBy: "name email" };
 
+// Researchers: list only pending
 const getPendingResearchers = asyncHandler(async (req, res) => {
   const researchers = await Researcher.find({ status: RESEARCHER_STATUS.PENDING })
     .populate("user", POPULATE.user)
@@ -19,6 +21,7 @@ const getPendingResearchers = asyncHandler(async (req, res) => {
   return res.status(HTTP_STATUS.OK).json(researchers);
 });
 
+// Researchers: list all, optional query status filter
 const getResearchers = asyncHandler(async (req, res) => {
   const { status } = req.query;
   const filter = status ? { status } : {};
@@ -29,6 +32,7 @@ const getResearchers = asyncHandler(async (req, res) => {
   return res.status(HTTP_STATUS.OK).json(researchers);
 });
 
+// Researchers: get one by id
 const getResearcherById = asyncHandler(async (req, res) => {
   const researcher = await adminService.findResearcherById(req.params.id);
   if (!researcher) {
@@ -37,6 +41,7 @@ const getResearcherById = asyncHandler(async (req, res) => {
   return res.status(HTTP_STATUS.OK).json(researcher);
 });
 
+// Researchers: set status to approved, optional reviewNotes
 const approveResearcher = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { reviewNotes } = req.body;
@@ -58,6 +63,7 @@ const approveResearcher = asyncHandler(async (req, res) => {
   }
 });
 
+// Researchers: set status to rejected, optional reviewNotes
 const rejectResearcher = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { reviewNotes } = req.body;
@@ -79,6 +85,7 @@ const rejectResearcher = asyncHandler(async (req, res) => {
   }
 });
 
+// Researchers: remove record and set user role to participant
 const deleteResearcher = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const researcher = await Researcher.findById(id);
@@ -93,17 +100,20 @@ const deleteResearcher = asyncHandler(async (req, res) => {
   return successResponse(res, HTTP_STATUS.OK, null, "Researcher removed; user is now a participant");
 });
 
+// Users: list all with optional role filter, include researcherStatus when applicable
 const getUsers = asyncHandler(async (req, res) => {
   const { role } = req.query;
   const list = await adminService.getUsersWithResearcherStatus(role || null);
   return res.status(HTTP_STATUS.OK).json(list);
 });
 
+// Users: list researchers not yet approved (isApproved false)
 const getUnapprovedResearchers = asyncHandler(async (req, res) => {
   const users = await User.find({ role: "researcher", isApproved: false });
   return res.status(HTTP_STATUS.OK).json(users);
 });
 
+// Users: set isApproved true and sync researcher status to approved
 const approveUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const user = await User.findByIdAndUpdate(id, { isApproved: true }, { new: true });
@@ -117,6 +127,7 @@ const approveUser = asyncHandler(async (req, res) => {
   return res.status(HTTP_STATUS.OK).json(user);
 });
 
+// Users: set isApproved false and sync researcher status to rejected
 const rejectUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const user = await User.findByIdAndUpdate(id, { isApproved: false }, { new: true });
@@ -130,6 +141,7 @@ const rejectUser = asyncHandler(async (req, res) => {
   return res.status(HTTP_STATUS.OK).json(user);
 });
 
+// Experiments: delete and optionally reject creator / reassign to participant
 const deleteExperiment = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const body = req.body || {};
@@ -147,6 +159,7 @@ const deleteExperiment = asyncHandler(async (req, res) => {
   return successResponse(res, HTTP_STATUS.OK, null, "Experiment deleted");
 });
 
+// Researchers: stream PDF report, optional query status filter
 const exportResearchersPdf = asyncHandler(async (req, res) => {
   const { status } = req.query;
   const filter = status ? { status } : {};
@@ -162,6 +175,7 @@ const getAllRequests = asyncHandler(async (req, res) => {
   return res.status(HTTP_STATUS.OK).json(requests);
 });
 
+// Fund: update request status (status, adminDecisionNote, approvedAmount)
 const updateStatus = asyncHandler(async (req, res) => {
   const { status, adminDecisionNote, approvedAmount } = req.body || {};
   try {
@@ -176,16 +190,19 @@ const updateStatus = asyncHandler(async (req, res) => {
   }
 });
 
+// Analytics: dashboard data
 const getAnalytics = asyncHandler(async (req, res) => {
   const data = await analyticsService.getAnalytics();
   return res.status(HTTP_STATUS.OK).json(data);
 });
 
+// Reports: fund reports with query params
 const getReports = asyncHandler(async (req, res) => {
   const data = await analyticsService.getReports(req.query);
   return res.status(HTTP_STATUS.OK).json(data);
 });
 
+// Stub: not implemented
 const disburseRequest = asyncHandler(async (req, res) => {
   return res.status(501).json({ success: false, message: "Not implemented" });
 });

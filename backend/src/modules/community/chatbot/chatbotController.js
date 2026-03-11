@@ -1,6 +1,8 @@
+// Chatbot controller: single chat endpoint; calls Groq for reply
 const { HTTP_STATUS } = require("../../../config/constants");
 const { getReply } = require("./services/groqService");
 
+// POST body: message, optional history; returns { success, reply }
 async function chat(req, res, next) {
   try {
     const { message, history } = req.body || {};

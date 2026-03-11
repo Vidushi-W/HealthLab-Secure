@@ -1,6 +1,8 @@
+// Community service: post CRUD, likes, share, save, comments; no HTTP
 const Post = require("../model/Post");
 const { generateSmartTags } = require("./aiTaggingService");
 
+// List posts with optional sort (latest|popular|most_commented) and search q
 async function getPosts(query = {}) {
   const { sort = "latest", q } = query;
   const match = {};
@@ -47,6 +49,7 @@ async function getPosts(query = {}) {
   return Post.aggregate(pipeline);
 }
 
+// Posts saved by user; includes likeCount, commentCount
 async function getSavedPosts(userId) {
   const posts = await Post.find({ savedBy: userId }).populate("author", "name email").sort({ createdAt: -1 }).lean();
   return posts.map((p) => ({
@@ -56,6 +59,7 @@ async function getSavedPosts(userId) {
   }));
 }
 
+// Single post with author and comments populated; likeCount, commentCount
 async function getPostById(postId) {
   const post = await Post.findById(postId).populate("author", "name email").populate("comments.author", "name").lean();
   if (!post) return null;
@@ -66,6 +70,7 @@ async function getPostById(postId) {
   };
 }
 
+// Create post; optional AI tags from title/content; returns post and ai object
 async function createPost(userId, data) {
   const { title, content, tags } = data;
   let ai = null;
@@ -84,6 +89,7 @@ async function createPost(userId, data) {
   return { post: { ...populated, likeCount: 0, commentCount: 0 }, ai };
 }
 
+// Update post; returns null if not found, { forbidden: true } if not author
 async function updatePost(postId, userId, data) {
   const post = await Post.findById(postId);
   if (!post) return null;
@@ -100,6 +106,7 @@ async function updatePost(postId, userId, data) {
   };
 }
 
+// Delete post; returns null if not found, { forbidden: true } if not author
 async function deletePost(postId, userId) {
   const post = await Post.findById(postId);
   if (!post) return null;
@@ -108,6 +115,7 @@ async function deletePost(postId, userId) {
   return true;
 }
 
+// Add or remove user from likes; returns { likeCount, liked }
 async function likeToggle(postId, userId) {
   const post = await Post.findById(postId);
   if (!post) return null;
@@ -123,21 +131,25 @@ async function likeToggle(postId, userId) {
   return { likeCount: post.likes.length, liked: post.likes.some((id) => String(id) === String(userId)) };
 }
 
+// Increment shareCount; returns { shareCount } or null
 async function sharePost(postId) {
   const post = await Post.findByIdAndUpdate(postId, { $inc: { shareCount: 1 } }, { new: true });
   return post ? { shareCount: post.shareCount } : null;
 }
 
+// Add user to savedBy; returns {} or null
 async function savePost(postId, userId) {
   const post = await Post.findByIdAndUpdate(postId, { $addToSet: { savedBy: userId } }, { new: true });
   return post ? {} : null;
 }
 
+// Remove user from savedBy
 async function unsavePost(postId, userId) {
   await Post.findByIdAndUpdate(postId, { $pull: { savedBy: userId } });
   return {};
 }
 
+// Append comment to post; returns updated post with commentCount
 async function addComment(postId, userId, content) {
   const post = await Post.findById(postId);
   if (!post) return null;
@@ -148,6 +160,7 @@ async function addComment(postId, userId, content) {
   return { ...updated, commentCount: (updated.comments && updated.comments.length) || 0 };
 }
 
+// Update comment content; author only; returns { notFound } or { forbidden } on failure
 async function updateComment(postId, commentId, userId, content) {
   const post = await Post.findById(postId);
   if (!post) return null;
@@ -159,6 +172,7 @@ async function updateComment(postId, commentId, userId, content) {
   return {};
 }
 
+// Delete comment; author only; returns { notFound } or { forbidden } on failure
 async function deleteComment(postId, commentId, userId) {
   const post = await Post.findById(postId);
   if (!post) return null;
