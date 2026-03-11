@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import './Community.css';
 import {
   getPosts,
   createPost,
@@ -12,6 +11,16 @@ import {
   deletePost,
   sendChatMessage,
 } from '../api/posts';
+import {
+  Button,
+  Card,
+  Modal,
+  Input,
+  Textarea,
+  PostCardSkeleton,
+  EmptyState,
+  ErrorMessage,
+} from '../components/ui';
 
 const Community = () => {
   const navigate = useNavigate();
@@ -24,7 +33,7 @@ const Community = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [formData, setFormData] = useState({ title: '', content: '', tags: '' });
   const [submitting, setSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState('feed'); // 'feed' | 'saved'
+  const [activeTab, setActiveTab] = useState('feed');
   const [likedPostIds, setLikedPostIds] = useState(new Set());
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
@@ -149,7 +158,6 @@ const Community = () => {
   };
 
   const isLiked = (post) => likedPostIds.has(post._id);
-
   const isAuthor = (post) => {
     if (!userId || !post.author) return false;
     const authorId = post.author._id || post.author;
@@ -190,213 +198,273 @@ const Community = () => {
   if (!token) return null;
 
   return (
-    <div className="community-page">
-      <div className="community-header">
-        <h1>Community</h1>
-        <p className="community-subtitle">Discuss, share, and connect with researchers and participants.</p>
-      </div>
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <header className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Community</h1>
+        <p className="mt-1 text-gray-600">Discuss, share, and connect with researchers and participants.</p>
+      </header>
 
-      <div className="community-toolbar">
-        <div className="community-tabs">
-          <button className={activeTab === 'feed' ? 'active' : ''} onClick={() => setActiveTab('feed')}>
-            Feed
-          </button>
-          <button className={activeTab === 'saved' ? 'active' : ''} onClick={() => setActiveTab('saved')}>
-            Saved
-          </button>
-        </div>
-        {activeTab === 'feed' && (
-          <>
-            <div className="community-sort">
-              <label>Sort:</label>
-              <select value={sort} onChange={(e) => setSort(e.target.value)}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5">
+            <button
+              type="button"
+              onClick={() => setActiveTab('feed')}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeTab === 'feed' ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              Feed
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('saved')}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeTab === 'saved' ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              Saved
+            </button>
+          </div>
+          {activeTab === 'feed' && (
+            <>
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-primary focus:border-transparent"
+              >
                 <option value="latest">Latest</option>
                 <option value="popular">Most liked</option>
                 <option value="most_commented">Most commented</option>
               </select>
-            </div>
-            <div className="community-search">
-              <input
-                type="text"
-                placeholder="Search posts..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && fetchFeed()}
-              />
-              <button type="button" className="btn btn-primary" onClick={fetchFeed}>
-                Search
-              </button>
-            </div>
-          </>
-        )}
-        <button className="btn btn-primary" onClick={() => setCreateOpen(!createOpen)}>
+              <div className="flex flex-1 min-w-0 max-w-xs">
+                <input
+                  type="text"
+                  placeholder="Search posts..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && fetchFeed()}
+                  className="block w-full rounded-l-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+                <Button type="button" size="sm" onClick={fetchFeed} className="rounded-l-none">
+                  Search
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+        <Button onClick={() => setCreateOpen(!createOpen)} className="shrink-0">
           {createOpen ? 'Cancel' : '+ New Post'}
-        </button>
+        </Button>
       </div>
 
-      {error && <div className="community-error">{error}</div>}
-
-      {createOpen && (
-        <div className="community-create-card">
-          <h3>Create discussion</h3>
-          <form onSubmit={handleCreatePost}>
-            <div className="form-group">
-              <label className="form-label">Title</label>
-              <input
-                type="text"
-                className="form-input"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="Post title"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Content</label>
-              <textarea
-                className="form-input"
-                rows={4}
-                value={formData.content}
-                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                placeholder="What would you like to share?"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Tags (comma-separated)</label>
-              <input
-                type="text"
-                className="form-input"
-                value={formData.tags}
-                onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                placeholder="health, research"
-              />
-            </div>
-            <button type="submit" className="btn btn-primary" disabled={submitting}>
-              {submitting ? 'Posting...' : 'Post'}
-            </button>
-          </form>
-        </div>
+      {error && (
+        <ErrorMessage message={error} onDismiss={() => setError('')} className="mb-4" />
       )}
 
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Create discussion" size="md">
+        <form onSubmit={handleCreatePost} className="space-y-4">
+          <Input
+            label="Title"
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            placeholder="Post title"
+            required
+          />
+          <Textarea
+            label="Content"
+            rows={4}
+            value={formData.content}
+            onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+            placeholder="What would you like to share?"
+            required
+          />
+          <Input
+            label="Tags (comma-separated)"
+            value={formData.tags}
+            onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+            placeholder="health, research"
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="secondary" onClick={() => setCreateOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? 'Posting...' : 'Post'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
       {loading ? (
-        <div className="community-loading">Loading...</div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <PostCardSkeleton key={i} />
+          ))}
+        </div>
       ) : (
-        <div className="community-feed">
+        <div className="space-y-4">
           {posts.length === 0 ? (
-            <p className="community-empty">
-              {activeTab === 'saved' ? 'No saved posts.' : 'No posts yet. Be the first to post!'}
-            </p>
+            <EmptyState
+              icon="💬"
+              title={activeTab === 'saved' ? 'No saved posts' : 'No posts yet'}
+              description={
+                activeTab === 'saved'
+                  ? 'Save posts from the feed to find them here.'
+                  : 'Be the first to start a discussion.'
+              }
+              action={
+                activeTab === 'feed' && (
+                  <Button onClick={() => setCreateOpen(true)}>Create post</Button>
+                )
+              }
+            />
           ) : (
             posts.map((post) => (
-              <article key={post._id} className="post-card">
+              <Card key={post._id} className="relative">
                 {post.category && (
-                  <div className="post-card-category-wrap">
-                    <span className="post-card-category" title="AI category">{post.category}</span>
-                  </div>
+                  <span className="absolute -top-2.5 left-4 px-3 py-1 rounded-full bg-emerald-600 text-white text-xs font-semibold uppercase tracking-wide shadow">
+                    {post.category}
+                  </span>
                 )}
-                <div className="post-card-header">
-                  <span className="post-author">
+                <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
+                  <span className="text-sm text-gray-500">
                     {post.author?.name || 'Unknown'} · {(post.author?.role || '').toLowerCase()}
                   </span>
-                  <span className="post-date">{new Date(post.createdAt).toLocaleDateString()}</span>
+                  <span className="text-xs text-gray-400">{new Date(post.createdAt).toLocaleDateString()}</span>
                   {isAuthor(post) && (
-                    <div className="post-card-author-actions">
-                      <Link to={`/community/${post._id}`} className="post-action post-action-edit">Edit</Link>
-                      <button type="button" className="post-action post-action-delete" onClick={() => handleDeletePost(post._id)}>Delete</button>
+                    <div className="flex gap-2 ml-auto">
+                      <Link
+                        to={`/community/${post._id}`}
+                        className="text-sm font-medium text-primary hover:underline"
+                      >
+                        Edit
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleDeletePost(post._id)}
+                        className="text-sm font-medium text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
                     </div>
                   )}
                 </div>
-                <h3 className="post-title">
-                  <Link to={`/community/${post._id}`}>{post.title}</Link>
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                  <Link to={`/community/${post._id}`} className="hover:text-primary transition-colors">
+                    {post.title}
+                  </Link>
                 </h3>
-                <p className="post-content">{post.content.length > 200 ? post.content.slice(0, 200) + '...' : post.content}</p>
+                <p className="text-gray-600 text-sm leading-relaxed mb-3">
+                  {post.content.length > 200 ? post.content.slice(0, 200) + '...' : post.content}
+                </p>
                 {((post.aiTags && post.aiTags.length > 0) || (post.tags && post.tags.length > 0)) && (
-                  <div className="post-tags-wrap">
-                    {post.aiTags && post.aiTags.length > 0 && (
-                      post.aiTags.map((t) => (
-                        <span key={t} className="post-tag post-tag-ai" title="AI tag">{t}</span>
-                      ))
-                    )}
-                    {post.tags && post.tags.length > 0 && (
-                      post.tags.map((t) => (
-                        <span key={'u-' + t} className="post-tag">{t}</span>
-                      ))
-                    )}
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {post.aiTags?.map((t) => (
+                      <span key={t} className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-medium">
+                        {t}
+                      </span>
+                    ))}
+                    {post.tags?.map((t) => (
+                      <span key={'u-' + t} className="px-2 py-0.5 rounded-full bg-primary-light text-primary text-xs font-medium">
+                        {t}
+                      </span>
+                    ))}
                   </div>
                 )}
-                <div className="post-actions">
+                <div className="flex flex-wrap items-center gap-4 pt-3 border-t border-gray-100">
                   <button
                     type="button"
-                    className={`post-action ${isLiked(post) ? 'liked' : ''}`}
                     onClick={() => handleLike(post._id)}
-                    title="Like"
+                    className={`flex items-center gap-1 text-sm font-medium transition-colors ${
+                      isLiked(post) ? 'text-red-600' : 'text-gray-500 hover:text-gray-700'
+                    }`}
                   >
-                    ♥ {post.likeCount || 0}
+                    <span>{isLiked(post) ? '♥' : '♡'}</span> {post.likeCount || 0}
                   </button>
-                  <Link to={`/community/${post._id}`} className="post-action">
+                  <Link
+                    to={`/community/${post._id}`}
+                    className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+                  >
                     💬 {post.commentCount || 0}
                   </Link>
-                  <button type="button" className="post-action" onClick={() => handleShare(post._id)} title="Share / Copy link">
+                  <button
+                    type="button"
+                    onClick={() => handleShare(post._id)}
+                    className="text-sm text-gray-500 hover:text-gray-700"
+                  >
                     ↗ Share
                   </button>
                   <button
                     type="button"
-                    className={`post-action ${savedIds.has(post._id) ? 'saved' : ''}`}
                     onClick={() => handleSave(post._id, savedIds.has(post._id))}
-                    title="Save"
+                    className={`text-sm font-medium ${savedIds.has(post._id) ? 'text-secondary' : 'text-gray-500 hover:text-gray-700'}`}
                   >
-                    {savedIds.has(post._id) ? '✓ Saved' : 'Save'}
+                    {savedIds.has(post._id) ? '✓ Saved' : 'Bookmark'}
                   </button>
                 </div>
-              </article>
+              </Card>
             ))
           )}
         </div>
       )}
 
-      {/* AI Chatbot */}
       <button
         type="button"
-        className="community-chat-fab"
         onClick={() => setChatOpen((o) => !o)}
-        title="AI assistant"
-        aria-label="Open AI chat"
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-primary text-white shadow-lg hover:bg-primary-hover flex items-center justify-center text-xl z-50 transition-transform hover:scale-105"
+        aria-label={chatOpen ? 'Close chat' : 'Open AI assistant'}
       >
         {chatOpen ? '✕' : '💬'}
       </button>
       {chatOpen && (
-        <div className="community-chat-panel">
-          <div className="community-chat-header">
-            <h3>Community AI Assistant</h3>
-            <button type="button" className="community-chat-close" onClick={() => setChatOpen(false)} aria-label="Close">✕</button>
+        <div className="fixed bottom-24 right-6 w-full max-w-md bg-white rounded-xl shadow-xl border border-gray-200 flex flex-col max-h-[70vh] z-40 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 bg-primary text-white">
+            <h3 className="font-semibold">Community AI Assistant</h3>
+            <button
+              type="button"
+              onClick={() => setChatOpen(false)}
+              className="p-1 rounded hover:bg-white/20"
+              aria-label="Close"
+            >
+              ✕
+            </button>
           </div>
-          <div className="community-chat-messages">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[200px]">
             {chatMessages.length === 0 && (
-              <p className="community-chat-placeholder">Ask about health, research, or community. I’m here to help.</p>
+              <p className="text-sm text-gray-500">Ask about health, research, or community.</p>
             )}
             {chatMessages.map((m, i) => (
-              <div key={i} className={`community-chat-msg community-chat-msg-${m.role}`}>
-                <span className="community-chat-msg-role">{m.role === 'user' ? 'You' : 'AI'}</span>
-                <p className="community-chat-msg-content">{m.content}</p>
+              <div
+                key={i}
+                className={`flex flex-col max-w-[90%] ${
+                  m.role === 'user' ? 'ml-auto bg-primary-light rounded-lg rounded-br-none p-3' : 'bg-gray-100 rounded-lg rounded-bl-none p-3'
+                }`}
+              >
+                <span className="text-xs font-semibold text-gray-500 mb-0.5">{m.role === 'user' ? 'You' : 'AI'}</span>
+                <p className="text-sm whitespace-pre-wrap">{m.content}</p>
               </div>
             ))}
-            {chatLoading && <div className="community-chat-msg community-chat-msg-model"><p className="community-chat-msg-content">Thinking…</p></div>}
+            {chatLoading && (
+              <div className="bg-gray-100 rounded-lg rounded-bl-none p-3 max-w-[90%]">
+                <p className="text-sm text-gray-600">Thinking…</p>
+              </div>
+            )}
           </div>
-          {chatError && <p className="community-chat-error">{chatError}</p>}
-          <form onSubmit={handleSendChat} className="community-chat-form">
+          {chatError && <p className="px-4 text-sm text-red-600">{chatError}</p>}
+          <form onSubmit={handleSendChat} className="flex gap-2 p-3 border-t border-gray-200">
             <input
               type="text"
-              className="form-input community-chat-input"
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               placeholder="Type a message..."
               disabled={chatLoading}
               maxLength={4000}
+              className="flex-1 min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
             />
-            <button type="submit" className="btn btn-primary community-chat-send" disabled={chatLoading || !chatInput.trim()}>
+            <Button type="submit" disabled={chatLoading || !chatInput.trim()} size="md">
               Send
-            </button>
+            </Button>
           </form>
         </div>
       )}

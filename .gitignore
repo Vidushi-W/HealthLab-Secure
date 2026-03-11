@@ -67,3 +67,15 @@ backend/test_db.js
 backend/fix_dns.ps1
 backend/log-env.js
 test-db.js
+
+# Vite / frontend cache
+frontend/node_modules/.vite/
+
+# Backup and temp
+*.bak
+*.backup
+*.orig
+
+# Optional: uncomment if you use these
+# .vercel
+# .netlify

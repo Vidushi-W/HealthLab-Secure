@@ -1,652 +1,676 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/api';
-import './AdminDashboard.css';
+import {
+  Button,
+  Card,
+  Badge,
+  Modal,
+  Textarea,
+  ErrorMessage,
+  EmptyState,
+  TableRowSkeleton,
+} from '../components/ui';
 
 const TAB_RESEARCHERS = 'researchers';
 const TAB_ALL_USERS = 'users';
 const TAB_EXPERIMENTS = 'experiments';
 
 const AdminDashboard = () => {
-    const [activeTab, setActiveTab] = useState(TAB_RESEARCHERS);
+  const [activeTab, setActiveTab] = useState(TAB_RESEARCHERS);
+  const [researchers, setResearchers] = useState([]);
+  const [researcherStatusFilter, setResearcherStatusFilter] = useState('');
+  const [researchersLoading, setResearchersLoading] = useState(false);
+  const [reviewModal, setReviewModal] = useState(null);
+  const [detailModalResearcher, setDetailModalResearcher] = useState(null);
+  const [deleteResearcherModal, setDeleteResearcherModal] = useState(null);
+  const [allUsers, setAllUsers] = useState([]);
+  const [roleFilter, setRoleFilter] = useState('');
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [experiments, setExperiments] = useState([]);
+  const [experimentsLoading, setExperimentsLoading] = useState(false);
+  const [deleteModal, setDeleteModal] = useState(null);
+  const [error, setError] = useState(null);
+  const [reviewNotes, setReviewNotes] = useState('');
+  const [detailReviewNotes, setDetailReviewNotes] = useState('');
 
-    // Researchers
-    const [researchers, setResearchers] = useState([]);
-    const [researcherStatusFilter, setResearcherStatusFilter] = useState('');
-    const [researchersLoading, setResearchersLoading] = useState(false);
-    const [reviewModal, setReviewModal] = useState(null); // { type: 'approve'|'reject', researcher }
-    const [detailModalResearcher, setDetailModalResearcher] = useState(null); // full info + approve/reject in modal
-    const [deleteResearcherModal, setDeleteResearcherModal] = useState(null); // researcher to delete
+  useEffect(() => {
+    if (activeTab === TAB_RESEARCHERS) fetchResearchers();
+  }, [activeTab, researcherStatusFilter]);
 
-    // All Users
-    const [allUsers, setAllUsers] = useState([]);
-    const [roleFilter, setRoleFilter] = useState('');
-    const [usersLoading, setUsersLoading] = useState(false);
+  useEffect(() => {
+    if (activeTab === TAB_ALL_USERS) fetchAllUsers();
+  }, [activeTab, roleFilter]);
 
-    // Experiments
-    const [experiments, setExperiments] = useState([]);
-    const [experimentsLoading, setExperimentsLoading] = useState(false);
-    const [deleteModal, setDeleteModal] = useState(null); // { experiment, rejectResearcher, reassignToParticipant }
+  useEffect(() => {
+    if (activeTab === TAB_EXPERIMENTS) fetchExperiments();
+  }, [activeTab]);
 
-    const [error, setError] = useState(null);
+  const fetchResearchers = async () => {
+    try {
+      setResearchersLoading(true);
+      const params = researcherStatusFilter ? { status: researcherStatusFilter } : {};
+      const response = await api.get('/admin/researchers', { params });
+      setResearchers(Array.isArray(response.data) ? response.data : []);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching researchers:', err);
+      setError('Failed to fetch researchers.');
+    } finally {
+      setResearchersLoading(false);
+    }
+  };
 
-    useEffect(() => {
-        if (activeTab === TAB_RESEARCHERS) fetchResearchers();
-    }, [activeTab, researcherStatusFilter]);
+  const fetchAllUsers = async () => {
+    try {
+      setUsersLoading(true);
+      const params = roleFilter ? { role: roleFilter } : {};
+      const response = await api.get('/admin/users', { params });
+      setAllUsers(Array.isArray(response.data) ? response.data : []);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching users:', err);
+      setError('Failed to fetch users.');
+    } finally {
+      setUsersLoading(false);
+    }
+  };
 
-    useEffect(() => {
-        if (activeTab === TAB_ALL_USERS) fetchAllUsers();
-    }, [activeTab, roleFilter]);
+  const fetchExperiments = async () => {
+    try {
+      setExperimentsLoading(true);
+      const response = await api.get('/experiments');
+      setExperiments(Array.isArray(response.data) ? response.data : []);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching experiments:', err);
+      setError('Failed to fetch experiments.');
+    } finally {
+      setExperimentsLoading(false);
+    }
+  };
 
-    useEffect(() => {
-        if (activeTab === TAB_EXPERIMENTS) fetchExperiments();
-    }, [activeTab]);
+  const handleApproveResearcher = async (researcherId, notes) => {
+    try {
+      await api.put(`/admin/researchers/${researcherId}/approve`, { reviewNotes: notes || '' });
+      setReviewModal(null);
+      setDetailModalResearcher(null);
+      setReviewNotes('');
+      setDetailReviewNotes('');
+      fetchResearchers();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to approve researcher.');
+    }
+  };
 
-    const fetchResearchers = async () => {
-        try {
-            setResearchersLoading(true);
-            const params = researcherStatusFilter ? { status: researcherStatusFilter } : {};
-            const response = await api.get('/admin/researchers', { params });
-            setResearchers(Array.isArray(response.data) ? response.data : []);
-            setError(null);
-        } catch (err) {
-            console.error('Error fetching researchers:', err);
-            setError('Failed to fetch researchers.');
-        } finally {
-            setResearchersLoading(false);
-        }
-    };
+  const handleRejectResearcher = async (researcherId, notes) => {
+    try {
+      await api.put(`/admin/researchers/${researcherId}/reject`, { reviewNotes: notes || '' });
+      setReviewModal(null);
+      setDetailModalResearcher(null);
+      setReviewNotes('');
+      setDetailReviewNotes('');
+      fetchResearchers();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to reject researcher.');
+    }
+  };
 
-    const fetchAllUsers = async () => {
-        try {
-            setUsersLoading(true);
-            const params = roleFilter ? { role: roleFilter } : {};
-            const response = await api.get('/admin/users', { params });
-            setAllUsers(Array.isArray(response.data) ? response.data : []);
-            setError(null);
-        } catch (err) {
-            console.error('Error fetching users:', err);
-            setError('Failed to fetch users.');
-        } finally {
-            setUsersLoading(false);
-        }
-    };
+  const handleApproveUser = async (userId) => {
+    try {
+      await api.patch(`/admin/users/approve/${userId}`);
+      fetchAllUsers();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to approve.');
+    }
+  };
 
-    const fetchExperiments = async () => {
-        try {
-            setExperimentsLoading(true);
-            const response = await api.get('/experiments');
-            setExperiments(Array.isArray(response.data) ? response.data : []);
-            setError(null);
-        } catch (err) {
-            console.error('Error fetching experiments:', err);
-            setError('Failed to fetch experiments.');
-        } finally {
-            setExperimentsLoading(false);
-        }
-    };
+  const handleRejectUser = async (userId) => {
+    try {
+      await api.patch(`/admin/users/reject/${userId}`);
+      fetchAllUsers();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to reject.');
+    }
+  };
 
-    const handleApproveResearcher = async (researcherId, reviewNotes) => {
-        try {
-            await api.put(`/admin/researchers/${researcherId}/approve`, { reviewNotes: reviewNotes || '' });
-            setReviewModal(null);
-            fetchResearchers();
-        } catch (err) {
-            console.error('Error approving researcher:', err);
-            alert(err.response?.data?.message || 'Failed to approve researcher.');
-        }
-    };
+  const handleDeleteResearcher = async () => {
+    if (!deleteResearcherModal) return;
+    const researcherId = deleteResearcherModal._id;
+    try {
+      await api.delete(`/admin/researchers/${researcherId}`);
+      setDeleteResearcherModal(null);
+      fetchResearchers();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to remove researcher.');
+    }
+  };
 
-    const handleRejectResearcher = async (researcherId, reviewNotes) => {
-        try {
-            await api.put(`/admin/researchers/${researcherId}/reject`, { reviewNotes: reviewNotes || '' });
-            setReviewModal(null);
-            fetchResearchers();
-        } catch (err) {
-            console.error('Error rejecting researcher:', err);
-            alert(err.response?.data?.message || 'Failed to reject researcher.');
-        }
-    };
+  const handleDeleteExperiment = async () => {
+    if (!deleteModal) return;
+    const { experiment, rejectResearcher, reassignToParticipant } = deleteModal;
+    try {
+      await api.delete(`/admin/experiments/${experiment._id}`, {
+        data: { rejectResearcher: !!rejectResearcher, reassignToParticipant: !!reassignToParticipant },
+      });
+      setDeleteModal(null);
+      fetchExperiments();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete experiment.');
+    }
+  };
 
-    const handleApproveUser = async (userId) => {
-        try {
-            await api.patch(`/admin/users/approve/${userId}`);
-            fetchAllUsers();
-        } catch (err) {
-            console.error('Error approving user:', err);
-            alert(err.response?.data?.message || 'Failed to approve.');
-        }
-    };
+  const handleExportPdf = async () => {
+    try {
+      const params = researcherStatusFilter ? { status: researcherStatusFilter } : {};
+      const response = await api.get('/admin/researchers/export/pdf', { responseType: 'blob', params });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `researchers-report-${new Date().toISOString().slice(0, 10)}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Failed to download PDF.');
+    }
+  };
 
-    const handleRejectUser = async (userId) => {
-        try {
-            await api.patch(`/admin/users/reject/${userId}`);
-            fetchAllUsers();
-        } catch (err) {
-            console.error('Error rejecting user:', err);
-            alert(err.response?.data?.message || 'Failed to reject.');
-        }
-    };
+  const getStatusVariant = (status) => {
+    if (!status) return 'pending';
+    const s = (status || '').toLowerCase();
+    if (s === 'approved') return 'approved';
+    if (s === 'rejected') return 'rejected';
+    return 'pending';
+  };
 
-    const handleDeleteResearcher = async () => {
-        if (!deleteResearcherModal) return;
-        const researcherId = deleteResearcherModal._id;
-        try {
-            await api.delete(`/admin/researchers/${researcherId}`);
-            setDeleteResearcherModal(null);
-            fetchResearchers();
-        } catch (err) {
-            console.error('Error deleting researcher:', err);
-            alert(err.response?.data?.message || 'Failed to remove researcher.');
-        }
-    };
+  return (
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <header className="mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+        <p className="mt-1 text-gray-600">
+          Manage researchers (approve/reject), view all users, delete experiments if needed, and export reports.
+        </p>
+      </header>
 
-    const handleDeleteExperiment = async () => {
-        if (!deleteModal) return;
-        const { experiment, rejectResearcher, reassignToParticipant } = deleteModal;
-        try {
-            await api.delete(`/admin/experiments/${experiment._id}`, {
-                data: { rejectResearcher: !!rejectResearcher, reassignToParticipant: !!reassignToParticipant },
-            });
-            setDeleteModal(null);
-            fetchExperiments();
-        } catch (err) {
-            console.error('Error deleting experiment:', err);
-            alert(err.response?.data?.message || 'Failed to delete experiment.');
-        }
-    };
+      <div className="flex flex-wrap gap-2 mb-6">
+        {[
+          [TAB_RESEARCHERS, 'Researchers'],
+          [TAB_ALL_USERS, 'All Users'],
+          [TAB_EXPERIMENTS, 'Experiments'],
+        ].map(([tab, label]) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
+              activeTab === tab
+                ? 'bg-primary text-white shadow-sm'
+                : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
-    const handleExportPdf = async () => {
-        try {
-            const params = researcherStatusFilter ? { status: researcherStatusFilter } : {};
-            const response = await api.get('/admin/researchers/export/pdf', {
-                responseType: 'blob',
-                params,
-            });
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `researchers-report-${new Date().toISOString().slice(0, 10)}.pdf`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
-        } catch (err) {
-            console.error('Error exporting PDF:', err);
-            alert('Failed to download PDF.');
-        }
-    };
+      {error && <ErrorMessage message={error} onDismiss={() => setError(null)} className="mb-4" />}
 
-    const getStatusBadgeClass = (status) => {
-        if (!status) return '';
-        const s = status.toLowerCase();
-        if (s === 'approved') return 'status-approved';
-        if (s === 'rejected') return 'status-rejected';
-        return 'status-pending';
-    };
-
-    return (
-        <div className="admin-dashboard">
-            <h1>Admin Dashboard</h1>
-            <p className="subtitle">
-                Manage researchers (approve/reject), view all users, delete experiments if needed, and export reports.
-            </p>
-
-            <div className="admin-tabs">
-                <button
-                    className={`tab-btn ${activeTab === TAB_RESEARCHERS ? 'active' : ''}`}
-                    onClick={() => setActiveTab(TAB_RESEARCHERS)}
-                >
-                    Researchers
-                </button>
-                <button
-                    className={`tab-btn ${activeTab === TAB_ALL_USERS ? 'active' : ''}`}
-                    onClick={() => setActiveTab(TAB_ALL_USERS)}
-                >
-                    All Users
-                </button>
-                <button
-                    className={`tab-btn ${activeTab === TAB_EXPERIMENTS ? 'active' : ''}`}
-                    onClick={() => setActiveTab(TAB_EXPERIMENTS)}
-                >
-                    Experiments
-                </button>
+      {activeTab === TAB_RESEARCHERS && (
+        <>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+            <div className="flex items-center gap-3">
+              <label htmlFor="researcher-status-filter" className="text-sm font-medium text-gray-700">
+                Status:
+              </label>
+              <select
+                id="researcher-status-filter"
+                value={researcherStatusFilter}
+                onChange={(e) => setResearcherStatusFilter(e.target.value)}
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent min-w-[140px]"
+              >
+                <option value="">All</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
             </div>
-
-            {error && <div className="error-message">{error}</div>}
-
-            {/* Researchers tab */}
-            {activeTab === TAB_RESEARCHERS && (
-                <>
-                    <div className="admin-toolbar">
-                        <div className="admin-filters">
-                            <label htmlFor="researcher-status-filter">Status:</label>
-                            <select
-                                id="researcher-status-filter"
-                                value={researcherStatusFilter}
-                                onChange={(e) => setResearcherStatusFilter(e.target.value)}
-                            >
-                                <option value="">All</option>
-                                <option value="pending">Pending</option>
-                                <option value="approved">Approved</option>
-                                <option value="rejected">Rejected</option>
-                            </select>
-                        </div>
-                        <button type="button" className="btn btn-export" onClick={handleExportPdf}>
-                            Download PDF Report
-                        </button>
-                    </div>
-                    {researchersLoading ? (
-                        <div className="admin-loading">Loading researchers...</div>
-                    ) : (
-                        <div className="table-container table-scroll">
-                            <table className="approval-table">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Qualification</th>
-                                        <th>Purpose</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {researchers.length > 0 ? (
-                                        researchers.map((r) => {
-                                            const s = (r.status || '').toLowerCase();
-                                            const isPending = s === 'pending' || s === '';
-                                            return (
-                                                <tr
-                                                    key={r._id}
-                                                    className="researcher-row-clickable"
-                                                    onClick={() => setDetailModalResearcher(r)}
-                                                >
-                                                    <td>{r.fullName || (r.user && r.user.name) || '—'}</td>
-                                                    <td>{r.highestAcademicQualification || '—'}</td>
-                                                    <td className="cell-purpose">{r.purpose ? (r.purpose.length > 60 ? r.purpose.slice(0, 60) + '…' : r.purpose) : '—'}</td>
-                                                    <td>
-                                                        <span className={`badge ${getStatusBadgeClass(r.status)}`}>
-                                                            {r.status || 'pending'}
-                                                        </span>
-                                                    </td>
-                                                    <td className="actions" onClick={(e) => e.stopPropagation()}>
-                                                        {isPending && (
-                                                            <>
-                                                                <button
-                                                                    className="btn approve"
-                                                                    onClick={() => setReviewModal({ type: 'approve', researcher: r })}
-                                                                >
-                                                                    Approve
-                                                                </button>
-                                                                <button
-                                                                    className="btn reject"
-                                                                    onClick={() => setReviewModal({ type: 'reject', researcher: r })}
-                                                                >
-                                                                    Reject
-                                                                </button>
-                                                            </>
-                                                        )}
-                                                        <button
-                                                            className="btn btn-danger btn-sm"
-                                                            onClick={() => setDeleteResearcherModal(r)}
-                                                            title="Remove researcher; user becomes ordinary user"
-                                                        >
-                                                            Delete
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })
-                                    ) : (
-                                        <tr>
-                                            <td colSpan="5" className="empty-msg">No researchers found.</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </>
-            )}
-
-            {/* All Users tab */}
-            {activeTab === TAB_ALL_USERS && (
-                <>
-                    <div className="admin-filters">
-                        <label htmlFor="role-filter">Filter by role:</label>
-                        <select id="role-filter" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
-                            <option value="">All roles</option>
-                            <option value="admin">Admin</option>
-                            <option value="researcher">Researcher</option>
-                            <option value="participant">Participant</option>
-                        </select>
-                    </div>
-                    {usersLoading ? (
-                        <div className="admin-loading">Loading users...</div>
-                    ) : (
-                        <div className="table-container">
-                            <table className="approval-table">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Email</th>
-                                        <th>Role</th>
-                                        <th>Researcher Status</th>
-                                        <th>Registered</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {allUsers.length > 0 ? (
-                                        allUsers.map((user) => {
-                                            const role = (user.role || '').toLowerCase();
-                                            const resStatus = (user.researcherStatus || '').toLowerCase();
-                                            const isResearcherPending = role === 'researcher' && (resStatus === 'pending' || resStatus === '');
-                                            return (
-                                                <tr key={user._id}>
-                                                    <td>{user.name}</td>
-                                                    <td>{user.email}</td>
-                                                    <td>
-                                                        <span className={`badge role-${role}`}>
-                                                            {user.role || '—'}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        {user.researcherStatus ? (
-                                                            <span className={`badge ${getStatusBadgeClass(user.researcherStatus)}`}>
-                                                                {user.researcherStatus}
-                                                            </span>
-                                                        ) : (
-                                                            '—'
-                                                        )}
-                                                    </td>
-                                                    <td>{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—'}</td>
-                                                    <td className="actions">
-                                                        {isResearcherPending ? (
-                                                            <>
-                                                                <button className="btn approve" onClick={() => handleApproveUser(user._id)}>Approve</button>
-                                                                <button className="btn reject" onClick={() => handleRejectUser(user._id)}>Reject</button>
-                                                            </>
-                                                        ) : (
-                                                            role === 'researcher' ? <span className="no-edit">Reviewed</span> : '—'
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })
-                                    ) : (
-                                        <tr>
-                                            <td colSpan="6" className="empty-msg">No users found.</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </>
-            )}
-
-            {/* Experiments tab */}
-            {activeTab === TAB_EXPERIMENTS && (
-                <>
-                    <p className="section-note">
-                        You can delete an experiment (e.g. for policy violations). Optionally reject the researcher and/or reassign them to participant.
-                    </p>
-                    {experimentsLoading ? (
-                        <div className="admin-loading">Loading experiments...</div>
-                    ) : (
-                        <div className="table-container">
-                            <table className="approval-table">
-                                <thead>
-                                    <tr>
-                                        <th>Title</th>
-                                        <th>Created</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {experiments.length > 0 ? (
-                                        experiments.map((exp) => (
-                                            <tr key={exp._id}>
-                                                <td>{exp.title || exp.name || 'Untitled'}</td>
-                                                <td>{exp.createdAt ? new Date(exp.createdAt).toLocaleDateString() : '—'}</td>
-                                                <td className="actions">
-                                                    <button
-                                                        className="btn btn-danger"
-                                                        onClick={() => setDeleteModal({ experiment: exp, rejectResearcher: false, reassignToParticipant: false })}
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan="3" className="empty-msg">No experiments found.</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </>
-            )}
-
-            {/* Researcher detail modal – full info + approve/reject */}
-            {detailModalResearcher && (
-                <div className="modal-overlay" onClick={() => setDetailModalResearcher(null)}>
-                    <div className="modal-content researcher-detail-modal" onClick={(e) => e.stopPropagation()}>
-                        <h3>Researcher details</h3>
-                        <div className="researcher-detail-grid">
-                            <div className="researcher-detail-item">
-                                <span className="detail-label">Name</span>
-                                <span className="detail-value">{detailModalResearcher.fullName || (detailModalResearcher.user && detailModalResearcher.user.name) || '—'}</span>
-                            </div>
-                            <div className="researcher-detail-item">
-                                <span className="detail-label">Email</span>
-                                <span className="detail-value">{detailModalResearcher.user && detailModalResearcher.user.email ? detailModalResearcher.user.email : '—'}</span>
-                            </div>
-                            <div className="researcher-detail-item">
-                                <span className="detail-label">NIC</span>
-                                <span className="detail-value">{detailModalResearcher.nic || '—'}</span>
-                            </div>
-                            <div className="researcher-detail-item">
-                                <span className="detail-label">Gender</span>
-                                <span className="detail-value">{detailModalResearcher.gender || '—'}</span>
-                            </div>
-                            <div className="researcher-detail-item">
-                                <span className="detail-label">Current workplace</span>
-                                <span className="detail-value">{detailModalResearcher.currentWorkplace || '—'}</span>
-                            </div>
-                            <div className="researcher-detail-item">
-                                <span className="detail-label">Highest qualification</span>
-                                <span className="detail-value">{detailModalResearcher.highestAcademicQualification || '—'}</span>
-                            </div>
-                            <div className="researcher-detail-item">
-                                <span className="detail-label">Researcher type</span>
-                                <span className="detail-value">{detailModalResearcher.researcherType || '—'}</span>
-                            </div>
-                            {detailModalResearcher.researcherType === 'Other' && detailModalResearcher.otherResearcherTypeExplanation && (
-                                <div className="researcher-detail-item full-width">
-                                    <span className="detail-label">Other (explanation)</span>
-                                    <span className="detail-value">{detailModalResearcher.otherResearcherTypeExplanation}</span>
-                                </div>
-                            )}
-                            <div className="researcher-detail-item">
-                                <span className="detail-label">Published research</span>
-                                <span className="detail-value">{detailModalResearcher.hasPublishedResearch ? 'Yes' : 'No'}</span>
-                            </div>
-                            {detailModalResearcher.hasPublishedResearch && detailModalResearcher.publicationSiteOrLink && (
-                                <div className="researcher-detail-item full-width">
-                                    <span className="detail-label">Publication site / link</span>
-                                    <span className="detail-value">{detailModalResearcher.publicationSiteOrLink}</span>
-                                </div>
-                            )}
-                            <div className="researcher-detail-item full-width">
-                                <span className="detail-label">Purpose</span>
-                                <span className="detail-value detail-purpose">{detailModalResearcher.purpose || '—'}</span>
-                            </div>
-                            <div className="researcher-detail-item">
-                                <span className="detail-label">Status</span>
-                                <span className={`badge ${getStatusBadgeClass(detailModalResearcher.status)}`}>{detailModalResearcher.status || 'pending'}</span>
-                            </div>
-                            {detailModalResearcher.reviewNotes && (
-                                <div className="researcher-detail-item full-width">
-                                    <span className="detail-label">Review notes</span>
-                                    <span className="detail-value">{detailModalResearcher.reviewNotes}</span>
-                                </div>
-                            )}
-                            {detailModalResearcher.reviewedAt && (
-                                <div className="researcher-detail-item">
-                                    <span className="detail-label">Reviewed at</span>
-                                    <span className="detail-value">{new Date(detailModalResearcher.reviewedAt).toLocaleString()}</span>
-                                </div>
-                            )}
-                        </div>
-                        {(() => {
-                            const s = (detailModalResearcher.status || '').toLowerCase();
-                            const isPending = s === 'pending' || s === '';
-                            return isPending ? (
+            <Button variant="secondary" onClick={handleExportPdf}>
+              Download PDF Report
+            </Button>
+          </div>
+          <Card padding={false} className="overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Name
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Qualification
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider max-w-[200px]">
+                      Purpose
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {researchersLoading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <TableRowSkeleton key={i} cols={5} />
+                    ))
+                  ) : researchers.length > 0 ? (
+                    researchers.map((r) => {
+                      const s = (r.status || '').toLowerCase();
+                      const isPending = s === 'pending' || s === '';
+                      return (
+                        <tr
+                          key={r._id}
+                          onClick={() => setDetailModalResearcher(r)}
+                          className="hover:bg-gray-50 cursor-pointer transition-colors"
+                        >
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {r.fullName || (r.user && r.user.name) || '—'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {r.highestAcademicQualification || '—'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate" title={r.purpose}>
+                            {r.purpose ? (r.purpose.length > 60 ? r.purpose.slice(0, 60) + '…' : r.purpose) : '—'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <Badge status={getStatusVariant(r.status)}>{r.status || 'pending'}</Badge>
+                          </td>
+                          <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex flex-wrap justify-end gap-1">
+                              {isPending && (
                                 <>
-                                    <label className="modal-label">Review notes (optional)</label>
-                                    <textarea id="detail-review-notes" rows={3} placeholder="Add notes for your decision..." className="modal-textarea" />
-                                    <div className="modal-actions">
-                                        <button className="btn" onClick={() => setDetailModalResearcher(null)}>Close</button>
-                                        <button
-                                            className="btn approve"
-                                            onClick={() => {
-                                                handleApproveResearcher(detailModalResearcher._id, document.getElementById('detail-review-notes')?.value);
-                                                setDetailModalResearcher(null);
-                                            }}
-                                        >
-                                            Approve
-                                        </button>
-                                        <button
-                                            className="btn reject"
-                                            onClick={() => {
-                                                handleRejectResearcher(detailModalResearcher._id, document.getElementById('detail-review-notes')?.value);
-                                                setDetailModalResearcher(null);
-                                            }}
-                                        >
-                                            Reject
-                                        </button>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="modal-actions">
-                                    <button className="btn" onClick={() => setDetailModalResearcher(null)}>Close</button>
-                                </div>
-                            );
-                        })()}
-                    </div>
-                </div>
-            )}
-
-            {/* Review modal (approve/reject researcher – quick action from table) */}
-            {reviewModal && (
-                <div className="modal-overlay" onClick={() => setReviewModal(null)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                        <h3>{reviewModal.type === 'approve' ? 'Approve' : 'Reject'} researcher</h3>
-                        <p>
-                            {reviewModal.researcher.fullName || (reviewModal.researcher.user && reviewModal.researcher.user.name)} –{' '}
-                            {reviewModal.researcher.user && reviewModal.researcher.user.email}
-                        </p>
-                        <label>Review notes (optional)</label>
-                        <textarea
-                            id="review-notes"
-                            rows={3}
-                            placeholder="Add notes for your decision..."
-                            className="modal-textarea"
-                        />
-                        <div className="modal-actions">
-                            <button className="btn" onClick={() => setReviewModal(null)}>Cancel</button>
-                            {reviewModal.type === 'approve' ? (
-                                <button
-                                    className="btn approve"
-                                    onClick={() =>
-                                        handleApproveResearcher(
-                                            reviewModal.researcher._id,
-                                            document.getElementById('review-notes')?.value
-                                        )
-                                    }
-                                >
+                                  <Button
+                                    size="sm"
+                                    variant="success"
+                                    onClick={() => setReviewModal({ type: 'approve', researcher: r })}
+                                  >
                                     Approve
-                                </button>
-                            ) : (
-                                <button
-                                    className="btn reject"
-                                    onClick={() =>
-                                        handleRejectResearcher(
-                                            reviewModal.researcher._id,
-                                            document.getElementById('review-notes')?.value
-                                        )
-                                    }
-                                >
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="danger"
+                                    onClick={() => setReviewModal({ type: 'reject', researcher: r })}
+                                  >
                                     Reject
-                                </button>
+                                  </Button>
+                                </>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="danger"
+                                onClick={() => setDeleteResearcherModal(r)}
+                                title="Remove researcher; user becomes ordinary user"
+                              >
+                                Delete
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-12 text-center">
+                        <EmptyState
+                          title="No researchers found"
+                          description="Try changing the status filter."
+                        />
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
+      )}
+
+      {activeTab === TAB_ALL_USERS && (
+        <>
+          <div className="flex items-center gap-3 mb-4">
+            <label htmlFor="role-filter" className="text-sm font-medium text-gray-700">
+              Filter by role:
+            </label>
+            <select
+              id="role-filter"
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent min-w-[160px]"
+            >
+              <option value="">All roles</option>
+              <option value="admin">Admin</option>
+              <option value="researcher">Researcher</option>
+              <option value="participant">Participant</option>
+            </select>
+          </div>
+          <Card padding={false} className="overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Email</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Role</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Researcher Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Registered</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {usersLoading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <TableRowSkeleton key={i} cols={6} />
+                    ))
+                  ) : allUsers.length > 0 ? (
+                    allUsers.map((user) => {
+                      const role = (user.role || '').toLowerCase();
+                      const resStatus = (user.researcherStatus || '').toLowerCase();
+                      const isResearcherPending = role === 'researcher' && (resStatus === 'pending' || resStatus === '');
+                      return (
+                        <tr key={user._id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm text-gray-900">{user.name}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{user.email}</td>
+                          <td className="px-4 py-3">
+                            <Badge role={role}>{user.role || '—'}</Badge>
+                          </td>
+                          <td className="px-4 py-3">
+                            {user.researcherStatus ? (
+                              <Badge status={getStatusVariant(user.researcherStatus)}>{user.researcherStatus}</Badge>
+                            ) : (
+                              '—'
                             )}
-                        </div>
-                    </div>
-                </div>
-            )}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            {isResearcherPending ? (
+                              <div className="flex justify-end gap-1">
+                                <Button size="sm" variant="success" onClick={() => handleApproveUser(user._id)}>Approve</Button>
+                                <Button size="sm" variant="danger" onClick={() => handleRejectUser(user._id)}>Reject</Button>
+                              </div>
+                            ) : (
+                              role === 'researcher' ? <span className="text-sm text-gray-400">Reviewed</span> : '—'
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-12">
+                        <EmptyState title="No users found" description="Try changing the role filter." />
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
+      )}
 
-            {/* Delete experiment modal */}
-            {deleteModal && (
-                <div className="modal-overlay" onClick={() => setDeleteModal(null)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                        <h3>Delete experiment</h3>
-                        <p>“{deleteModal.experiment.title || deleteModal.experiment.name || 'Untitled'}” will be permanently deleted.</p>
-                        <div className="modal-checkboxes">
-                            <label>
-                                <input
-                                    type="checkbox"
-                                    checked={!!deleteModal.rejectResearcher}
-                                    onChange={(e) =>
-                                        setDeleteModal({ ...deleteModal, rejectResearcher: e.target.checked })
-                                    }
-                                />
-                                Reject researcher (revoke researcher status)
-                            </label>
-                            <label>
-                                <input
-                                    type="checkbox"
-                                    checked={!!deleteModal.reassignToParticipant}
-                                    onChange={(e) =>
-                                        setDeleteModal({ ...deleteModal, reassignToParticipant: e.target.checked })
-                                    }
-                                />
-                                Reassign creator to participant
-                            </label>
-                        </div>
-                        <div className="modal-actions">
-                            <button className="btn" onClick={() => setDeleteModal(null)}>Cancel</button>
-                            <button className="btn btn-danger" onClick={handleDeleteExperiment}>
-                                Delete experiment
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+      {activeTab === TAB_EXPERIMENTS && (
+        <>
+          <p className="text-sm text-gray-600 mb-4">
+            You can delete an experiment (e.g. for policy violations). Optionally reject the researcher and/or reassign them to participant.
+          </p>
+          <Card padding={false} className="overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Title</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Created</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {experimentsLoading ? (
+                    Array.from({ length: 3 }).map((_, i) => (
+                      <TableRowSkeleton key={i} cols={3} />
+                    ))
+                  ) : experiments.length > 0 ? (
+                    experiments.map((exp) => (
+                      <tr key={exp._id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm text-gray-900">{exp.title || exp.name || 'Untitled'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {exp.createdAt ? new Date(exp.createdAt).toLocaleDateString() : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => setDeleteModal({ experiment: exp, rejectResearcher: false, reassignToParticipant: false })}
+                          >
+                            Delete
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={3} className="px-4 py-12">
+                        <EmptyState title="No experiments found" />
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
+      )}
 
-            {/* Delete researcher modal – user becomes ordinary user */}
-            {deleteResearcherModal && (
-                <div className="modal-overlay" onClick={() => setDeleteResearcherModal(null)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                        <h3>Remove researcher</h3>
-                        <p>
-                            Remove <strong>{deleteResearcherModal.fullName || (deleteResearcherModal.user && deleteResearcherModal.user.name)}</strong> as a researcher?
-                            Their account will become an ordinary user (participant). The researcher record will be deleted.
-                        </p>
-                        <div className="modal-actions">
-                            <button className="btn" onClick={() => setDeleteResearcherModal(null)}>Cancel</button>
-                            <button className="btn btn-danger" onClick={handleDeleteResearcher}>
-                                Delete researcher
-                            </button>
-                        </div>
-                    </div>
+      {/* Researcher detail modal */}
+      <Modal
+        open={!!detailModalResearcher}
+        onClose={() => { setDetailModalResearcher(null); setDetailReviewNotes(''); }}
+        title="Researcher details"
+        size="lg"
+      >
+        {detailModalResearcher && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[
+                ['Name', detailModalResearcher.fullName || (detailModalResearcher.user && detailModalResearcher.user.name) || '—'],
+                ['Email', detailModalResearcher.user?.email || '—'],
+                ['NIC', detailModalResearcher.nic || '—'],
+                ['Gender', detailModalResearcher.gender || '—'],
+                ['Current workplace', detailModalResearcher.currentWorkplace || '—'],
+                ['Highest qualification', detailModalResearcher.highestAcademicQualification || '—'],
+                ['Researcher type', detailModalResearcher.researcherType || '—'],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</p>
+                  <p className="text-sm text-gray-900 mt-0.5">{value}</p>
                 </div>
+              ))}
+            </div>
+            {detailModalResearcher.researcherType === 'Other' && detailModalResearcher.otherResearcherTypeExplanation && (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Other (explanation)</p>
+                <p className="text-sm text-gray-900 mt-0.5">{detailModalResearcher.otherResearcherTypeExplanation}</p>
+              </div>
             )}
-        </div>
-    );
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Published research</p>
+              <p className="text-sm text-gray-900 mt-0.5">{detailModalResearcher.hasPublishedResearch ? 'Yes' : 'No'}</p>
+            </div>
+            {detailModalResearcher.hasPublishedResearch && detailModalResearcher.publicationSiteOrLink && (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Publication site / link</p>
+                <p className="text-sm text-gray-900 mt-0.5">{detailModalResearcher.publicationSiteOrLink}</p>
+              </div>
+            )}
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Purpose</p>
+              <p className="text-sm text-gray-900 mt-0.5 whitespace-pre-wrap">{detailModalResearcher.purpose || '—'}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Status:</span>
+              <Badge status={getStatusVariant(detailModalResearcher.status)}>{detailModalResearcher.status || 'pending'}</Badge>
+            </div>
+            {detailModalResearcher.reviewNotes && (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Review notes</p>
+                <p className="text-sm text-gray-900 mt-0.5">{detailModalResearcher.reviewNotes}</p>
+              </div>
+            )}
+            {detailModalResearcher.reviewedAt && (
+              <p className="text-xs text-gray-500">Reviewed at {new Date(detailModalResearcher.reviewedAt).toLocaleString()}</p>
+            )}
+            {(() => {
+              const s = (detailModalResearcher.status || '').toLowerCase();
+              const isPending = s === 'pending' || s === '';
+              return isPending ? (
+                <>
+                  <label className="block text-sm font-medium text-gray-700 mt-4 mb-1">Review notes (optional)</label>
+                  <Textarea
+                    rows={3}
+                    placeholder="Add notes for your decision..."
+                    value={detailReviewNotes}
+                    onChange={(e) => setDetailReviewNotes(e.target.value)}
+                  />
+                  <div className="flex justify-end gap-2 mt-4">
+                    <Button variant="secondary" onClick={() => { setDetailModalResearcher(null); setDetailReviewNotes(''); }}>
+                      Close
+                    </Button>
+                    <Button variant="success" onClick={() => handleApproveResearcher(detailModalResearcher._id, detailReviewNotes)}>
+                      Approve
+                    </Button>
+                    <Button variant="danger" onClick={() => handleRejectResearcher(detailModalResearcher._id, detailReviewNotes)}>
+                      Reject
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex justify-end mt-4">
+                  <Button variant="secondary" onClick={() => { setDetailModalResearcher(null); setDetailReviewNotes(''); }}>
+                    Close
+                  </Button>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+      </Modal>
+
+      {/* Quick review modal */}
+      <Modal
+        open={!!reviewModal}
+        onClose={() => { setReviewModal(null); setReviewNotes(''); }}
+        title={reviewModal?.type === 'approve' ? 'Approve researcher' : 'Reject researcher'}
+        size="md"
+      >
+        {reviewModal && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              {reviewModal.researcher.fullName || (reviewModal.researcher.user && reviewModal.researcher.user.name)} –{' '}
+              {reviewModal.researcher.user?.email}
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Review notes (optional)</label>
+              <Textarea
+                rows={3}
+                placeholder="Add notes for your decision..."
+                value={reviewNotes}
+                onChange={(e) => setReviewNotes(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => { setReviewModal(null); setReviewNotes(''); }}>
+                Cancel
+              </Button>
+              {reviewModal.type === 'approve' ? (
+                <Button variant="success" onClick={() => handleApproveResearcher(reviewModal.researcher._id, reviewNotes)}>
+                  Approve
+                </Button>
+              ) : (
+                <Button variant="danger" onClick={() => handleRejectResearcher(reviewModal.researcher._id, reviewNotes)}>
+                  Reject
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete experiment modal */}
+      <Modal
+        open={!!deleteModal}
+        onClose={() => setDeleteModal(null)}
+        title="Delete experiment"
+        size="md"
+      >
+        {deleteModal && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              &ldquo;{deleteModal.experiment.title || deleteModal.experiment.name || 'Untitled'}&rdquo; will be permanently deleted.
+            </p>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!!deleteModal.rejectResearcher}
+                  onChange={(e) => setDeleteModal({ ...deleteModal, rejectResearcher: e.target.checked })}
+                  className="rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <span className="text-sm text-gray-700">Reject researcher (revoke researcher status)</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!!deleteModal.reassignToParticipant}
+                  onChange={(e) => setDeleteModal({ ...deleteModal, reassignToParticipant: e.target.checked })}
+                  className="rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <span className="text-sm text-gray-700">Reassign creator to participant</span>
+              </label>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setDeleteModal(null)}>Cancel</Button>
+              <Button variant="danger" onClick={handleDeleteExperiment}>Delete experiment</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete researcher modal */}
+      <Modal
+        open={!!deleteResearcherModal}
+        onClose={() => setDeleteResearcherModal(null)}
+        title="Remove researcher"
+        size="md"
+      >
+        {deleteResearcherModal && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Remove <strong>{deleteResearcherModal.fullName || (deleteResearcherModal.user && deleteResearcherModal.user.name)}</strong> as a
+              researcher? Their account will become an ordinary user (participant). The researcher record will be deleted.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setDeleteResearcherModal(null)}>Cancel</Button>
+              <Button variant="danger" onClick={handleDeleteResearcher}>Delete researcher</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
 };
 
 export default AdminDashboard;
