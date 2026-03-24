@@ -191,6 +191,7 @@ const PostDetail = () => {
   }
 
   const comments = (post.comments || []).filter((c) => c.status !== 'hidden');
+  const postImage = post.image || post.imageUrl;
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -254,16 +255,16 @@ const PostDetail = () => {
                 ))}
               </div>
             )}
-            {post.image && (
+            <p className="text-gray-700 whitespace-pre-wrap leading-relaxed mb-4">{post.content}</p>
+            {postImage && (
               <div className="mb-4 rounded-lg overflow-hidden border border-gray-200">
                 <img
-                  src={getPostImageUrl(post.image)}
-                  alt=""
+                  src={getPostImageUrl(postImage)}
+                  alt="Post attachment"
                   className="w-full max-h-[400px] object-cover"
                 />
               </div>
             )}
-            <p className="text-gray-700 whitespace-pre-wrap leading-relaxed mb-4">{post.content}</p>
           </>
         ) : (
           <form onSubmit={handleSaveEdit} className="space-y-4">

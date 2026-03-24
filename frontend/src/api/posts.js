@@ -24,6 +24,7 @@ export const createPost = (data) => {
 
 export function getPostImageUrl(imagePath) {
   if (!imagePath) return null;
+  if (/^https?:\/\//i.test(imagePath)) return imagePath;
   const base = uploadsBaseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
   return `${base}/uploads/${imagePath.startsWith('/') ? imagePath.slice(1) : imagePath}`;
 }

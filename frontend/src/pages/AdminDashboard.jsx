@@ -255,29 +255,29 @@ const AdminDashboard = () => {
               Download PDF Report
             </Button>
           </div>
-          <Card padding={false} className="overflow-hidden">
+          <Card padding={false} className="overflow-hidden border border-slate-200 bg-[#F8FAFC]">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full border-separate border-spacing-0">
+                <thead className="bg-slate-100/80">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                       Name
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                       Qualification
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider max-w-[200px]">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider max-w-[200px]">
                       Purpose
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-[#F8FAFC] divide-y divide-slate-200">
                   {researchersLoading ? (
                     Array.from({ length: 5 }).map((_, i) => (
                       <TableRowSkeleton key={i} cols={5} />
@@ -290,21 +290,21 @@ const AdminDashboard = () => {
                         <tr
                           key={r._id}
                           onClick={() => setDetailModalResearcher(r)}
-                          className="hover:bg-gray-50 cursor-pointer transition-colors"
+                          className="hover:bg-white/80 cursor-pointer transition-colors"
                         >
-                          <td className="px-4 py-3 text-sm text-gray-900">
+                          <td className="px-6 py-4 text-sm text-gray-900">
                             {r.fullName || (r.user && r.user.name) || '—'}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-600">
+                          <td className="px-6 py-4 text-sm text-gray-600">
                             {r.highestAcademicQualification || '—'}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate" title={r.purpose}>
+                          <td className="px-6 py-4 text-sm text-gray-600 max-w-[200px] truncate" title={r.purpose}>
                             {r.purpose ? (r.purpose.length > 60 ? r.purpose.slice(0, 60) + '…' : r.purpose) : '—'}
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-6 py-4">
                             <Badge status={getStatusVariant(r.status)}>{r.status || 'pending'}</Badge>
                           </td>
-                          <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                          <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex flex-wrap justify-end gap-1">
                               {isPending && (
                                 <>
@@ -372,20 +372,20 @@ const AdminDashboard = () => {
               <option value="participant">Participant</option>
             </select>
           </div>
-          <Card padding={false} className="overflow-hidden">
+          <Card padding={false} className="overflow-hidden border border-slate-200 bg-[#F8FAFC]">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full border-separate border-spacing-0">
+                <thead className="bg-slate-100/80">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Email</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Role</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Researcher Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Registered</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Name</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Email</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Role</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Researcher Status</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Registered</th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-[#F8FAFC] divide-y divide-slate-200">
                   {usersLoading ? (
                     Array.from({ length: 5 }).map((_, i) => (
                       <TableRowSkeleton key={i} cols={6} />
@@ -396,23 +396,23 @@ const AdminDashboard = () => {
                       const resStatus = (user.researcherStatus || '').toLowerCase();
                       const isResearcherPending = role === 'researcher' && (resStatus === 'pending' || resStatus === '');
                       return (
-                        <tr key={user._id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm text-gray-900">{user.name}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{user.email}</td>
-                          <td className="px-4 py-3">
+                        <tr key={user._id} className="hover:bg-white/80 transition-colors">
+                          <td className="px-6 py-4 text-sm text-gray-900">{user.name}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{user.email}</td>
+                          <td className="px-6 py-4">
                             <Badge role={role}>{user.role || '—'}</Badge>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-6 py-4">
                             {user.researcherStatus ? (
                               <Badge status={getStatusVariant(user.researcherStatus)}>{user.researcherStatus}</Badge>
                             ) : (
                               '—'
                             )}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-600">
+                          <td className="px-6 py-4 text-sm text-gray-600">
                             {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—'}
                           </td>
-                          <td className="px-4 py-3 text-right">
+                          <td className="px-6 py-4 text-right">
                             <div className="flex justify-end items-center gap-1 flex-wrap">
                               {isResearcherPending && (
                                 <>
@@ -456,29 +456,29 @@ const AdminDashboard = () => {
           <p className="text-sm text-gray-600 mb-4">
             You can delete an experiment (e.g. for policy violations). Optionally reject the researcher and/or reassign them to participant.
           </p>
-          <Card padding={false} className="overflow-hidden">
+          <Card padding={false} className="overflow-hidden border border-slate-200 bg-[#F8FAFC]">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full border-separate border-spacing-0">
+                <thead className="bg-slate-100/80">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Title</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Created</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Title</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Created</th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-[#F8FAFC] divide-y divide-slate-200">
                   {experimentsLoading ? (
                     Array.from({ length: 3 }).map((_, i) => (
                       <TableRowSkeleton key={i} cols={3} />
                     ))
                   ) : experiments.length > 0 ? (
                     experiments.map((exp) => (
-                      <tr key={exp._id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm text-gray-900">{exp.title || exp.name || 'Untitled'}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
+                      <tr key={exp._id} className="hover:bg-white/80 transition-colors">
+                        <td className="px-6 py-4 text-sm text-gray-900">{exp.title || exp.name || 'Untitled'}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
                           {exp.createdAt ? new Date(exp.createdAt).toLocaleDateString() : '—'}
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-6 py-4 text-right">
                           <Button
                             size="sm"
                             variant="danger"
@@ -507,7 +507,7 @@ const AdminDashboard = () => {
       <Modal
         open={!!detailModalResearcher}
         onClose={() => { setDetailModalResearcher(null); setDetailReviewNotes(''); }}
-        title="Researcher details"
+        title={<span className="text-indigo-700">Researcher details</span>}
         size="lg"
       >
         {detailModalResearcher && (

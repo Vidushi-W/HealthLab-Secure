@@ -60,6 +60,8 @@ coverage/
 # Backend
 backend/uploads/
 backend/db-structure.json
+backend/output.txt
+backend/experiments_list.txt
 backend/final_run.js
 backend/get_my_ip.js
 backend/fix_db.js
