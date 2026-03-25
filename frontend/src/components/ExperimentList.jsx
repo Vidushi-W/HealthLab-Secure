@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/api';
 import SmartBadge from './common/SmartBadge';
+import SinaliImage from '../assets/images/Sinali.jpeg';
 
 const ExperimentList = () => {
     const [experiments, setExperiments] = useState([]);
@@ -114,7 +115,18 @@ const ExperimentList = () => {
     if (error) return <div className="error">{error}</div>;
 
     return (
-        <div className="experiment-list">
+        <div className="experiment-list" style={{ position: 'relative', zIndex: 1, minHeight: '80vh' }}>
+            <div style={{
+                position: 'absolute',
+                top: 0, left: 0, right: 0, bottom: 0,
+                backgroundImage: `url(${SinaliImage})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+                opacity: 0.7,
+                zIndex: -1,
+                pointerEvents: 'none'
+            }} />
             <h1>Available Experiments</h1>
             {message.text && (
                 <div className={`alert alert-${message.type}`} style={{ textAlign: 'left', padding: '1.5rem' }}>
