@@ -19,26 +19,40 @@ function validateCreateUpdateBody(body, isUpdate = false) {
 
   if (!isUpdate) {
     if (b.title === undefined || b.title === null) errors.push("title is required");
-    else if (typeof b.title !== "string" || b.title.trim().length < 5 || b.title.length > 150) {
-      errors.push("title must be 5–150 characters");
+    else if (typeof b.title !== "string" || !b.title.trim()) {
+      errors.push("title must be a non-empty string");
     }
-    if (b.abstract === undefined || b.abstract === null) errors.push("abstract is required");
-    else if (typeof b.abstract !== "string" || b.abstract.trim().length < 20 || b.abstract.length > 2000) {
-      errors.push("abstract must be 20–2000 characters");
+
+    const summary = b.summary ?? b.abstract;
+    if (summary === undefined || summary === null) {
+      errors.push("summary is required");
+    } else if (typeof summary !== "string" || !summary.trim()) {
+      errors.push("summary must be a non-empty string");
     }
+
     if (b.content === undefined || b.content === null) errors.push("content is required");
     else if (typeof b.content !== "string" || !b.content.trim()) errors.push("content must be non-empty");
-    if (b.experiment === undefined || b.experiment === null) errors.push("experiment is required");
-    else if (!mongoose.Types.ObjectId.isValid(b.experiment)) errors.push("experiment must be a valid ObjectId");
+
+    // experiment is now optional – only validate if provided
+    if (b.experiment !== undefined && b.experiment !== null) {
+      if (!mongoose.Types.ObjectId.isValid(b.experiment)) {
+        errors.push("experiment must be a valid ObjectId");
+      }
+    }
   } else {
     if (b.title !== undefined) {
-      if (typeof b.title !== "string" || b.title.trim().length < 5 || b.title.length > 150) {
-        errors.push("title must be 5–150 characters");
+      if (typeof b.title !== "string" || !b.title.trim()) {
+        errors.push("title must be a non-empty string");
+      }
+    }
+    if (b.summary !== undefined) {
+      if (typeof b.summary !== "string" || !b.summary.trim()) {
+        errors.push("summary must be a non-empty string");
       }
     }
     if (b.abstract !== undefined) {
-      if (typeof b.abstract !== "string" || b.abstract.trim().length < 20 || b.abstract.length > 2000) {
-        errors.push("abstract must be 20–2000 characters");
+      if (typeof b.abstract !== "string" || !b.abstract.trim()) {
+        errors.push("abstract must be a non-empty string");
       }
     }
     if (b.content !== undefined) {
@@ -73,19 +87,48 @@ function sendError(res, err) {
 // POST /reviews
 const createReview = asyncHandler(async (req, res) => {
   try {
-    validateCreateUpdateBody(req.body, false);
-    const review = await reviewService.createReview(req.body, req.user.id);
-    return res.status(201).json({ success: true, data: review });
-  } catch (err) {
-    if (err.statusCode) return sendError(res, err);
-    if (err.name === "ValidationError") {
+    // Rely primarily on Mongoose schema validation; do only minimal checks here.
+    const { title, summary, content, status } = req.body || {};
+    const errors = [];
+    if (!title || typeof title !== "string" || !title.trim()) {
+      errors.push("title must be a non-empty string");
+    }
+    if (!summary || typeof summary !== "string" || !summary.trim()) {
+      errors.push("summary must be a non-empty string");
+    }
+    if (!content || typeof content !== "string" || !content.trim()) {
+      errors.push("content must be a non-empty string");
+    }
+    if (status && !["draft", "published"].includes(status)) {
+      errors.push("status must be draft or published");
+    }
+    if (errors.length) {
       return res.status(400).json({
         success: false,
-        message: "Validation failed",
-        errors: Object.values(err.errors || {}).map((e) => e.message),
+        message: errors.join("; "),
+        errors,
       });
     }
-    return res.status(500).json({ success: false, message: "Internal server error" });
+
+    const authorId = req.user && (req.user._id || req.user.id);
+    const review = await reviewService.createReview(req.body, authorId);
+    return res.status(201).json({ success: true, data: review });
+  } catch (err) {
+    console.error("CreateReview error:", err);
+    if (err.statusCode) return sendError(res, err);
+    if (err.name === "ValidationError") {
+      const messages = Object.values(err.errors || {}).map((e) => e.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join("; "),
+        errors: messages,
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: err.message,
+    });
   }
 });
 
@@ -100,7 +143,7 @@ const getReviews = asyncHandler(async (req, res) => {
       status: req.query.status,
       sort: req.query.sort,
     };
-    const viewerId = req.user ? req.user.id : null;
+    const viewerId = req.user ? (req.user._id || req.user.id) : null;
     const viewerRole = req.user ? req.user.role : null;
     const result = await reviewService.listReviews(opts, viewerId, viewerRole);
     return res.status(200).json({ success: true, data: result });
@@ -114,7 +157,7 @@ const getReviews = asyncHandler(async (req, res) => {
 const getReviewById = asyncHandler(async (req, res) => {
   try {
     validateObjectId(req.params.id, "review id");
-    const viewerId = req.user ? req.user.id : null;
+    const viewerId = req.user ? (req.user._id || req.user.id) : null;
     const viewerRole = req.user ? req.user.role : null;
     const review = await reviewService.getReviewById(req.params.id, viewerId, viewerRole);
     return res.status(200).json({ success: true, data: review });
@@ -129,10 +172,11 @@ const updateReview = asyncHandler(async (req, res) => {
   try {
     validateObjectId(req.params.id, "review id");
     validateCreateUpdateBody(req.body, true);
+    const userId = req.user && (req.user._id || req.user.id);
     const review = await reviewService.updateReview(
       req.params.id,
       req.body,
-      req.user.id,
+      userId,
       req.user.role
     );
     return res.status(200).json({ success: true, data: review });
@@ -153,7 +197,8 @@ const updateReview = asyncHandler(async (req, res) => {
 const deleteReview = asyncHandler(async (req, res) => {
   try {
     validateObjectId(req.params.id, "review id");
-    await reviewService.deleteReview(req.params.id, req.user.id, req.user.role);
+    const userId = req.user && (req.user._id || req.user.id);
+    await reviewService.deleteReview(req.params.id, userId, req.user.role);
     return res.status(200).json({ success: true, data: { message: "Review deleted" } });
   } catch (err) {
     if (err.statusCode) return sendError(res, err);
@@ -172,7 +217,7 @@ const getReviewsByExperiment = asyncHandler(async (req, res) => {
       status: req.query.status,
       sort: req.query.sort,
     };
-    const viewerId = req.user ? req.user.id : null;
+    const viewerId = req.user ? (req.user._id || req.user.id) : null;
     const viewerRole = req.user ? req.user.role : null;
     const result = await reviewService.listByExperiment(
       req.params.experimentId,

@@ -1,4 +1,13 @@
+// Admin routes: dashboard, users, researchers, experiments, fund requests. All require admin role.
 const router = require("express").Router();
+const { protect, authorize } = require("../middleware/authMiddleware");
+const {
+  reviewResearcherRules,
+  deleteExperimentRules,
+  userActionRules,
+  researcherIdRules,
+  validate,
+} = require("../validators/adminValidators");
 const {
   getPendingResearchers,
   getResearchers,
@@ -12,48 +21,42 @@ const {
   rejectUser,
   deleteExperiment,
   exportResearchersPdf,
-  getAnalytics, // Note: conflict in adminController between analytics and fund-analytics
+  getAnalytics,
   getAllRequests,
   updateStatus,
+  getReports,
   disburseRequest,
-  getReports
 } = require("../controllers/adminController");
-const { getWallet } = require('../controllers/walletController');
+const { getWallet } = require("../controllers/walletController");
 
-// Consolidated middleware
-const { protect, authorize } = require("../middleware/authMiddleware");
+const adminGuard = [protect, authorize("admin")];
 
-const { reviewResearcherRules, deleteExperimentRules, validate } = require("../validators/adminValidators");
-
-const adminGuard = [protect, authorize('admin')];
-
-/** Dashboard analytics */
+// Analytics and reports
 router.get("/analytics", adminGuard, getAnalytics);
+router.get("/fund-analytics", adminGuard, getAnalytics);
+router.get("/fund-reports", adminGuard, getReports);
 
-/** Get all users */
+// Users: list all, list unapproved, approve or reject by id
 router.get("/users", adminGuard, getUsers);
 router.get("/users/unapproved", adminGuard, getUnapprovedResearchers);
-router.patch("/users/approve/:id", adminGuard, approveUser);
-router.patch("/users/reject/:id", adminGuard, rejectUser);
+router.patch("/users/approve/:id", adminGuard, userActionRules(), validate, approveUser);
+router.patch("/users/reject/:id", adminGuard, userActionRules(), validate, rejectUser);
 
-/** Researcher Review Routes */
+// Researchers: list pending, list (optional status filter), get one, approve/reject, delete, export PDF
 router.get("/researchers/pending", adminGuard, getPendingResearchers);
 router.get("/researchers", adminGuard, getResearchers);
 router.get("/researchers/export/pdf", adminGuard, exportResearchersPdf);
-router.get("/researchers/:id", adminGuard, getResearcherById);
-router.put("/researchers/:id/approve", adminGuard, reviewResearcherRules ? reviewResearcherRules() : [], validate || ((req, res, next) => next()), approveResearcher);
-router.put("/researchers/:id/reject", adminGuard, reviewResearcherRules ? reviewResearcherRules() : [], validate || ((req, res, next) => next()), rejectResearcher);
-router.delete("/researchers/:id", adminGuard, deleteResearcher);
+router.get("/researchers/:id", adminGuard, researcherIdRules(), validate, getResearcherById);
+router.put("/researchers/:id/approve", adminGuard, reviewResearcherRules(), validate, approveResearcher);
+router.put("/researchers/:id/reject", adminGuard, reviewResearcherRules(), validate, rejectResearcher);
+router.delete("/researchers/:id", adminGuard, researcherIdRules(), validate, deleteResearcher);
 
-/** Experiment Management */
-router.delete("/experiments/:id", adminGuard, deleteExperimentRules ? deleteExperimentRules() : [], validate || ((req, res, next) => next()), deleteExperiment);
+// Experiments: admin can delete (optional reject researcher / reassign to participant)
+router.delete("/experiments/:id", adminGuard, deleteExperimentRules(), validate, deleteExperiment);
 
-/** Fund Management Admin Routes */
-router.get('/fund-requests', adminGuard, getAllRequests);
-router.patch('/fund-requests/:id/status', adminGuard, updateStatus);
-router.get('/experiments/:experimentId/wallet', adminGuard, getWallet);
-router.get('/fund-analytics', adminGuard, getAnalytics);
-router.get('/fund-reports', adminGuard, getReports);
+// Fund requests: list all, update status; get experiment wallet
+router.get("/fund-requests", adminGuard, getAllRequests);
+router.patch("/fund-requests/:id/status", adminGuard, updateStatus);
+router.get("/experiments/:experimentId/wallet", adminGuard, getWallet);
 
 module.exports = router;
-

@@ -38,9 +38,20 @@ class DuplicateParticipationError extends Error {
   }
 }
 
+class ClinicalProtocolConflictError extends Error {
+  constructor(reason, explanation) {
+    super(explanation);
+    this.name = "ClinicalProtocolConflictError";
+    this.statusCode = 403;
+    this.reason = reason;
+    this.explanation = explanation;
+  }
+}
+
 module.exports = {
   IneligibleAgeError,
   InvalidMedicalTermError,
   ConflictingStudyError,
   DuplicateParticipationError,
+  ClinicalProtocolConflictError,
 };

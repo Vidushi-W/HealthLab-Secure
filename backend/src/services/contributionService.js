@@ -4,17 +4,12 @@ const ExperimentWallet = require('../models/ExperimentWallet');
 const auditService = require('./auditService');
 const mongoose = require('mongoose');
 
-const contribute = async (user, fundRequestId, { amount, paymentStatus = 'PENDING', paymentReferenceId, notes }) => {
+const contribute = async (user, fundRequestId, { amount, notes }) => {
     // 1. Validation
     if (amount <= 0) throw new Error('Contribution amount must be positive');
 
-    if (!['PENDING', 'SUCCESS', 'FAILED'].includes(paymentStatus)) {
-        throw new Error('Invalid payment status');
-    }
-
-    if (paymentStatus === 'SUCCESS' && !paymentReferenceId) {
-        throw new Error('Payment reference ID is required for SUCCESS status');
-    }
+    // PayHere Force: Always start as PENDING
+    const paymentStatus = 'PENDING';
 
     const request = await FundRequest.findById(fundRequestId);
     if (!request) throw new Error('Fund request not found');
@@ -171,10 +166,7 @@ const updateContributionStatus = async (contributionId, user, { paymentStatus, p
     }
 
     if (paymentStatus === 'SUCCESS') {
-        if (!contribution.paymentReferenceId) throw new Error('paymentReferenceId required for SUCCESS');
-
-        const request = await FundRequest.findById(contribution.fundRequestId);
-        await processContributionSuccess(contribution, request, user);
+        throw new Error('Manual SUCCESS status is blocked. Payments must be confirmed via PayHere webhook.');
     } else {
         await contribution.save();
     }

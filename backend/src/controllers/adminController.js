@@ -1,8 +1,4 @@
-/**
- * Admin controller: users, researchers, experiments, exports.
- * Delegates business logic to services; handles HTTP only.
- */
-
+// Admin controller: handles HTTP for users, researchers, experiments, fund requests. Uses services for logic.
 const User = require("../models/User");
 const Researcher = require("../models/Researcher");
 const asyncHandler = require("../utils/asyncHandler");
@@ -10,12 +6,13 @@ const { error: errorResponse, success: successResponse } = require("../utils/res
 const { HTTP_STATUS } = require("../config/constants");
 const adminService = require("../services/adminService");
 const pdfExportService = require("../services/pdfExportService");
-const fundRequestService = require('../services/fundRequestService');
-const analyticsService = require('../services/analyticsService');
+const fundRequestService = require("../services/fundRequestService");
+const analyticsService = require("../services/analyticsService");
 
 const { RESEARCHER_STATUS } = adminService;
 const POPULATE = { user: "name email role", reviewedBy: "name email" };
 
+// Researchers: list only pending
 const getPendingResearchers = asyncHandler(async (req, res) => {
   const researchers = await Researcher.find({ status: RESEARCHER_STATUS.PENDING })
     .populate("user", POPULATE.user)
@@ -24,6 +21,7 @@ const getPendingResearchers = asyncHandler(async (req, res) => {
   return res.status(HTTP_STATUS.OK).json(researchers);
 });
 
+// Researchers: list all, optional query status filter
 const getResearchers = asyncHandler(async (req, res) => {
   const { status } = req.query;
   const filter = status ? { status } : {};
@@ -34,6 +32,7 @@ const getResearchers = asyncHandler(async (req, res) => {
   return res.status(HTTP_STATUS.OK).json(researchers);
 });
 
+// Researchers: get one by id
 const getResearcherById = asyncHandler(async (req, res) => {
   const researcher = await adminService.findResearcherById(req.params.id);
   if (!researcher) {
@@ -42,6 +41,7 @@ const getResearcherById = asyncHandler(async (req, res) => {
   return res.status(HTTP_STATUS.OK).json(researcher);
 });
 
+// Researchers: set status to approved, optional reviewNotes
 const approveResearcher = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { reviewNotes } = req.body;
@@ -63,6 +63,7 @@ const approveResearcher = asyncHandler(async (req, res) => {
   }
 });
 
+// Researchers: set status to rejected, optional reviewNotes
 const rejectResearcher = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { reviewNotes } = req.body;
@@ -84,7 +85,7 @@ const rejectResearcher = asyncHandler(async (req, res) => {
   }
 });
 
-/** Delete researcher: remove Researcher record and set User role to participant (ordinary user) */
+// Researchers: remove record and set user role to participant
 const deleteResearcher = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const researcher = await Researcher.findById(id);
@@ -99,17 +100,20 @@ const deleteResearcher = asyncHandler(async (req, res) => {
   return successResponse(res, HTTP_STATUS.OK, null, "Researcher removed; user is now a participant");
 });
 
+// Users: list all with optional role filter, include researcherStatus when applicable
 const getUsers = asyncHandler(async (req, res) => {
   const { role } = req.query;
   const list = await adminService.getUsersWithResearcherStatus(role || null);
   return res.status(HTTP_STATUS.OK).json(list);
 });
 
+// Users: list researchers not yet approved (isApproved false)
 const getUnapprovedResearchers = asyncHandler(async (req, res) => {
   const users = await User.find({ role: "researcher", isApproved: false });
   return res.status(HTTP_STATUS.OK).json(users);
 });
 
+// Users: set isApproved true and sync researcher status to approved
 const approveUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const user = await User.findByIdAndUpdate(id, { isApproved: true }, { new: true });
@@ -118,12 +122,12 @@ const approveUser = asyncHandler(async (req, res) => {
     return errorResponse(res, HTTP_STATUS.NOT_FOUND, "User not found");
   }
 
-  // Also update corresponding Researcher record if it exists
   await Researcher.findOneAndUpdate({ user: id }, { status: "approved" });
 
   return res.status(HTTP_STATUS.OK).json(user);
 });
 
+// Users: set isApproved false and sync researcher status to rejected
 const rejectUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const user = await User.findByIdAndUpdate(id, { isApproved: false }, { new: true });
@@ -132,12 +136,12 @@ const rejectUser = asyncHandler(async (req, res) => {
     return errorResponse(res, HTTP_STATUS.NOT_FOUND, "User not found");
   }
 
-  // Also update corresponding Researcher record if it exists
   await Researcher.findOneAndUpdate({ user: id }, { status: "rejected" });
 
   return res.status(HTTP_STATUS.OK).json(user);
 });
 
+// Experiments: delete and optionally reject creator / reassign to participant
 const deleteExperiment = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const body = req.body || {};
@@ -155,6 +159,7 @@ const deleteExperiment = asyncHandler(async (req, res) => {
   return successResponse(res, HTTP_STATUS.OK, null, "Experiment deleted");
 });
 
+// Researchers: stream PDF report, optional query status filter
 const exportResearchersPdf = asyncHandler(async (req, res) => {
   const { status } = req.query;
   const filter = status ? { status } : {};
@@ -165,57 +170,42 @@ const exportResearchersPdf = asyncHandler(async (req, res) => {
   pdfExportService.pipeResearchersReportToResponse(researchers, res);
 });
 
-/** Dashboard analytics: Researcher counts */
-const getResearcherAnalytics = asyncHandler(async (req, res) => {
-  const overdueDays = Math.max(1, parseInt(req.query.overdueDays, 10) || 7);
-  const data = await adminService.getResearcherAnalytics(overdueDays);
+const getAllRequests = asyncHandler(async (req, res) => {
+  const requests = await fundRequestService.getAllRequests(req.query);
+  return res.status(HTTP_STATUS.OK).json(requests);
+});
+
+// Fund: update request status (status, adminDecisionNote, approvedAmount)
+const updateStatus = asyncHandler(async (req, res) => {
+  const { status, adminDecisionNote, approvedAmount } = req.body || {};
+  try {
+    const request = await fundRequestService.updateStatus(req.params.id, req.user, { status, adminDecisionNote, approvedAmount });
+    return res.status(HTTP_STATUS.OK).json(request);
+  } catch (err) {
+    if (err.message && (err.message.includes("not found") || err.message.includes("Invalid transition") || err.message.includes("exceed"))) {
+      const code = err.message.includes("not found") ? HTTP_STATUS.NOT_FOUND : HTTP_STATUS.BAD_REQUEST;
+      return errorResponse(res, code, err.message);
+    }
+    throw err;
+  }
+});
+
+// Analytics: dashboard data
+const getAnalytics = asyncHandler(async (req, res) => {
+  const data = await analyticsService.getAnalytics();
   return res.status(HTTP_STATUS.OK).json(data);
 });
 
-/** Fund Management Admin Functions */
-const getAllRequests = async (req, res, next) => {
-  try {
-    const filters = req.query; // status, experimentId, researcherId
-    const requests = await fundRequestService.getAllRequests(filters);
-    res.json(requests);
-  } catch (error) {
-    next(error);
-  }
-};
+// Reports: fund reports with query params
+const getReports = asyncHandler(async (req, res) => {
+  const data = await analyticsService.getReports(req.query);
+  return res.status(HTTP_STATUS.OK).json(data);
+});
 
-const updateStatus = async (req, res, next) => {
-  try {
-    const { status, adminDecisionNote, approvedAmount } = req.body;
-    const request = await fundRequestService.updateStatus(req.params.id, req.user, {
-      status,
-      adminDecisionNote,
-      approvedAmount
-    });
-    res.json(request);
-  } catch (error) {
-    if (error.message.includes('not found')) res.status(404);
-    else if (error.message.includes('Invalid transition') || error.message.includes('exceed')) res.status(400);
-    next(error);
-  }
-};
-
-const getAnalytics = async (req, res, next) => {
-  try {
-    const data = await analyticsService.getAnalytics();
-    res.json(data);
-  } catch (error) {
-    next(error);
-  }
-};
-
-const getReports = async (req, res, next) => {
-  try {
-    const data = await analyticsService.getReports(req.query);
-    res.json(data);
-  } catch (error) {
-    next(error);
-  }
-};
+// Stub: not implemented
+const disburseRequest = asyncHandler(async (req, res) => {
+  return res.status(501).json({ success: false, message: "Not implemented" });
+});
 
 module.exports = {
   getPendingResearchers,
@@ -230,10 +220,10 @@ module.exports = {
   rejectUser,
   deleteExperiment,
   exportResearchersPdf,
-  getAnalytics,           // fund analytics (from analyticsService)
+  getAnalytics,
   getAllRequests,
   updateStatus,
   getReports,
-  disburseRequest: (req, res) => res.status(501).json({ message: 'Not implemented' }) // stub
+  disburseRequest,
 };
 

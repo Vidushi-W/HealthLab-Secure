@@ -1,8 +1,8 @@
-require("dotenv").config({ path: "./.env" });
+require("dotenv").config({ path: require("path").resolve(__dirname, "..", ".env") });
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
-const User = require("./src/models/User");
-const Researcher = require("./src/models/Researcher");
+const User = require("../src/models/User");
+const Researcher = require("../src/models/Researcher");
 
 async function createTestResearcher() {
     try {

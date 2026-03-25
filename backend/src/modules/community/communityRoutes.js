@@ -1,9 +1,15 @@
-/**
- * Community module - Routes.
- * Mount at /api/posts (same as before for frontend compatibility).
- */
+// Community routes: posts (list, get, create, update, delete), likes, share, save, comments, and chat
 const router = require("express").Router();
 const { protect } = require("../../middleware/authMiddleware");
+const {
+  postIdRules,
+  createPostRules,
+  updatePostRules,
+  commentIdRules,
+  addCommentRules,
+  updateCommentRules,
+  validate,
+} = require("./communityValidators");
 const {
   getPosts,
   getSavedPosts,
@@ -15,19 +21,35 @@ const {
   sharePost,
   savePost,
   unsavePost,
+  addComment,
+  updateComment,
+  deleteComment,
 } = require("./communityController");
+const { chat } = require("./chatbot/chatbotController");
+const { chatRules, validate: validateChat } = require("./chatbot/chatbotValidators");
 
+// List posts, saved posts, and chat (all protected)
 router.get("/", protect, getPosts);
 router.get("/saved", protect, getSavedPosts);
-router.get("/:id", protect, getPostById);
+router.post("/chat", protect, chatRules(), validateChat, chat);
 
-router.post("/", protect, createPost);
-router.put("/:id", protect, updatePost);
-router.delete("/:id", protect, deletePost);
+// Single post by id
+router.get("/:id", protect, postIdRules(), validate, getPostById);
 
-router.put("/:id/like", protect, likeToggle);
-router.post("/:id/share", protect, sharePost);
-router.post("/:id/save", protect, savePost);
-router.delete("/:id/save", protect, unsavePost);
+// Create, update, delete post
+router.post("/", protect, createPostRules(), validate, createPost);
+router.put("/:id", protect, updatePostRules(), validate, updatePost);
+router.delete("/:id", protect, postIdRules(), validate, deletePost);
+
+// Like, share, save/unsave
+router.put("/:id/like", protect, postIdRules(), validate, likeToggle);
+router.post("/:id/share", protect, postIdRules(), validate, sharePost);
+router.post("/:id/save", protect, postIdRules(), validate, savePost);
+router.delete("/:id/save", protect, postIdRules(), validate, unsavePost);
+
+// Comments: add, update, delete
+router.post("/:id/comments", protect, addCommentRules(), validate, addComment);
+router.put("/:id/comments/:commentId", protect, updateCommentRules(), validate, updateComment);
+router.delete("/:id/comments/:commentId", protect, commentIdRules(), validate, deleteComment);
 
 module.exports = router;
