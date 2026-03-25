@@ -37,12 +37,12 @@ function App() {
           <Link to="/experiments" className="nav-btn">Experiments</Link>
           <Link to="/community" className="nav-btn">Community</Link>
           <Link to="/recommended" className="nav-btn">Recommended</Link>
-          {user && (user.role || '').toLowerCase() === 'researcher' && (
-            <Link to="/researcher/reviews" className="nav-btn">Research Reviews</Link>
-          )}
           <Link to="/my-studies" className="nav-btn">My Studies</Link>
           {user && (user.role || '').toLowerCase() === 'researcher' && (
             <Link to="/researcher/experiments" className="nav-btn">My Experiments</Link>
+          )}
+          {user && (user.role || '').toLowerCase() === 'researcher' && (
+            <Link to="/researcher/reviews" className="nav-btn">Research Reviews</Link>
           )}
           {user && (user.role || '').toLowerCase() === 'admin' && (
             <Link to="/admin" className="nav-btn admin-link">Admin Dashboard</Link>
