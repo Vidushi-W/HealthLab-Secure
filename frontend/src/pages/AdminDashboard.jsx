@@ -260,8 +260,11 @@ const AdminDashboard = () => {
               <table className="min-w-full border-separate border-spacing-0">
                 <thead className="bg-slate-100/80">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider min-w-[200px]">
                       Name
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                      Email
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                       Qualification
@@ -280,7 +283,7 @@ const AdminDashboard = () => {
                 <tbody className="bg-[#F8FAFC] divide-y divide-slate-200">
                   {researchersLoading ? (
                     Array.from({ length: 5 }).map((_, i) => (
-                      <TableRowSkeleton key={i} cols={5} />
+                      <TableRowSkeleton key={i} cols={6} />
                     ))
                   ) : researchers.length > 0 ? (
                     researchers.map((r) => {
@@ -293,7 +296,13 @@ const AdminDashboard = () => {
                           className="hover:bg-white/80 cursor-pointer transition-colors"
                         >
                           <td className="px-6 py-4 text-sm text-gray-900">
-                            {r.fullName || (r.user && r.user.name) || '—'}
+                            <div className="flex items-center gap-2">
+                              <span>{r.fullName || (r.user && r.user.name) || '—'}</span>
+                              {r.isFlagged && <Badge status="rejected">Flagged</Badge>}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600">
+                            {r.user?.email || '—'}
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-600">
                             {r.highestAcademicQualification || '—'}
@@ -339,7 +348,7 @@ const AdminDashboard = () => {
                     })
                   ) : (
                     <tr>
-                      <td colSpan={5} className="px-4 py-12 text-center">
+                      <td colSpan={6} className="px-4 py-12 text-center">
                         <EmptyState
                           title="No researchers found"
                           description="Try changing the status filter."
@@ -512,6 +521,24 @@ const AdminDashboard = () => {
       >
         {detailModalResearcher && (
           <div className="space-y-4">
+            {detailModalResearcher.isFlagged && detailModalResearcher.flags?.length > 0 && (
+              <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <h3 className="text-red-800 font-semibold text-sm">Flagged Researcher</h3>
+                </div>
+                <ul className="list-disc pl-5 space-y-1">
+                  {detailModalResearcher.flags.map((flag, idx) => (
+                    <li key={idx} className="text-sm text-red-700">
+                      <span className="font-medium text-red-900">{flag.reason}</span>
+                      <span className="text-xs text-red-500 ml-2">({new Date(flag.createdAt).toLocaleDateString()})</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[
                 ['Name', detailModalResearcher.fullName || (detailModalResearcher.user && detailModalResearcher.user.name) || '—'],
@@ -534,6 +561,20 @@ const AdminDashboard = () => {
                 <p className="text-sm text-gray-900 mt-0.5">{detailModalResearcher.otherResearcherTypeExplanation}</p>
               </div>
             )}
+            {detailModalResearcher.researcherType === 'Affiliated to Organization' && detailModalResearcher.affiliationProof && (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Affiliation Proof</p>
+                <a 
+                  href={detailModalResearcher.affiliationProof} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-sm text-indigo-600 hover:text-indigo-800 mt-0.5 hover:underline block truncate"
+                  title="View attached document or image"
+                >
+                  View Document / Image
+                </a>
+              </div>
+            )}
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Published research</p>
               <p className="text-sm text-gray-900 mt-0.5">{detailModalResearcher.hasPublishedResearch ? 'Yes' : 'No'}</p>
@@ -541,7 +582,15 @@ const AdminDashboard = () => {
             {detailModalResearcher.hasPublishedResearch && detailModalResearcher.publicationSiteOrLink && (
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Publication site / link</p>
-                <p className="text-sm text-gray-900 mt-0.5">{detailModalResearcher.publicationSiteOrLink}</p>
+                <a 
+                  href={detailModalResearcher.publicationSiteOrLink.includes('://') ? detailModalResearcher.publicationSiteOrLink : `https://${detailModalResearcher.publicationSiteOrLink}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-sm text-indigo-600 hover:text-indigo-800 mt-0.5 hover:underline block truncate"
+                  title={detailModalResearcher.publicationSiteOrLink}
+                >
+                  {detailModalResearcher.publicationSiteOrLink}
+                </a>
               </div>
             )}
             <div>
@@ -573,20 +622,34 @@ const AdminDashboard = () => {
                     value={detailReviewNotes}
                     onChange={(e) => setDetailReviewNotes(e.target.value)}
                   />
-                  <div className="flex justify-end gap-2 mt-4">
-                    <Button variant="secondary" onClick={() => { setDetailModalResearcher(null); setDetailReviewNotes(''); }}>
-                      Close
+                  <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-100">
+                    <Button variant="danger" onClick={() => {
+                      setDetailModalResearcher(null);
+                      setDeleteResearcherModal(detailModalResearcher);
+                    }}>
+                      Delete Researcher
                     </Button>
-                    <Button variant="success" onClick={() => handleApproveResearcher(detailModalResearcher._id, detailReviewNotes)}>
-                      Approve
-                    </Button>
-                    <Button variant="danger" onClick={() => handleRejectResearcher(detailModalResearcher._id, detailReviewNotes)}>
-                      Reject
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button variant="secondary" onClick={() => { setDetailModalResearcher(null); setDetailReviewNotes(''); }}>
+                        Close
+                      </Button>
+                      <Button variant="success" onClick={() => handleApproveResearcher(detailModalResearcher._id, detailReviewNotes)}>
+                        Approve
+                      </Button>
+                      <Button variant="danger" onClick={() => handleRejectResearcher(detailModalResearcher._id, detailReviewNotes)}>
+                        Reject
+                      </Button>
+                    </div>
                   </div>
                 </>
               ) : (
-                <div className="flex justify-end mt-4">
+                <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-100">
+                  <Button variant="danger" onClick={() => {
+                    setDetailModalResearcher(null);
+                    setDeleteResearcherModal(detailModalResearcher);
+                  }}>
+                    Delete Researcher
+                  </Button>
                   <Button variant="secondary" onClick={() => { setDetailModalResearcher(null); setDetailReviewNotes(''); }}>
                     Close
                   </Button>

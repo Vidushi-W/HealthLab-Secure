@@ -35,6 +35,14 @@ const researcherSchema = new mongoose.Schema(
     reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     reviewedAt: { type: Date, default: null },
     reviewNotes: { type: String, trim: true, default: "" },
+    isFlagged: { type: Boolean, default: false },
+    flags: [
+      {
+        reportedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+        reason: { type: String, required: true, trim: true },
+        createdAt: { type: Date, default: Date.now },
+      }
+    ],
   },
   { timestamps: true }
 );
