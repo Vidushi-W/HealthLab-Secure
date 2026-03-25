@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/api';
+import researcherHeroBg from '../assets/images/Researcher Background_One.png';
 import './ResearcherExperiments.css';
 
 const STATUS_OPTIONS = ['draft', 'published', 'closed'];
@@ -344,13 +345,21 @@ const ResearcherExperiments = () => {
 
     return (
         <div className="researcher-experiments">
-            <div className="researcher-experiments-header">
-                <h1>My Experiments</h1>
-                <p className="subtitle">Create, edit, and manage your research experiments.</p>
-                <button type="button" className="btn btn-primary create-btn" onClick={openCreate}>
-                    + New Experiment
-                </button>
-            </div>
+            <section className="researcher-experiments-hero" aria-labelledby="researcher-experiments-heading">
+                <div
+                    className="researcher-experiments-hero-bg"
+                    style={{ backgroundImage: `url(${researcherHeroBg})` }}
+                    aria-hidden
+                />
+                <div className="researcher-experiments-hero-overlay" aria-hidden />
+                <div className="researcher-experiments-hero-inner">
+                    <h1 id="researcher-experiments-heading">My Experiments</h1>
+                    <p className="subtitle">Create, edit, and manage your research experiments.</p>
+                    <button type="button" className="btn btn-primary create-btn" onClick={openCreate}>
+                        + New Experiment
+                    </button>
+                </div>
+            </section>
 
             {error && <div className="researcher-error">{error}</div>}
 
