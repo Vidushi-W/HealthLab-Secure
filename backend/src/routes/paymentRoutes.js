@@ -1,12 +1,9 @@
 const express = require('express');
 const { createPayment, paymentWebhook, getPaymentStatus } = require('../controllers/paymentController');
 const { protect, authorize } = require('../middleware/authMiddleware');
-<<<<<<< HEAD
-=======
 const Contribution = require('../models/Contribution');
 const FundRequest = require('../models/FundRequest');
 const ExperimentWallet = require('../models/ExperimentWallet');
->>>>>>> a4da288bbbfef05d8e9d6b2d1d8a915ac5ed7f51
 
 const router = express.Router();
 
@@ -14,8 +11,6 @@ router.post('/create', protect, authorize('participant', 'researcher', 'admin'),
 router.get('/status/:orderId', protect, getPaymentStatus);
 router.post('/webhook', paymentWebhook);
 
-<<<<<<< HEAD
-=======
 // DEV ONLY: Manually confirm a payment (simulates PayHere webhook for localhost testing)
 router.post('/dev-confirm/:orderId', protect, async (req, res) => {
     try {
@@ -58,5 +53,4 @@ router.post('/dev-confirm/:orderId', protect, async (req, res) => {
 router.all('/return', (req, res) => res.redirect('http://localhost:5173/my-contributions?payment=success'));
 router.all('/cancel', (req, res) => res.redirect('http://localhost:5173/fund?payment=cancelled'));
 
->>>>>>> a4da288bbbfef05d8e9d6b2d1d8a915ac5ed7f51
 module.exports = router;

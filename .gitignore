@@ -80,4 +80,12 @@ backend/*.txt
 backend/db-structure.json
 !backend/package.json
 
+# Frontend local cache/runtime artifacts
+frontend/.vite/
+frontend/.cache/
+
+# Process/runtime artifacts
+*.pid
+*.pid.lock
+
 
