@@ -4,6 +4,10 @@ const MERCHANT_ID = process.env.PAYHERE_MERCHANT_ID;
 const MERCHANT_SECRET = process.env.PAYHERE_MERCHANT_SECRET;
 const SANDBOX = process.env.PAYHERE_SANDBOX === 'true';
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> a4da288bbbfef05d8e9d6b2d1d8a915ac5ed7f51
 const getCheckoutUrl = () =>
     SANDBOX
         ? 'https://sandbox.payhere.lk/pay/checkout'
