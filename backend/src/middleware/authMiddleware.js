@@ -58,8 +58,8 @@ const requireAuth = (req, res, next) => {
   }
   next();
 };
-
-const authorize = (allowedRoles = []) => {
+const authorize = (...args) => {
+  const allowedRoles = args.flat();
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ error: "Unauthorized", message: "Authentication required" });
