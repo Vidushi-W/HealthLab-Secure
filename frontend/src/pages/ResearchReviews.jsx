@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/api';
+import reviewHeroBg from '../assets/images/Review_Publish_Image.png';
+import './ResearcherExperiments.css';
 
 const ResearchReviews = () => {
     const [reviews, setReviews] = useState([]);
@@ -110,24 +112,39 @@ const ResearchReviews = () => {
     };
 
     if (loading) {
-        return <div className="researcher-loading">Loading your research reviews...</div>;
+        return (
+            <div className="researcher-experiments">
+                <div className="researcher-loading">Loading your research reviews...</div>
+            </div>
+        );
     }
 
     return (
         <div className="researcher-experiments">
-            <div className="researcher-experiments-header">
-                <h1>Research Reviews</h1>
-                <p className="subtitle">
-                    Create, edit, and publish summaries of your research findings.
-                </p>
-                <button
-                    type="button"
-                    className="btn btn-primary create-btn"
-                    onClick={openCreate}
-                >
-                    + New Review
-                </button>
-            </div>
+            <section
+                className="researcher-experiments-hero research-reviews-hero"
+                aria-labelledby="research-reviews-heading"
+            >
+                <div
+                    className="researcher-experiments-hero-bg"
+                    style={{ backgroundImage: `url(${reviewHeroBg})` }}
+                    aria-hidden
+                />
+                <div className="researcher-experiments-hero-overlay" aria-hidden />
+                <div className="researcher-experiments-hero-inner">
+                    <h1 id="research-reviews-heading">Research Reviews</h1>
+                    <p className="subtitle">
+                        Create, edit, and publish summaries of your research findings.
+                    </p>
+                    <button
+                        type="button"
+                        className="btn btn-primary create-btn"
+                        onClick={openCreate}
+                    >
+                        + New Review
+                    </button>
+                </div>
+            </section>
 
             {error && <div className="researcher-error">{error}</div>}
 

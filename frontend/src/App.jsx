@@ -31,6 +31,10 @@ function App() {
     window.location.href = '/login';
   };
 
+  const researcherSoftPageBg =
+    location.pathname === '/researcher/experiments' ||
+    location.pathname === '/researcher/reviews';
+
   const Layout = ({ children }) => (
     <div className="app-container">
       <header className="app-header">
@@ -58,7 +62,9 @@ function App() {
           )}
         </nav>
       </header>
-      <main className="main-content">
+      <main
+        className={`main-content${researcherSoftPageBg ? ' main-content--researcher-soft' : ''}`}
+      >
         {children}
       </main>
     </div>
