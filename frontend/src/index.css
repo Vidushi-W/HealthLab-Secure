@@ -308,6 +308,12 @@ nav {
     width: 100%;
 }
 
+/* Full-bleed soft blue for researcher experiments & reviews routes */
+.main-content--researcher-soft {
+    max-width: none;
+    background-color: #e6f2ff;
+}
+
 /* Experiment List */
 .experiment-list h1 {
     font-size: 2rem;

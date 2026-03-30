@@ -12,6 +12,9 @@ import AdminDashboard from './pages/AdminDashboard';
 import ResearcherExperiments from './pages/ResearcherExperiments';
 import Community from './pages/Community';
 import PostDetail from './pages/PostDetail';
+import FundRequests from './pages/FundRequests';
+import OpenFundRequests from './pages/OpenFundRequests';
+import MyContributions from './pages/MyContributions';
 import { getCurrentUser, logoutUser } from './api/auth';
 
 
@@ -28,6 +31,10 @@ function App() {
     window.location.href = '/login';
   };
 
+  const researcherSoftPageBg =
+    location.pathname === '/researcher/experiments' ||
+    location.pathname === '/researcher/reviews';
+
   const Layout = ({ children }) => (
     <div className="app-container">
       <header className="app-header">
@@ -36,13 +43,14 @@ function App() {
           <Link to="/" className="nav-btn">Home</Link>
           <Link to="/experiments" className="nav-btn">Experiments</Link>
           <Link to="/community" className="nav-btn">Community</Link>
+          <Link to="/fund" className="nav-btn">Fund</Link>
           <Link to="/recommended" className="nav-btn">Recommended</Link>
-          {user && (user.role || '').toLowerCase() === 'researcher' && (
-            <Link to="/researcher/reviews" className="nav-btn">Research Reviews</Link>
-          )}
           <Link to="/my-studies" className="nav-btn">My Studies</Link>
           {user && (user.role || '').toLowerCase() === 'researcher' && (
             <Link to="/researcher/experiments" className="nav-btn">My Experiments</Link>
+          )}
+          {user && (user.role || '').toLowerCase() === 'researcher' && (
+            <Link to="/researcher/reviews" className="nav-btn">Research Reviews</Link>
           )}
           {user && (user.role || '').toLowerCase() === 'admin' && (
             <Link to="/admin" className="nav-btn admin-link">Admin Dashboard</Link>
@@ -54,7 +62,9 @@ function App() {
           )}
         </nav>
       </header>
-      <main className="main-content">
+      <main
+        className={`main-content${researcherSoftPageBg ? ' main-content--researcher-soft' : ''}`}
+      >
         {children}
       </main>
     </div>
@@ -68,11 +78,16 @@ function App() {
       <Route path="/experiments" element={<Layout><ExperimentList /></Layout>} />
       <Route path="/community" element={<Layout><Community /></Layout>} />
       <Route path="/community/:id" element={<Layout><PostDetail /></Layout>} />
+      <Route path="/fund" element={<Layout><OpenFundRequests /></Layout>} />
       <Route path="/recommended" element={<Layout><RecommendationPage /></Layout>} />
       {user && (user.role || '').toLowerCase() === 'researcher' && (
         <Route path="/researcher/reviews" element={<Layout><ResearchReviews /></Layout>} />
       )}
+      {user && (user.role || '').toLowerCase() === 'researcher' && (
+        <Route path="/fund-requests" element={<Layout><FundRequests /></Layout>} />
+      )}
       <Route path="/my-studies" element={<Layout><MyStudies /></Layout>} />
+      <Route path="/my-contributions" element={<Layout><MyContributions /></Layout>} />
       <Route path="/dashboard/:participationId" element={<Layout><StudyDashboard /></Layout>} />
       <Route path="/researcher/experiments" element={<Layout><ResearcherExperiments /></Layout>} />
       {user && (user.role || '').toLowerCase() === 'admin' && (
