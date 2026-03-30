@@ -1,5 +1,7 @@
 const FundRequest = require('../models/FundRequest');
 const ExperimentWallet = require('../models/ExperimentWallet');
+const User = require('../models/User');
+const Researcher = require('../models/Researcher');
 
 // totalRequestedAmount
 // totalApprovedAmount
@@ -81,4 +83,91 @@ const getReports = async ({ status, experimentId, researcherId, fromDate, toDate
     };
 };
 
-module.exports = { getAnalytics, getReports };
+const getDashboardStats = async (days = 30) => {
+    // 1. User Role Distribution
+    const userRoles = await User.aggregate([
+        { $group: { _id: '$role', count: { $sum: 1 } } }
+    ]);
+
+    // 2. Researcher Status Distribution
+    const researcherStatus = await Researcher.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+    ]);
+
+    // 3. Qualification Distribution
+    const qualifications = await Researcher.aggregate([
+        { $group: { _id: '$highestAcademicQualification', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+    ]);
+
+    // 4. Registration Trend (Dynamic range based on 'days')
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    const registrationTrendRaw = await User.aggregate([
+        { $match: { createdAt: { $gte: startDate } } },
+        {
+            $group: {
+                _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+                count: { $sum: 1 }
+            }
+        },
+        { $sort: { _id: 1 } }
+    ]);
+
+    // Gap filling for registration trend
+    const registrationTrend = [];
+    const tempDate = new Date(startDate);
+    const endDate = new Date();
+    
+    // Create a map for quick lookup
+    const trendMap = registrationTrendRaw.reduce((acc, curr) => {
+        acc[curr._id] = curr.count;
+        return acc;
+    }, {});
+
+    while (tempDate <= endDate) {
+        const dateStr = tempDate.toISOString().split('T')[0];
+        registrationTrend.push({
+            date: dateStr,
+            count: trendMap[dateStr] || 0
+        });
+        tempDate.setDate(tempDate.getDate() + 1);
+    }
+
+    // 5. Growth Metrics (New users this week)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const fourteenDaysAgo = new Date();
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
+    const currentWeekCount = await User.countDocuments({ createdAt: { $gte: sevenDaysAgo } });
+    const previousWeekCount = await User.countDocuments({ 
+        createdAt: { $gte: fourteenDaysAgo, $lt: sevenDaysAgo } 
+    });
+
+    let growthRate = 0;
+    if (previousWeekCount > 0) {
+        growthRate = ((currentWeekCount - previousWeekCount) / previousWeekCount) * 100;
+    } else if (currentWeekCount > 0) {
+        growthRate = 100;
+    }
+
+    return {
+        userRoles: userRoles.reduce((acc, curr) => ({ ...acc, [curr._id || 'unknown']: curr.count }), {}),
+        researcherStatus: researcherStatus.reduce((acc, curr) => ({ ...acc, [curr._id || 'pending']: curr.count }), {}),
+        qualifications: qualifications.map(q => ({ name: q._id || 'Unspecified', count: q.count })),
+        registrationTrend,
+        summary: {
+            totalUsers: await User.countDocuments(),
+            totalResearchers: await Researcher.countDocuments(),
+            pendingResearchers: await Researcher.countDocuments({ status: { $in: ['pending', '', null] } }),
+            approvedResearchers: await Researcher.countDocuments({ status: 'approved' }),
+            rejectedResearchers: await Researcher.countDocuments({ status: 'rejected' }),
+            growthRate: parseFloat(growthRate.toFixed(1)),
+            newUsersThisWeek: currentWeekCount
+        }
+    };
+};
+
+module.exports = { getAnalytics, getReports, getDashboardStats };

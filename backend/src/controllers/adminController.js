@@ -191,7 +191,8 @@ const updateStatus = asyncHandler(async (req, res) => {
 });
 
 const getAnalytics = asyncHandler(async (req, res) => {
-  const data = await analyticsService.getAnalytics();
+  const days = parseInt(req.query.days) || 30;
+  const data = await analyticsService.getDashboardStats(days);
   return res.status(HTTP_STATUS.OK).json(data);
 });
 

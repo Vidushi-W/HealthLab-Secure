@@ -10,13 +10,97 @@ import {
   EmptyState,
   TableRowSkeleton,
 } from '../components/ui';
+import { Users, UserCheck, UserX, Clock, Search, Download, Calendar, Filter, FileSpreadsheet, PieChart as PieChartIcon, LayoutDashboard, Database, Activity } from 'lucide-react';
+import StatCard from '../components/admin/StatCard';
+import { TrendChart, DistributionChart, QualificationChart } from '../components/admin/DashboardCharts';
 
+const TAB_OVERVIEW = 'overview';
 const TAB_RESEARCHERS = 'researchers';
 const TAB_ALL_USERS = 'users';
 const TAB_EXPERIMENTS = 'experiments';
 
+const toObjectCounts = (value) => {
+  if (!value) return {};
+  if (Array.isArray(value)) {
+    return value.reduce((acc, row) => {
+      const key = String(row?.name || row?._id || '').trim();
+      if (!key) return acc;
+      const count = Number(row?.value ?? row?.count ?? 0);
+      acc[key] = Number.isFinite(count) ? count : 0;
+      return acc;
+    }, {});
+  }
+  if (typeof value === 'object') {
+    return Object.entries(value).reduce((acc, [k, v]) => {
+      const count = Number(v ?? 0);
+      acc[k] = Number.isFinite(count) ? count : 0;
+      return acc;
+    }, {});
+  }
+  return {};
+};
+
+const normalizeOverviewAnalytics = (raw) => {
+  const payload = raw?.data && typeof raw.data === 'object' ? raw.data : raw;
+  if (!payload || typeof payload !== 'object') return null;
+
+  const userRoles = toObjectCounts(payload.userRoles || payload.roleDistribution || {});
+  const researcherStatus = toObjectCounts(payload.researcherStatus || payload.statusCounts || {});
+
+  const statusKeys = Object.keys(researcherStatus);
+  const approvedResearchers = statusKeys.reduce((sum, key) => (
+    key.toLowerCase() === 'approved' ? sum + Number(researcherStatus[key] || 0) : sum
+  ), 0);
+  const pendingResearchers = statusKeys.reduce((sum, key) => (
+    key.toLowerCase() === 'pending' ? sum + Number(researcherStatus[key] || 0) : sum
+  ), 0);
+  const rejectedResearchers = statusKeys.reduce((sum, key) => (
+    key.toLowerCase() === 'rejected' ? sum + Number(researcherStatus[key] || 0) : sum
+  ), 0);
+
+  const summary = {
+    totalUsers: Number(payload.summary?.totalUsers ?? payload.totalUsers ?? 0),
+    totalResearchers: Number(payload.summary?.totalResearchers ?? payload.totalResearchers ?? 0),
+    pendingResearchers: Number(payload.summary?.pendingResearchers ?? pendingResearchers ?? 0),
+    approvedResearchers: Number(payload.summary?.approvedResearchers ?? approvedResearchers ?? 0),
+    rejectedResearchers: Number(payload.summary?.rejectedResearchers ?? rejectedResearchers ?? 0),
+    growthRate: Number(payload.summary?.growthRate ?? payload.growthRate ?? 0),
+    newUsersThisWeek: Number(payload.summary?.newUsersThisWeek ?? payload.newUsersThisWeek ?? 0),
+  };
+
+  const registrationTrendRaw = Array.isArray(payload.registrationTrend)
+    ? payload.registrationTrend
+    : Array.isArray(payload.trend)
+      ? payload.trend
+      : [];
+
+  const registrationTrend = registrationTrendRaw.map((row) => ({
+    date: row?.date || row?._id || row?.label || '',
+    count: Number(row?.count ?? row?.value ?? 0),
+  })).filter((row) => row.date);
+
+  const qualificationsRaw = Array.isArray(payload.qualifications)
+    ? payload.qualifications
+    : Array.isArray(payload.qualificationDistribution)
+      ? payload.qualificationDistribution
+      : [];
+
+  const qualifications = qualificationsRaw.map((row) => ({
+    name: row?.name || row?._id || 'Unspecified',
+    count: Number(row?.count ?? row?.value ?? 0),
+  }));
+
+  return {
+    summary,
+    registrationTrend,
+    userRoles,
+    researcherStatus,
+    qualifications,
+  };
+};
+
 const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState(TAB_RESEARCHERS);
+  const [activeTab, setActiveTab] = useState(TAB_OVERVIEW);
   const [researchers, setResearchers] = useState([]);
   const [researcherStatusFilter, setResearcherStatusFilter] = useState('');
   const [researchersLoading, setResearchersLoading] = useState(false);
@@ -34,20 +118,37 @@ const AdminDashboard = () => {
   const [reviewNotes, setReviewNotes] = useState('');
   const [detailReviewNotes, setDetailReviewNotes] = useState('');
 
+  // New states for expanded functionality
+  const [analytics, setAnalytics] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dateRange, setDateRange] = useState('30'); // '7', '30', 'all'
+
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
   const currentUserId = currentUser._id;
 
   useEffect(() => {
+    if (activeTab === TAB_OVERVIEW) fetchAnalytics();
     if (activeTab === TAB_RESEARCHERS) fetchResearchers();
-  }, [activeTab, researcherStatusFilter]);
-
-  useEffect(() => {
     if (activeTab === TAB_ALL_USERS) fetchAllUsers();
-  }, [activeTab, roleFilter]);
-
-  useEffect(() => {
     if (activeTab === TAB_EXPERIMENTS) fetchExperiments();
-  }, [activeTab]);
+  }, [activeTab, researcherStatusFilter, roleFilter, dateRange]);
+
+  const fetchAnalytics = async () => {
+    try {
+      setAnalyticsLoading(true);
+      const days = dateRange === 'all' ? 365 : parseInt(dateRange);
+      const response = await api.get(`/admin/analytics?days=${days}`);
+      setAnalytics(normalizeOverviewAnalytics(response.data));
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching analytics:', err);
+      setError('Failed to fetch analytics statistics.');
+      setAnalytics(null);
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
 
   const fetchResearchers = async () => {
     try {
@@ -175,22 +276,61 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleExportPdf = async () => {
-    try {
-      const params = researcherStatusFilter ? { status: researcherStatusFilter } : {};
-      const response = await api.get('/admin/researchers/export/pdf', { responseType: 'blob', params });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `researchers-report-${new Date().toISOString().slice(0, 10)}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      alert('Failed to download PDF.');
-    }
+  const handleExportCsv = () => {
+    const dataToExport = activeTab === TAB_RESEARCHERS ? filteredResearchers : allUsers;
+    if (!dataToExport || dataToExport.length === 0) return;
+
+    const headers = activeTab === TAB_RESEARCHERS 
+      ? ['Name', 'Email', 'Qualification', 'Type', 'Status', 'Registered At']
+      : ['Name', 'Email', 'Role', 'Status', 'Registered At'];
+
+    const csvContent = [
+      headers.join(','),
+      ...dataToExport.map(item => {
+        if (activeTab === TAB_RESEARCHERS) {
+          return [
+            `"${item.fullName || item.user?.name || ''}"`,
+            `"${item.user?.email || ''}"`,
+            `"${item.highestAcademicQualification || ''}"`,
+            `"${item.researcherType || ''}"`,
+            `"${item.status || ''}"`,
+            `"${item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}"`
+          ].join(',');
+        } else {
+          return [
+            `"${item.name || ''}"`,
+            `"${item.email || ''}"`,
+            `"${item.role || ''}"`,
+            `"${item.researcherStatus || 'N/A'}"`,
+            `"${item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}"`
+          ].join(',');
+        }
+      })
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${activeTab}-report-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   };
+
+  const filteredResearchers = researchers.filter(r => {
+    const name = (r.fullName || r.user?.name || '').toLowerCase();
+    const email = (r.user?.email || '').toLowerCase();
+    const matchSearch = name.includes(searchTerm.toLowerCase()) || email.includes(searchTerm.toLowerCase());
+    return matchSearch;
+  });
+
+  const filteredUsers = allUsers.filter(u => {
+    const name = (u.name || '').toLowerCase();
+    const email = (u.email || '').toLowerCase();
+    const matchSearch = name.includes(searchTerm.toLowerCase()) || email.includes(searchTerm.toLowerCase());
+    return matchSearch;
+  });
 
   const getStatusVariant = (status) => {
     if (!status) return 'pending';
@@ -209,22 +349,24 @@ const AdminDashboard = () => {
         </p>
       </header>
 
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-6 p-1 bg-slate-100 rounded-xl w-fit">
         {[
-          [TAB_RESEARCHERS, 'Researchers'],
-          [TAB_ALL_USERS, 'All Users'],
-          [TAB_EXPERIMENTS, 'Experiments'],
-        ].map(([tab, label]) => (
+          [TAB_OVERVIEW, 'Overview', LayoutDashboard],
+          [TAB_RESEARCHERS, 'Researchers', Users],
+          [TAB_ALL_USERS, 'All Users', UserCheck],
+          [TAB_EXPERIMENTS, 'Experiments', Database],
+        ].map(([tab, label, Icon]) => (
           <button
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200 ${
               activeTab === tab
-                ? 'bg-primary text-white shadow-sm'
-                : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                ? 'bg-white text-indigo-600 shadow-sm border border-slate-200'
+                : 'text-gray-600 hover:text-gray-900'
             }`}
           >
+            <Icon size={18} />
             {label}
           </button>
         ))}
@@ -232,61 +374,195 @@ const AdminDashboard = () => {
 
       {error && <ErrorMessage message={error} onDismiss={() => setError(null)} className="mb-4" />}
 
+      {activeTab === TAB_OVERVIEW && (
+        <div className="space-y-8 px-2 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">Platform Overview</h2>
+              <p className="text-sm text-slate-500 mt-1">Key metrics and platform trends</p>
+            </div>
+            <div className="flex items-center gap-3 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+              {[
+                { label: '7D', value: '7' },
+                { label: '30D', value: '30' },
+                { label: '90D', value: '90' },
+                { label: 'All', value: 'all' },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setDateRange(opt.value)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                    dateRange === opt.value
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {analyticsLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="h-32 bg-slate-100 animate-pulse rounded-2xl" />
+              ))}
+            </div>
+          ) : analytics ? (
+            <>
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatCard 
+                  title="Total Users" 
+                  value={analytics.summary?.totalUsers || 0} 
+                  icon={Users} 
+                  trend={(analytics.summary?.growthRate || 0) >= 0 ? 'up' : 'down'} 
+                  trendValue={Math.abs(analytics.summary?.growthRate || 0)}
+                  description="Total registered in system"
+                />
+                <StatCard 
+                  title="Pending" 
+                  value={analytics.summary?.pendingResearchers || 0} 
+                  icon={Clock} 
+                  description="Researchers awaiting review"
+                />
+                <StatCard 
+                  title="Approved" 
+                  value={analytics.summary?.approvedResearchers || 0} 
+                  icon={UserCheck} 
+                  description="Verified medical experts"
+                />
+                <StatCard 
+                  title="Growth" 
+                  value={analytics.summary?.newUsersThisWeek || 0} 
+                  icon={Activity} 
+                  trend={(analytics.summary?.newUsersThisWeek || 0) > 0 ? 'up' : undefined}
+                  trendValue={analytics.summary?.growthRate || 0}
+                  description={`Last ${dateRange === 'all' ? '30' : dateRange} days`}
+                />
+              </div>
+
+              {/* Charts Section */}
+              <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3 text-sm text-indigo-900">
+                Analyzed {analytics.summary?.totalUsers || 0} users and {analytics.summary?.totalResearchers || 0} researchers across {analytics.registrationTrend?.length || 0} days of trend data.
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm min-h-[350px]">
+                  <h3 className="font-bold text-slate-800 mb-6">Registration Trend</h3>
+                  <div className="h-72 w-full">
+                    <TrendChart data={analytics.registrationTrend} />
+                  </div>
+                </div>
+                
+                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm min-h-[350px]">
+                  <h3 className="font-bold text-slate-800 mb-6">Researcher Status</h3>
+                  <div className="h-72 w-full">
+                    <DistributionChart data={[
+                      { name: 'Approved', value: analytics.summary?.approvedResearchers || 0 },
+                      { name: 'Pending', value: analytics.summary?.pendingResearchers || 0 },
+                      { name: 'Rejected', value: analytics.summary?.rejectedResearchers || 0 },
+                    ].filter(d => d.value > 0)} variant="pie" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm min-h-[350px]">
+                  <h3 className="font-bold text-slate-800 mb-6">User Role Distribution</h3>
+                  <div className="h-72 w-full">
+                    <DistributionChart data={Object.entries(analytics.userRoles || {}).map(([name, value]) => ({
+                      name: name.charAt(0).toUpperCase() + name.slice(1),
+                      value
+                    }))} />
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm min-h-[350px]">
+                  <h3 className="font-bold text-slate-800 mb-6">Top Qualifications</h3>
+                  <div className="h-72 w-full">
+                    <QualificationChart data={(analytics.qualifications || []).slice(0, 8)} />
+                  </div>
+                </div>
+              </div>
+
+            </>
+          ) : (
+            <EmptyState title="No analytics data" description="Could not load statistics." />
+          )}
+        </div>
+      )}
+
       {activeTab === TAB_RESEARCHERS && (
         <>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-            <div className="flex items-center gap-3">
-              <label htmlFor="researcher-status-filter" className="text-sm font-medium text-gray-700">
-                Status:
-              </label>
-              <select
-                id="researcher-status-filter"
-                value={researcherStatusFilter}
-                onChange={(e) => setResearcherStatusFilter(e.target.value)}
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent min-w-[140px]"
-              >
-                <option value="">All</option>
-                <option value="pending">Pending</option>
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
-              </select>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                <input
+                  type="text"
+                  placeholder="Search researchers..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 min-w-[240px]"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <label htmlFor="researcher-status-filter" className="text-sm font-medium text-gray-700">
+                  Status:
+                </label>
+                <select
+                  id="researcher-status-filter"
+                  value={researcherStatusFilter}
+                  onChange={(e) => setResearcherStatusFilter(e.target.value)}
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent min-w-[140px]"
+                >
+                  <option value="">All</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
             </div>
-            <Button variant="secondary" onClick={handleExportPdf}>
-              Download PDF Report
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleExportCsv} className="flex items-center gap-2">
+                <FileSpreadsheet size={16} /> Export CSV
+              </Button>
+            </div>
           </div>
-          <Card padding={false} className="overflow-hidden border border-slate-200 bg-[#F8FAFC]">
+          <Card padding={false} className="overflow-hidden border border-slate-200 bg-[#F8FAFC] shadow-sm rounded-2xl">
             <div className="overflow-x-auto">
               <table className="min-w-full border-separate border-spacing-0">
-                <thead className="bg-slate-100/80">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider min-w-[200px]">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[200px] border-b border-slate-100">
                       Name
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
                       Email
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
                       Qualification
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider max-w-[200px]">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider max-w-[200px] border-b border-slate-100">
                       Purpose
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
                       Status
                     </th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-[#F8FAFC] divide-y divide-slate-200">
+                <tbody className="bg-white divide-y divide-slate-100">
                   {researchersLoading ? (
                     Array.from({ length: 5 }).map((_, i) => (
                       <TableRowSkeleton key={i} cols={6} />
                     ))
-                  ) : researchers.length > 0 ? (
-                    researchers.map((r) => {
+                  ) : filteredResearchers.length > 0 ? (
+                    filteredResearchers.map((r) => {
                       const s = (r.status || '').toLowerCase();
                       const isPending = s === 'pending' || s === '';
                       return (
@@ -365,42 +641,59 @@ const AdminDashboard = () => {
 
       {activeTab === TAB_ALL_USERS && (
         <>
-          <div className="flex items-center gap-3 mb-4">
-            <label htmlFor="role-filter" className="text-sm font-medium text-gray-700">
-              Filter by role:
-            </label>
-            <select
-              id="role-filter"
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent min-w-[160px]"
-            >
-              <option value="">All roles</option>
-              <option value="admin">Admin</option>
-              <option value="researcher">Researcher</option>
-              <option value="participant">Participant</option>
-            </select>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                <input
+                  type="text"
+                  placeholder="Search users..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 min-w-[240px]"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <label htmlFor="role-filter" className="text-sm font-medium text-gray-700">
+                  Role:
+                </label>
+                <select
+                  id="role-filter"
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent min-w-[160px]"
+                >
+                  <option value="">All roles</option>
+                  <option value="admin">Admin</option>
+                  <option value="researcher">Researcher</option>
+                  <option value="participant">Participant</option>
+                </select>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleExportCsv} className="flex items-center gap-2">
+              <FileSpreadsheet size={16} /> Export CSV
+            </Button>
           </div>
-          <Card padding={false} className="overflow-hidden border border-slate-200 bg-[#F8FAFC]">
+          <Card padding={false} className="overflow-hidden border border-slate-200 bg-[#F8FAFC] shadow-sm rounded-2xl">
             <div className="overflow-x-auto">
               <table className="min-w-full border-separate border-spacing-0">
-                <thead className="bg-slate-100/80">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Email</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Role</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Researcher Status</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Registered</th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Name</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Email</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Role</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Researcher Status</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Registered</th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="bg-[#F8FAFC] divide-y divide-slate-200">
+                <tbody className="bg-white divide-y divide-slate-100">
                   {usersLoading ? (
                     Array.from({ length: 5 }).map((_, i) => (
                       <TableRowSkeleton key={i} cols={6} />
                     ))
-                  ) : allUsers.length > 0 ? (
-                    allUsers.map((user) => {
+                  ) : filteredUsers.length > 0 ? (
+                    filteredUsers.map((user) => {
                       const role = (user.role || '').toLowerCase();
                       const resStatus = (user.researcherStatus || '').toLowerCase();
                       const isResearcherPending = role === 'researcher' && (resStatus === 'pending' || resStatus === '');

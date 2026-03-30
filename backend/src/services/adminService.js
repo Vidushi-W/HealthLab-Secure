@@ -10,6 +10,22 @@ const { RESEARCHER_TYPES } = require("../models/Researcher");
 const POPULATE_USER = "name email role";
 const POPULATE_REVIEWED_BY = "name email";
 
+async function generateNextResearcherId() {
+  const lastResearcher = await Researcher.findOne({ researcherId: { $ne: null } })
+    .sort({ researcherId: -1 })
+    .exec();
+
+  let nextNum = 1;
+  if (lastResearcher && lastResearcher.researcherId) {
+    const match = lastResearcher.researcherId.match(/RE(\d+)/);
+    if (match) {
+      nextNum = parseInt(match[1], 10) + 1;
+    }
+  }
+
+  return `RE${nextNum.toString().padStart(3, "0")}`;
+}
+
 async function findResearcherById(id) {
   return Researcher.findById(id)
     .populate("user", POPULATE_USER)
@@ -28,6 +44,12 @@ async function updateResearcherReview(researcherId, { status, reviewNotes }, rev
   researcher.reviewNotes = reviewNotes != null ? String(reviewNotes) : "";
   researcher.reviewedAt = new Date();
   researcher.reviewedBy = reviewedByUserId;
+
+  // Assign researcherId if approved and not already assigned
+  if (status === RESEARCHER_STATUS.APPROVED && !researcher.researcherId) {
+    researcher.researcherId = await generateNextResearcherId();
+  }
+
   await researcher.save();
   return findResearcherById(researcherId);
 }

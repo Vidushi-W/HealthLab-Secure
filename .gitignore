@@ -19,9 +19,13 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.pid
+*.seed
 **/logs/
 backend/server_debug.log
 backend/server_error.log
+backend/combined.log
+backend/error.log
 backend/*_out.txt
 backend/*_final.txt
 backend/tmp*.log
@@ -51,6 +55,9 @@ coverage/
 .tmp/
 *.tmp
 .cache/
+backend/.cache/
+backend/.tmp/
+frontend/.vite/
 .eslintcache
 .stylelintcache
 *.tsbuildinfo
