@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/api';
 import SmartBadge from './common/SmartBadge';
+import './ExperimentList.css';
 
 const ExperimentList = () => {
     const [experiments, setExperiments] = useState([]);
@@ -177,10 +178,9 @@ const ExperimentList = () => {
                     alignItems: 'center', zIndex: 1000, backdropFilter: 'blur(4px)'
                 }}>
                     <div className="modal-content" style={{
-                        backgroundColor: 'white', padding: '2.5rem', borderRadius: '15px',
+                        padding: '2.5rem', 
                         maxWidth: '600px', width: '90%', maxHeight: '90vh', overflowY: 'auto',
-                        boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
-                        position: 'relative', border: '1px solid var(--primary-light)'
+                        position: 'relative'
                     }}>
                         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '2px solid #f0f7ff', paddingBottom: '1rem' }}>
                             <div style={{ fontSize: '2rem', marginRight: '1rem' }}>🧠</div>

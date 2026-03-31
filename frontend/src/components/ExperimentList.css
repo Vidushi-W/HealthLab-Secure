@@ -1,0 +1,230 @@
+/* ExperimentList.css */
+
+.experiment-list {
+    /* Full bleed layout to make the purple stretch the entire width */
+    margin: -2rem calc(-50vw + 50%) -2rem calc(-50vw + 50%);
+    border-radius: 0;
+    min-height: calc(100vh - 64px); /* stretch height based on typical header */
+    padding: 3rem 2rem;
+
+    /* A vibrant, slick, fluid blue/violet gradient matching the Sereno reference */
+    background: 
+        radial-gradient(circle at 15% 0%, #7c3aed 0%, transparent 50%),
+        radial-gradient(circle at 85% 15%, #3b82f6 0%, transparent 55%),
+        radial-gradient(circle at 50% 100%, #3730a3 0%, transparent 60%),
+        radial-gradient(circle at 0% 100%, #6366f1 0%, transparent 50%),
+        #4f46e5; /* Vibrant indigo base */
+    background-size: 300% 300%;
+    background-repeat: no-repeat;
+    animation: gradientFlow 15s ease infinite;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    color: #ffffff;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Constrain inner content to keep it aligned with the rest of the app */
+.experiment-list > h1,
+.experiment-list > p,
+.experiment-list > .alert,
+.experiment-list > .experiments-grid,
+.experiment-list > .loading,
+.experiment-list > .no-data {
+    max-width: 1150px; /* aligns roughly with inner max-width of container */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+@keyframes gradientFlow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* Typography styles */
+.experiment-list h1 {
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 2.5rem;
+    font-family: 'Inter', system-ui, sans-serif;
+    letter-spacing: -0.025em;
+    margin-bottom: 2.5rem;
+    text-align: center;
+}
+
+.experiment-list h1::after {
+    display: none; /* Sereno style doesn't use the underline */
+}
+
+/* Glassmorphic experiment card */
+.experiment-list .experiment-card {
+    background: rgba(255, 255, 255, 0.08); /* Very sheer white */
+    backdrop-filter: blur(32px); /* High blur for slick glass */
+    -webkit-backdrop-filter: blur(32px);
+    border: 1px solid rgba(255, 255, 255, 0.2); /* Clean translucent border */
+    border-radius: 32px; /* Very soft rounded corners like the app panels */
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15); /* Soft drop shadow */
+    color: #ffffff;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 2rem;
+}
+
+.experiment-list .experiment-card:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    transform: translateY(-4px);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+}
+
+.experiment-list .experiment-card h2 {
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 1.4rem;
+    font-family: 'Inter', system-ui, sans-serif;
+    letter-spacing: -0.01em;
+}
+
+.experiment-list .experiment-card .description {
+    color: rgba(255, 255, 255, 0.85); /* Readability */
+    font-weight: 400;
+    margin-top: 0.5rem;
+}
+
+.experiment-list .experiment-details {
+    color: rgba(255, 255, 255, 0.7);
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    padding-top: 1rem;
+    margin-top: 1rem;
+}
+
+/* Status Badges */
+.experiment-list .status-badge {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-radius: 100px;
+    padding: 0.35rem 1rem;
+}
+
+/* Join Button overriding */
+.experiment-list .join-btn {
+    background: #ffffff !important; /* Solid white like the 'Take a photo' button */
+    border: none !important;
+    color: #4f46e5 !important; /* Deep vibrant text color */
+    border-radius: 100px; /* Pill shape */
+    font-weight: 600;
+    letter-spacing: 0.025em;
+    padding: 1rem;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+    margin-top: 1rem;
+}
+
+.experiment-list .join-btn:hover:not(:disabled) {
+    background: #f8fafc !important;
+    transform: scale(1.03);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+}
+
+.experiment-list .join-btn.btn-secondary {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+    box-shadow: none;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.experiment-list .join-btn.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.experiment-list .join-btn.enrolled {
+    background: rgba(255, 255, 255, 0.15) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    box-shadow: none;
+}
+
+.experiment-list .join-btn:disabled {
+    opacity: 0.8;
+}
+
+/* Empty State & Loading State */
+.experiment-list p, .experiment-list .loading {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* Clinical Insight Modal Glassmorphic Override */
+.experiment-list .modal-content {
+    background: rgba(79, 70, 229, 0.6) !important; /* matches the Sereno blue tint */
+    backdrop-filter: blur(40px) !important;
+    -webkit-backdrop-filter: blur(40px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    color: #ffffff !important;
+    border-radius: 32px !important;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4) !important;
+}
+
+.experiment-list .modal-content h2, 
+.experiment-list .modal-content h4,
+.experiment-list .modal-content span {
+    color: #ffffff !important;
+}
+
+.experiment-list .modal-content p,
+.experiment-list .modal-content div {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.experiment-list .modal-content div[style*="background-color: #f8f9fa"],
+.experiment-list .modal-content div[style*="background-color: #f0f7ff"] {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 16px !important;
+}
+
+.experiment-list .modal-content button {
+    border-radius: 100px !important; /* fully rounded */
+}
+
+.experiment-list .modal-content .btn-primary {
+    background: #ffffff !important;
+    color: #4f46e5 !important;
+    border: none !important;
+}
+
+.experiment-list .modal-content .btn-secondary {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    color: white !important;
+}
+
+.experiment-list .modal-content .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Smart badge specific to ExperimentList */
+.experiment-list .smart-badge {
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.15) !important;
+    backdrop-filter: blur(12px);
+}
+
+.experiment-list .badge-score-low {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+}
+
+/* Alerts */
+.experiment-list .alert-success {
+    background: rgba(22, 101, 52, 0.4) !important;
+    border: 1px solid rgba(34, 197, 94, 0.5) !important;
+    color: #ffffff !important;
+    backdrop-filter: blur(16px);
+    border-radius: 20px;
+}
+
+.experiment-list .alert-error {
+    background: rgba(153, 27, 27, 0.4) !important;
+    border: 1px solid rgba(239, 68, 68, 0.5) !important;
+    color: #ffffff !important;
+    backdrop-filter: blur(16px);
+    border-radius: 20px;
+}
