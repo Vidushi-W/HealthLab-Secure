@@ -90,11 +90,29 @@ test-db.js
 
 # Vite / frontend cache
 frontend/node_modules/.vite/
+frontend/.vite/
+frontend/.cache/
 
 # Backup and temp
 *.bak
 *.backup
 *.orig
+
+# Utility scripts and debug output
+backend/check*.js
+backend/test*.js
+backend/inspect*.js
+backend/fix*.js
+backend/list*.js
+backend/verify*.js
+backend/*.log
+backend/*.txt
+backend/db-structure.json
+!backend/package.json
+
+# Process/runtime artifacts
+*.pid
+*.pid.lock
 
 # Optional: uncomment if you use these
 # .vercel

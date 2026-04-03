@@ -9,6 +9,8 @@ const {
   getExperimentById,
   updateExperiment,
   deleteExperiment,
+  generateExperimentAiSummary,
+  getSafetyGuidelines,
 } = require("../controllers/experimentController");
 
 const { getReviewsByExperiment } = require("../controllers/reviewController");
@@ -25,20 +27,26 @@ router.get("/:id", getExperimentById);
 // Protected routes (Researcher / Admin)
 router.use(protect);
 
+// POST /api/experiments - Create a new experiment (researcher only)
 router.post(
   "/",
-  authorize('researcher'),
+  authorize("researcher"),
   researcherApprovedForPublish,
   createExperimentRules ? createExperimentRules() : [],
   validate || ((req, res, next) => next()),
   createExperiment
 );
+
 router.get("/:experimentId/wallet", getWallet); // Service handles ownership check
-router.put("/:id", authorize('researcher', 'admin'), researcherApprovedForPublish, updateExperiment);
-router.delete("/:id", authorize('researcher', 'admin'), researcherApprovedForPublish, deleteExperiment);
+router.post("/:id/ai-summary", authorize(["researcher", "admin"]), generateExperimentAiSummary);
+router.put("/:id", authorize(["researcher", "admin"]), researcherApprovedForPublish, updateExperiment);
+router.delete("/:id", authorize(["researcher", "admin"]), researcherApprovedForPublish, deleteExperiment);
 
 // List reviews for an experiment
 router.get("/:experimentId/reviews", optionalAuth, getReviewsByExperiment);
+
+// GET /api/experiments/:id/safety-guidelines (WGER API Integration)
+router.get("/:id/safety-guidelines", optionalAuth, getSafetyGuidelines);
 
 module.exports = router;
 

@@ -1,7 +1,7 @@
-require('dotenv').config();
-const { connectDB } = require('./src/config/db');
-const User = require('./src/models/User');
-const Experiment = require('./src/models/Experiment');
+require('dotenv').config({ path: require('path').resolve(__dirname, '..', '.env') });
+const { connectDB } = require('../src/config/db');
+const User = require('../src/models/User');
+const Experiment = require('../src/models/Experiment');
 
 const run = async () => {
     try {
