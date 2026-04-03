@@ -21,6 +21,7 @@ const {
   deleteUser,
   deleteExperiment,
   exportResearchersPdf,
+  exportOverviewPdf,
   getAnalytics,
   getAllRequests,
   updateStatus,
@@ -32,6 +33,7 @@ const { getWallet } = require("../controllers/walletController");
 const adminGuard = [protect, authorize("admin")];
 
 router.get("/analytics", adminGuard, getAnalytics);
+router.get("/analytics/export/pdf", adminGuard, exportOverviewPdf);
 router.get("/fund-analytics", adminGuard, getAnalytics);
 router.get("/fund-reports", adminGuard, getReports);
 

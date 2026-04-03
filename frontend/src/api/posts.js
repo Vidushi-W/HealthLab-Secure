@@ -3,6 +3,7 @@ import api from './api';
 const uploadsBaseUrl = api.defaults.baseURL?.replace(/\/api\/?$/, '') || '';
 
 export const getPosts = (params = {}) => api.get('/posts', { params });
+export const getPostSuggestions = (q) => api.get('/posts/suggestions', { params: { q } });
 export const getPostById = (id) => api.get(`/posts/${id}`);
 
 /** Create post. If data.imageFile is a File, sends multipart/form-data; otherwise JSON. */
@@ -36,7 +37,7 @@ export const addComment = (postId, content) => api.post(`/posts/${postId}/commen
 export const updateComment = (postId, commentId, content) => api.put(`/posts/${postId}/comments/${commentId}`, { content });
 export const deleteComment = (postId, commentId) => api.delete(`/posts/${postId}/comments/${commentId}`);
 
-export const likeToggle = (postId) => api.put(`/posts/${postId}/like`);
+export const likeToggle = (postId, payload = {}) => api.put(`/posts/${postId}/like`, payload);
 export const sharePost = (postId) => api.post(`/posts/${postId}/share`);
 export const savePost = (postId) => api.post(`/posts/${postId}/save`);
 export const unsavePost = (postId) => api.delete(`/posts/${postId}/save`);

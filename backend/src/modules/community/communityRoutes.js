@@ -12,6 +12,7 @@ const {
 } = require("./communityValidators");
 const {
   getPosts,
+  getSearchSuggestions,
   getSavedPosts,
   getPostById,
   createPost,
@@ -29,6 +30,7 @@ const { chat } = require("./chatbot/chatbotController");
 const { chatRules, validate: validateChat } = require("./chatbot/chatbotValidators");
 
 router.get("/", protect, getPosts);
+router.get("/suggestions", protect, getSearchSuggestions);
 router.get("/saved", protect, getSavedPosts);
 router.post("/chat", protect, chatRules(), validateChat, chat);
 

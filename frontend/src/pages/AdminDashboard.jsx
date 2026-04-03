@@ -281,7 +281,7 @@ const AdminDashboard = () => {
     if (!dataToExport || dataToExport.length === 0) return;
 
     const headers = activeTab === TAB_RESEARCHERS 
-      ? ['Name', 'Email', 'Qualification', 'Type', 'Status', 'Registered At']
+      ? ['ID', 'Name', 'Email', 'Qualification', 'Type', 'Status', 'Registered At']
       : ['Name', 'Email', 'Role', 'Status', 'Registered At'];
 
     const csvContent = [
@@ -289,6 +289,7 @@ const AdminDashboard = () => {
       ...dataToExport.map(item => {
         if (activeTab === TAB_RESEARCHERS) {
           return [
+            `"${item.status === 'approved' ? (item.researcherId || '') : ''}"`,
             `"${item.fullName || item.user?.name || ''}"`,
             `"${item.user?.email || ''}"`,
             `"${item.highestAcademicQualification || ''}"`,
@@ -318,10 +319,33 @@ const AdminDashboard = () => {
     link.remove();
   };
 
+  const handleExportOverviewPdf = async () => {
+    try {
+      const days = dateRange === 'all' ? 365 : parseInt(dateRange, 10);
+      const response = await api.get(`/admin/analytics/export/pdf?days=${days}`, {
+        responseType: 'blob',
+      });
+
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `overview-report-${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error exporting overview PDF:', err);
+      alert(err.response?.data?.message || 'Failed to export overview PDF.');
+    }
+  };
+
   const filteredResearchers = researchers.filter(r => {
+    const researcherCode = (r.researcherId || '').toLowerCase();
     const name = (r.fullName || r.user?.name || '').toLowerCase();
     const email = (r.user?.email || '').toLowerCase();
-    const matchSearch = name.includes(searchTerm.toLowerCase()) || email.includes(searchTerm.toLowerCase());
+    const matchSearch = researcherCode.includes(searchTerm.toLowerCase()) || name.includes(searchTerm.toLowerCase()) || email.includes(searchTerm.toLowerCase());
     return matchSearch;
   });
 
@@ -381,25 +405,30 @@ const AdminDashboard = () => {
               <h2 className="text-2xl font-bold text-slate-900">Platform Overview</h2>
               <p className="text-sm text-slate-500 mt-1">Key metrics and platform trends</p>
             </div>
-            <div className="flex items-center gap-3 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
-              {[
-                { label: '7D', value: '7' },
-                { label: '30D', value: '30' },
-                { label: '90D', value: '90' },
-                { label: 'All', value: 'all' },
-              ].map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => setDateRange(opt.value)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                    dateRange === opt.value
-                      ? 'bg-indigo-600 text-white shadow-md'
-                      : 'text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+            <div className="flex flex-wrap items-center gap-3">
+              <Button variant="outline" size="sm" onClick={handleExportOverviewPdf} className="flex items-center gap-2">
+                <Download size={16} /> Export PDF
+              </Button>
+              <div className="flex items-center gap-3 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+                {[
+                  { label: '7D', value: '7' },
+                  { label: '30D', value: '30' },
+                  { label: '90D', value: '90' },
+                  { label: 'All', value: 'all' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setDateRange(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                      dateRange === opt.value
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -536,6 +565,9 @@ const AdminDashboard = () => {
               <table className="min-w-full border-separate border-spacing-0">
                 <thead className="bg-slate-50">
                   <tr>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[110px] border-b border-slate-100">
+                      ID
+                    </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[200px] border-b border-slate-100">
                       Name
                     </th>
@@ -559,7 +591,7 @@ const AdminDashboard = () => {
                 <tbody className="bg-white divide-y divide-slate-100">
                   {researchersLoading ? (
                     Array.from({ length: 5 }).map((_, i) => (
-                      <TableRowSkeleton key={i} cols={6} />
+                      <TableRowSkeleton key={i} cols={7} />
                     ))
                   ) : filteredResearchers.length > 0 ? (
                     filteredResearchers.map((r) => {
@@ -571,6 +603,9 @@ const AdminDashboard = () => {
                           onClick={() => setDetailModalResearcher(r)}
                           className="hover:bg-white/80 cursor-pointer transition-colors"
                         >
+                          <td className="px-6 py-4 text-sm font-semibold text-slate-700">
+                            {s === 'approved' ? (r.researcherId || '—') : '—'}
+                          </td>
                           <td className="px-6 py-4 text-sm text-gray-900">
                             <div className="flex items-center gap-2">
                               <span>{r.fullName || (r.user && r.user.name) || '—'}</span>
@@ -624,7 +659,7 @@ const AdminDashboard = () => {
                     })
                   ) : (
                     <tr>
-                      <td colSpan={6} className="px-4 py-12 text-center">
+                      <td colSpan={7} className="px-4 py-12 text-center">
                         <EmptyState
                           title="No researchers found"
                           description="Try changing the status filter."
@@ -695,14 +730,18 @@ const AdminDashboard = () => {
                   ) : filteredUsers.length > 0 ? (
                     filteredUsers.map((user) => {
                       const role = (user.role || '').toLowerCase();
+                      const isAdmin = role === 'admin';
                       const resStatus = (user.researcherStatus || '').toLowerCase();
-                      const isResearcherPending = role === 'researcher' && (resStatus === 'pending' || resStatus === '');
+                      const isResearcherPending = !isAdmin && role === 'researcher' && (resStatus === 'pending' || resStatus === '');
                       return (
-                        <tr key={user._id} className="hover:bg-white/80 transition-colors">
+                        <tr key={user._id} className={`${isAdmin ? 'bg-amber-50/40' : 'hover:bg-white/80'} transition-colors`}>
                           <td className="px-6 py-4 text-sm text-gray-900">{user.name}</td>
                           <td className="px-6 py-4 text-sm text-gray-600">{user.email}</td>
                           <td className="px-6 py-4">
-                            <Badge role={role}>{user.role || '—'}</Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge role={role}>{user.role || '—'}</Badge>
+                              {isAdmin && <span className="text-[11px] font-semibold text-amber-700">Pinned</span>}
+                            </div>
                           </td>
                           <td className="px-6 py-4">
                             {user.researcherStatus ? (
@@ -716,13 +755,16 @@ const AdminDashboard = () => {
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex justify-end items-center gap-1 flex-wrap">
+                              {isAdmin ? (
+                                <span className="text-xs text-gray-500">Protected account</span>
+                              ) : null}
                               {isResearcherPending && (
                                 <>
                                   <Button size="sm" variant="success" onClick={() => handleApproveUser(user._id)}>Approve</Button>
                                   <Button size="sm" variant="danger" onClick={() => handleRejectUser(user._id)}>Reject</Button>
                                 </>
                               )}
-                              {String(user._id) === String(currentUserId) ? (
+                              {isAdmin ? null : String(user._id) === String(currentUserId) ? (
                                 <span className="text-xs text-gray-400">(you)</span>
                               ) : (
                                 <Button

@@ -51,6 +51,100 @@ function pipeResearchersReportToResponse(researchers, res) {
   doc.end();
 }
 
+/**
+ * Pipe an admin overview analytics report PDF to the given response stream.
+ * @param {object} analytics - Analytics payload from analyticsService.getDashboardStats
+ * @param {object} res - Express response object (stream)
+ * @param {number} days - Number of days used for trend generation
+ */
+function pipeOverviewReportToResponse(analytics, res, days) {
+  const filename = `admin-overview-report-${new Date().toISOString().slice(0, 10)}.pdf`;
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+  const doc = new PDFDocument({ margin: MARGIN });
+  doc.pipe(res);
+
+  const summary = analytics?.summary || {};
+  const userRoles = analytics?.userRoles || {};
+  const researcherStatus = analytics?.researcherStatus || {};
+  const qualifications = Array.isArray(analytics?.qualifications) ? analytics.qualifications : [];
+  const trend = Array.isArray(analytics?.registrationTrend) ? analytics.registrationTrend : [];
+
+  doc.fontSize(FONT_TITLE).text("Health Lab - Admin Overview Report", { align: "center" });
+  doc.moveDown();
+  doc.fontSize(FONT_SUBTITLE).text(`Generated: ${new Date().toISOString()}`, { align: "center" });
+  doc.fontSize(FONT_SUBTITLE).text(`Range: Last ${days} days`, { align: "center" });
+  doc.moveDown(2);
+
+  doc.fontSize(14).text("Summary", { underline: true });
+  doc.moveDown(0.5);
+  doc.fontSize(FONT_DETAIL);
+  doc.text(`Total Users: ${Number(summary.totalUsers || 0)}`);
+  doc.text(`Total Researchers: ${Number(summary.totalResearchers || 0)}`);
+  doc.text(`Pending Researchers: ${Number(summary.pendingResearchers || 0)}`);
+  doc.text(`Approved Researchers: ${Number(summary.approvedResearchers || 0)}`);
+  doc.text(`Rejected Researchers: ${Number(summary.rejectedResearchers || 0)}`);
+  doc.text(`New Users This Week: ${Number(summary.newUsersThisWeek || 0)}`);
+  doc.text(`Growth Rate: ${Number(summary.growthRate || 0)}%`);
+  doc.moveDown(1.5);
+
+  doc.fontSize(14).text("User Role Distribution", { underline: true });
+  doc.moveDown(0.5);
+  doc.fontSize(FONT_DETAIL);
+  const roleEntries = Object.entries(userRoles);
+  if (roleEntries.length === 0) {
+    doc.text("No role distribution data available.");
+  } else {
+    roleEntries.forEach(([name, value]) => {
+      doc.text(`${name}: ${Number(value || 0)}`);
+    });
+  }
+  doc.moveDown(1.5);
+
+  doc.fontSize(14).text("Researcher Status Distribution", { underline: true });
+  doc.moveDown(0.5);
+  doc.fontSize(FONT_DETAIL);
+  const statusEntries = Object.entries(researcherStatus);
+  if (statusEntries.length === 0) {
+    doc.text("No researcher status data available.");
+  } else {
+    statusEntries.forEach(([name, value]) => {
+      doc.text(`${name}: ${Number(value || 0)}`);
+    });
+  }
+  doc.moveDown(1.5);
+
+  doc.fontSize(14).text("Top Qualifications", { underline: true });
+  doc.moveDown(0.5);
+  doc.fontSize(FONT_DETAIL);
+  if (qualifications.length === 0) {
+    doc.text("No qualification data available.");
+  } else {
+    qualifications.slice(0, 15).forEach((row, idx) => {
+      doc.text(`${idx + 1}. ${row?.name || "Unspecified"}: ${Number(row?.count || 0)}`);
+    });
+  }
+  doc.moveDown(1.5);
+
+  doc.fontSize(14).text("Registration Trend", { underline: true });
+  doc.moveDown(0.5);
+  doc.fontSize(FONT_DETAIL);
+  if (trend.length === 0) {
+    doc.text("No registration trend data available.");
+  } else {
+    trend.forEach((row) => {
+      doc.text(`${row?.date || "Unknown date"}: ${Number(row?.count || 0)}`);
+      if (doc.y > doc.page.height - 60) {
+        doc.addPage();
+      }
+    });
+  }
+
+  doc.end();
+}
+
 module.exports = {
   pipeResearchersReportToResponse,
+  pipeOverviewReportToResponse,
 };

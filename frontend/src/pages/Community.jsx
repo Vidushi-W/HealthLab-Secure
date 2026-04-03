@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   getPosts,
+  getPostSuggestions,
   createPost,
   getPostImageUrl,
   likeToggle,
@@ -31,6 +32,10 @@ const Community = () => {
   const [error, setError] = useState('');
   const [sort, setSort] = useState('latest');
   const [search, setSearch] = useState('');
+  const [activeTag, setActiveTag] = useState('');
+  const [activeAuthor, setActiveAuthor] = useState('');
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [formData, setFormData] = useState({ title: '', content: '', tags: '' });
   const [postImageFile, setPostImageFile] = useState(null);
@@ -42,36 +47,87 @@ const Community = () => {
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState('');
+  const [voteStateByPost, setVoteStateByPost] = useState({});
+  const suggestionHideTimerRef = useRef(null);
 
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const userId = user._id;
+  const [followedTopics, setFollowedTopics] = useState(() => {
+    try {
+      const raw = localStorage.getItem('community_followed_topics');
+      const parsed = JSON.parse(raw || '[]');
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+      return [];
+    }
+  });
 
   useEffect(() => {
     if (!token) {
       navigate('/login');
       return;
     }
-    fetchFeed();
-  }, [token, sort, activeTab]);
+    if (activeTab === 'feed') {
+      fetchFeed();
+    }
+  }, [token, sort, activeTab, activeTag, activeAuthor, followedTopics]);
 
   useEffect(() => {
     if (token && activeTab === 'saved') fetchSaved();
   }, [token, activeTab]);
 
-  const fetchFeed = async () => {
+  useEffect(() => {
+    if (activeTab !== 'feed') {
+      setSearchSuggestions([]);
+      return;
+    }
+    const term = search.trim();
+    if (term.length < 2) {
+      setSearchSuggestions([]);
+      return;
+    }
+    const handle = setTimeout(async () => {
+      try {
+        const { data } = await getPostSuggestions(term);
+        setSearchSuggestions(Array.isArray(data?.suggestions) ? data.suggestions : []);
+      } catch (_) {
+        setSearchSuggestions([]);
+      }
+    }, 220);
+    return () => clearTimeout(handle);
+  }, [search, activeTab]);
+
+  const fetchFeed = async (overrides = {}) => {
     try {
       setLoading(true);
-      const params = { sort };
-      if (search.trim()) params.q = search.trim();
+      const appliedSort = overrides.sort ?? sort;
+      const appliedSearch = overrides.search ?? search;
+      const appliedTag = overrides.tag ?? activeTag;
+      const appliedAuthor = overrides.author ?? activeAuthor;
+
+      const params = { sort: appliedSort };
+      if (String(appliedSearch || '').trim()) params.q = String(appliedSearch).trim();
+      if (appliedTag) params.tag = appliedTag;
+      if (appliedAuthor) params.author = appliedAuthor;
+      if (appliedSort === 'following' && followedTopics.length > 0) {
+        params.followingTags = followedTopics.join(',');
+      }
       const { data } = await getPosts(params);
       const list = data.posts || [];
       setPosts(list);
       const liked = new Set();
+      const voteState = {};
       list.forEach((p) => {
-        if (p.likes && userId && p.likes.some((l) => String(l === 'object' ? l._id : l) === String(userId))) liked.add(p._id);
+        const likeIds = Array.isArray(p.likes) ? p.likes : [];
+        const downvoteIds = Array.isArray(p.downvotes) ? p.downvotes : [];
+        const likedByMe = likeIds.some((l) => String(l && (l._id || l)) === String(userId));
+        const downvotedByMe = downvoteIds.some((l) => String(l && (l._id || l)) === String(userId));
+        if (likedByMe) liked.add(p._id);
+        voteState[p._id] = likedByMe ? 'up' : (downvotedByMe ? 'down' : null);
       });
       setLikedPostIds(liked);
+      setVoteStateByPost(voteState);
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load posts');
@@ -88,6 +144,15 @@ const Community = () => {
       const list = data.posts || [];
       setPosts(list);
       setSavedIds(new Set(list.map((p) => p._id)));
+      const voteState = {};
+      list.forEach((p) => {
+        const likeIds = Array.isArray(p.likes) ? p.likes : [];
+        const downvoteIds = Array.isArray(p.downvotes) ? p.downvotes : [];
+        const likedByMe = likeIds.some((l) => String(l && (l._id || l)) === String(userId));
+        const downvotedByMe = downvoteIds.some((l) => String(l && (l._id || l)) === String(userId));
+        voteState[p._id] = likedByMe ? 'up' : (downvotedByMe ? 'down' : null);
+      });
+      setVoteStateByPost(voteState);
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load saved posts');
@@ -123,16 +188,41 @@ const Community = () => {
     }
   };
 
-  const handleLike = async (postId) => {
+  const persistFollowedTopics = (topics) => {
+    if (!Array.isArray(topics) || topics.length === 0) return;
     try {
-      const { data } = await likeToggle(postId);
-      setPosts((prev) => prev.map((p) => (p._id === postId ? { ...p, likeCount: data.likeCount } : p)));
+      const next = Array.from(new Set([...(followedTopics || []), ...topics.map((t) => String(t).trim()).filter(Boolean)])).slice(0, 30);
+      localStorage.setItem('community_followed_topics', JSON.stringify(next));
+      setFollowedTopics(next);
+    } catch (_) {}
+  };
+
+  const handleLike = async (postId, vote = 'up') => {
+    try {
+      const { data } = await likeToggle(postId, { vote });
+      setPosts((prev) => prev.map((p) => (
+        p._id === postId
+          ? {
+              ...p,
+              likeCount: data.upvoteCount ?? data.likeCount ?? p.likeCount ?? 0,
+              upvoteCount: data.upvoteCount ?? p.upvoteCount ?? p.likeCount ?? 0,
+              downvoteCount: data.downvoteCount ?? p.downvoteCount ?? 0,
+              score: data.score ?? ((data.upvoteCount ?? p.upvoteCount ?? 0) - (data.downvoteCount ?? p.downvoteCount ?? 0)),
+            }
+          : p
+      )));
       setLikedPostIds((prev) => {
         const next = new Set(prev);
-        if (data.liked) next.add(postId);
+        if (data.voted === 'up' || data.liked) next.add(postId);
         else next.delete(postId);
         return next;
       });
+      setVoteStateByPost((prev) => ({ ...prev, [postId]: data.voted || null }));
+      const target = posts.find((p) => p._id === postId);
+      if (vote === 'up' && target) {
+        const tags = [...(target.tags || []), ...(target.aiTags || [])];
+        persistFollowedTopics(tags);
+      }
     } catch (_) {}
   };
 
@@ -159,6 +249,48 @@ const Community = () => {
         return next;
       });
     } catch (_) {}
+  };
+
+  const handleTagClick = (tag) => {
+    setActiveTag(tag);
+    setActiveAuthor('');
+    setSort('latest');
+  };
+
+  const clearDiscoveryFilters = () => {
+    setActiveTag('');
+    setActiveAuthor('');
+  };
+
+  const applySuggestion = (suggestion) => {
+    if (!suggestion) return;
+    if (suggestion.type === 'tag') {
+      setActiveTag(suggestion.value);
+      setActiveAuthor('');
+      setSearch('');
+    } else if (suggestion.type === 'user') {
+      setActiveAuthor(suggestion.value);
+      setActiveTag('');
+      setSearch('');
+    } else {
+      setSearch(suggestion.value);
+      fetchFeed({ search: suggestion.value });
+    }
+    setShowSuggestions(false);
+  };
+
+  const highlightText = (text, term) => {
+    const value = String(text || '');
+    const query = String(term || '').trim();
+    if (!query) return value;
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escaped})`, 'i');
+    const parts = value.split(regex);
+    return parts.map((part, idx) => (
+      part.toLowerCase() === query.toLowerCase()
+        ? <mark key={`m-${idx}`} className="bg-amber-100 text-amber-900 px-0.5 rounded-sm">{part}</mark>
+        : <React.Fragment key={`t-${idx}`}>{part}</React.Fragment>
+    ));
   };
 
   const isLiked = (post) => likedPostIds.has(post._id);
@@ -238,29 +370,92 @@ const Community = () => {
                 className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-primary focus:border-transparent"
               >
                 <option value="latest">Latest</option>
-                <option value="popular">Most liked</option>
-                <option value="most_commented">Most commented</option>
+                <option value="trending">Trending</option>
+                <option value="most_discussed">Most Discussed</option>
+                <option value="following">Following</option>
               </select>
-              <div className="flex flex-1 min-w-0 max-w-xs">
+              <div className="relative flex flex-1 min-w-0 max-w-sm">
                 <input
                   type="text"
-                  placeholder="Search posts..."
+                  placeholder="Search posts, tags, users..."
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => {
+                    if (suggestionHideTimerRef.current) clearTimeout(suggestionHideTimerRef.current);
+                    suggestionHideTimerRef.current = setTimeout(() => setShowSuggestions(false), 150);
+                  }}
                   onKeyDown={(e) => e.key === 'Enter' && fetchFeed()}
                   className="block w-full rounded-l-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
                 <Button type="button" size="sm" onClick={fetchFeed} className="rounded-l-none">
                   Search
                 </Button>
+                {showSuggestions && searchSuggestions.length > 0 && (
+                  <div className="absolute top-[calc(100%+4px)] left-0 right-0 z-20 rounded-lg border border-gray-200 bg-white shadow-lg max-h-72 overflow-y-auto">
+                    {searchSuggestions.map((s, idx) => (
+                      <button
+                        key={`${s.type}-${s.value}-${idx}`}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => applySuggestion(s)}
+                        className="w-full text-left px-3 py-2 hover:bg-slate-50 border-b last:border-b-0 border-slate-100"
+                      >
+                        <p className="text-sm text-slate-800">{s.value}</p>
+                        <p className="text-[11px] uppercase tracking-wide text-slate-500">{s.type} · {s.count || 0} posts</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
+              {(activeTag || activeAuthor) && (
+                <button
+                  type="button"
+                  onClick={clearDiscoveryFilters}
+                  className="text-xs font-semibold text-slate-600 px-2 py-1 rounded-md border border-slate-200 hover:bg-slate-50"
+                >
+                  Clear filters
+                </button>
+              )}
             </>
           )}
         </div>
-        <Button onClick={() => setCreateOpen(!createOpen)} className="shrink-0">
+        <Button
+          onClick={() => setCreateOpen(!createOpen)}
+          className="shrink-0 px-5 py-3 text-base font-semibold shadow-lg shadow-primary/20 bg-primary hover:bg-primary-hover"
+        >
           {createOpen ? 'Cancel' : '+ New Post'}
         </Button>
       </div>
+
+      <div className="mb-5 rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-emerald-50 px-4 py-3 shadow-sm">
+        <p className="text-sm text-slate-700">
+          Share your research question, findings, or a quick discussion point to get feedback from the community.
+        </p>
+      </div>
+
+      {(activeTag || activeAuthor || sort === 'following') && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          {sort === 'following' && (
+            <span className="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold">
+              Following topics
+            </span>
+          )}
+          {activeTag && (
+            <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">
+              Tag: {activeTag}
+            </span>
+          )}
+          {activeAuthor && (
+            <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
+              User: {activeAuthor}
+            </span>
+          )}
+        </div>
+      )}
 
       {error && (
         <ErrorMessage message={error} onDismiss={() => setError('')} className="mb-4" />
@@ -368,9 +563,9 @@ const Community = () => {
                     </div>
                   )}
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                <h3 className="text-lg sm:text-xl font-semibold text-slate-900 mb-2 tracking-tight leading-tight">
                   <Link to={`/community/${post._id}`} className="hover:text-primary transition-colors">
-                    {post.title}
+                    {highlightText(post.title, search)}
                   </Link>
                 </h3>
                 {post.image && (
@@ -382,38 +577,90 @@ const Community = () => {
                     />
                   </div>
                 )}
-                <p className="text-gray-600 text-sm leading-relaxed mb-3">
-                  {post.content.length > 200 ? post.content.slice(0, 200) + '...' : post.content}
+                <p className="text-slate-500 text-sm leading-relaxed mb-3">
+                  {highlightText(post.content.length > 220 ? post.content.slice(0, 220) + '...' : post.content, search)}
                 </p>
                 {((post.aiTags && post.aiTags.length > 0) || (post.tags && post.tags.length > 0)) && (
                   <div className="flex flex-wrap gap-2 mb-3">
                     {post.aiTags?.map((t) => (
-                      <span key={t} className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-medium">
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => handleTagClick(t)}
+                        className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-medium hover:bg-emerald-100 transition-colors"
+                      >
                         {t}
-                      </span>
+                      </button>
                     ))}
                     {post.tags?.map((t) => (
-                      <span key={'u-' + t} className="px-2 py-0.5 rounded-full bg-primary-light text-primary text-xs font-medium">
+                      <button
+                        key={'u-' + t}
+                        type="button"
+                        onClick={() => handleTagClick(t)}
+                        className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-medium hover:bg-slate-200 transition-colors"
+                      >
                         {t}
-                      </span>
+                      </button>
                     ))}
                   </div>
                 )}
+                {post.topComment?.content && (
+                  <Link
+                    to={`/community/${post._id}`}
+                    className="block mb-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 hover:border-slate-300 transition-colors"
+                  >
+                    <p className="text-[11px] uppercase tracking-wide text-slate-500 mb-1">
+                      Top comment {post.topComment?.author?.name ? `by ${post.topComment.author.name}` : ''}
+                    </p>
+                    <p className="text-sm text-slate-700 leading-relaxed">
+                      {highlightText(String(post.topComment.content).slice(0, 130) + (String(post.topComment.content).length > 130 ? '...' : ''), search)}
+                    </p>
+                  </Link>
+                )}
                 <div className="flex flex-wrap items-center gap-4 pt-3 border-t border-gray-100">
+                  <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
+                    <button
+                      type="button"
+                      onClick={() => handleLike(post._id, 'up')}
+                      className={`px-2 py-1 rounded-md text-sm font-semibold transition-colors ${
+                        voteStateByPost[post._id] === 'up' ? 'bg-emerald-100 text-emerald-700' : 'text-slate-600 hover:bg-white'
+                      }`}
+                      title="Upvote"
+                    >
+                      ▲
+                    </button>
+                    <span className="min-w-8 text-center text-sm font-semibold text-slate-800">{post.score ?? ((post.upvoteCount || post.likeCount || 0) - (post.downvoteCount || 0))}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleLike(post._id, 'down')}
+                      className={`px-2 py-1 rounded-md text-sm font-semibold transition-colors ${
+                        voteStateByPost[post._id] === 'down' ? 'bg-rose-100 text-rose-700' : 'text-slate-600 hover:bg-white'
+                      }`}
+                      title="Downvote"
+                    >
+                      ▼
+                    </button>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => handleLike(post._id)}
+                    onClick={() => handleLike(post._id, 'up')}
                     className={`flex items-center gap-1 text-sm font-medium transition-colors ${
                       isLiked(post) ? 'text-red-600' : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
-                    <span>{isLiked(post) ? '♥' : '♡'}</span> {post.likeCount || 0}
+                    <span>{isLiked(post) ? '♥' : '♡'}</span> {post.upvoteCount || post.likeCount || 0}
                   </button>
                   <Link
                     to={`/community/${post._id}`}
                     className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
                   >
                     💬 {post.commentCount || 0}
+                  </Link>
+                  <Link
+                    to={`/community/${post._id}?reply=1#comment-box`}
+                    className="text-sm text-primary font-semibold hover:underline"
+                  >
+                    Reply
                   </Link>
                   <button
                     type="button"

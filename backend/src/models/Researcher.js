@@ -35,7 +35,7 @@ const researcherSchema = new mongoose.Schema(
     reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     reviewedAt: { type: Date, default: null },
     reviewNotes: { type: String, trim: true, default: "" },
-    researcherId: { type: String, unique: true, sparse: true }, // e.g., RE001
+    researcherId: { type: String, unique: true, sparse: true }, // e.g., RES001
     isFlagged: { type: Boolean, default: false },
     flags: [
       {

@@ -26,6 +26,7 @@ const postSchema = new mongoose.Schema(
     aiTags: [{ type: String, trim: true }],
     author: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    downvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     shareCount: { type: Number, default: 0 },
     savedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     comments: [commentSchema],

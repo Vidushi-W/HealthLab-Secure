@@ -21,6 +21,7 @@ const getPendingResearchers = asyncHandler(async (req, res) => {
 
 const getResearchers = asyncHandler(async (req, res) => {
   const { status } = req.query;
+  await adminService.ensureApprovedResearcherIds();
   const filter = status ? { status } : {};
   const researchers = await Researcher.find(filter)
     .populate("user", POPULATE.user)
@@ -95,6 +96,7 @@ const deleteResearcher = asyncHandler(async (req, res) => {
 
 const getUsers = asyncHandler(async (req, res) => {
   const { role } = req.query;
+  await adminService.ensureApprovedResearcherIds();
   const list = await adminService.getUsersWithResearcherStatus(role || null);
   return res.status(HTTP_STATUS.OK).json(list);
 });
@@ -112,7 +114,14 @@ const approveUser = asyncHandler(async (req, res) => {
     return errorResponse(res, HTTP_STATUS.NOT_FOUND, "User not found");
   }
 
-  await Researcher.findOneAndUpdate({ user: id }, { status: "approved" });
+  const researcher = await adminService.findResearcherByUserId(id);
+  if (researcher && (researcher.status === RESEARCHER_STATUS.PENDING || !researcher.status)) {
+    await adminService.updateResearcherReview(
+      researcher._id,
+      { status: RESEARCHER_STATUS.APPROVED, reviewNotes: researcher.reviewNotes || "" },
+      req.user._id
+    );
+  }
 
   return res.status(HTTP_STATUS.OK).json(user);
 });
@@ -125,7 +134,14 @@ const rejectUser = asyncHandler(async (req, res) => {
     return errorResponse(res, HTTP_STATUS.NOT_FOUND, "User not found");
   }
 
-  await Researcher.findOneAndUpdate({ user: id }, { status: "rejected" });
+  const researcher = await adminService.findResearcherByUserId(id);
+  if (researcher && (researcher.status === RESEARCHER_STATUS.PENDING || !researcher.status)) {
+    await adminService.updateResearcherReview(
+      researcher._id,
+      { status: RESEARCHER_STATUS.REJECTED, reviewNotes: researcher.reviewNotes || "" },
+      req.user._id
+    );
+  }
 
   return res.status(HTTP_STATUS.OK).json(user);
 });
@@ -196,6 +212,13 @@ const getAnalytics = asyncHandler(async (req, res) => {
   return res.status(HTTP_STATUS.OK).json(data);
 });
 
+const exportOverviewPdf = asyncHandler(async (req, res) => {
+  const parsedDays = Number.parseInt(req.query.days, 10);
+  const days = Number.isFinite(parsedDays) && parsedDays > 0 ? parsedDays : 30;
+  const data = await analyticsService.getDashboardStats(days);
+  pdfExportService.pipeOverviewReportToResponse(data, res, days);
+});
+
 const getReports = asyncHandler(async (req, res) => {
   const data = await analyticsService.getReports(req.query);
   return res.status(HTTP_STATUS.OK).json(data);
@@ -219,6 +242,7 @@ module.exports = {
   deleteUser,
   deleteExperiment,
   exportResearchersPdf,
+  exportOverviewPdf,
   getAnalytics,
   getAllRequests,
   updateStatus,

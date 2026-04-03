@@ -316,7 +316,7 @@ const PostDetail = () => {
       <section className="mt-8">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Comments ({comments.length})</h2>
         {error && <ErrorMessage message={error} onDismiss={() => setError('')} className="mb-4" />}
-        <Card className="mb-6">
+        <Card className="mb-6" id="comment-box">
           <form onSubmit={handleAddComment} className="space-y-3">
             <Textarea
               placeholder="Write a comment..."

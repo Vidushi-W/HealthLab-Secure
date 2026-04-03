@@ -15,6 +15,15 @@ async function getPosts(req, res, next) {
   }
 }
 
+async function getSearchSuggestions(req, res, next) {
+  try {
+    const suggestions = await communityService.getSearchSuggestions(req.query);
+    return res.status(HTTP_STATUS.OK).json({ success: true, suggestions });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function getSavedPosts(req, res, next) {
   try {
     const userId = getUserId(req);
@@ -90,7 +99,8 @@ async function likeToggle(req, res, next) {
   try {
     const userId = getUserId(req);
     if (!userId) return errorResponse(res, HTTP_STATUS.UNAUTHORIZED, "Authentication required");
-    const result = await communityService.likeToggle(req.params.id, userId);
+    const vote = req.body && req.body.vote ? String(req.body.vote).toLowerCase() : "up";
+    const result = await communityService.voteToggle(req.params.id, userId, vote);
     if (!result) return errorResponse(res, HTTP_STATUS.NOT_FOUND, "Post not found");
     return res.status(HTTP_STATUS.OK).json({ success: true, ...result });
   } catch (err) {
@@ -177,6 +187,7 @@ async function deleteComment(req, res, next) {
 
 module.exports = {
   getPosts,
+  getSearchSuggestions,
   getSavedPosts,
   getPostById,
   createPost,

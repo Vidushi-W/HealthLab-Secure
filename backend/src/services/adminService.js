@@ -9,21 +9,63 @@ const { RESEARCHER_TYPES } = require("../models/Researcher");
 
 const POPULATE_USER = "name email role";
 const POPULATE_REVIEWED_BY = "name email";
+const RESEARCHER_ID_PREFIX = "RES";
+const RESEARCHER_ID_WIDTH = 3;
 
-async function generateNextResearcherId() {
-  const lastResearcher = await Researcher.findOne({ researcherId: { $ne: null } })
-    .sort({ researcherId: -1 })
-    .exec();
+function parseResearcherIdSequence(value) {
+  if (!value || typeof value !== "string") return null;
+  const match = value.trim().match(/^RES?(\d+)$/i);
+  if (!match) return null;
+  const seq = Number.parseInt(match[1], 10);
+  return Number.isFinite(seq) && seq > 0 ? seq : null;
+}
 
-  let nextNum = 1;
-  if (lastResearcher && lastResearcher.researcherId) {
-    const match = lastResearcher.researcherId.match(/RE(\d+)/);
-    if (match) {
-      nextNum = parseInt(match[1], 10) + 1;
-    }
-  }
+function formatResearcherId(sequence) {
+  return `${RESEARCHER_ID_PREFIX}${String(sequence).padStart(RESEARCHER_ID_WIDTH, "0")}`;
+}
 
-  return `RE${nextNum.toString().padStart(3, "0")}`;
+async function getCurrentMaxResearcherSequence() {
+  const rows = await Researcher.find({ researcherId: { $exists: true, $ne: null } })
+    .select("researcherId")
+    .lean();
+  return rows.reduce((max, row) => {
+    const seq = parseResearcherIdSequence(row?.researcherId);
+    return seq && seq > max ? seq : max;
+  }, 0);
+}
+
+async function assignMissingApprovedResearcherIds() {
+  const approvedWithoutIds = await Researcher.find({
+    status: RESEARCHER_STATUS.APPROVED,
+    $or: [
+      { researcherId: { $exists: false } },
+      { researcherId: null },
+      { researcherId: "" },
+    ],
+  })
+    .sort({ reviewedAt: 1, createdAt: 1, _id: 1 })
+    .select("_id")
+    .lean();
+
+  if (approvedWithoutIds.length === 0) return;
+
+  let nextSequence = (await getCurrentMaxResearcherSequence()) + 1;
+  const operations = approvedWithoutIds.map((row) => {
+    const researcherId = formatResearcherId(nextSequence);
+    nextSequence += 1;
+    return {
+      updateOne: {
+        filter: { _id: row._id },
+        update: { $set: { researcherId } },
+      },
+    };
+  });
+
+  await Researcher.bulkWrite(operations);
+}
+
+async function ensureApprovedResearcherIds() {
+  await assignMissingApprovedResearcherIds();
 }
 
 async function findResearcherById(id) {
@@ -45,13 +87,19 @@ async function updateResearcherReview(researcherId, { status, reviewNotes }, rev
   researcher.reviewedAt = new Date();
   researcher.reviewedBy = reviewedByUserId;
 
-  // Assign researcherId if approved and not already assigned
-  if (status === RESEARCHER_STATUS.APPROVED && !researcher.researcherId) {
-    researcher.researcherId = await generateNextResearcherId();
+  await researcher.save();
+
+  if (status === RESEARCHER_STATUS.APPROVED) {
+    await assignMissingApprovedResearcherIds();
   }
 
-  await researcher.save();
   return findResearcherById(researcherId);
+}
+
+async function findResearcherByUserId(userId) {
+  return Researcher.findOne({ user: userId })
+    .populate("user", POPULATE_USER)
+    .populate("reviewedBy", POPULATE_REVIEWED_BY);
 }
 
 async function getUsersWithResearcherStatus(roleFilter = null) {
@@ -60,12 +108,24 @@ async function getUsersWithResearcherStatus(roleFilter = null) {
   const userIds = users.map((u) => u._id);
   const researchers = await Researcher.find({ user: { $in: userIds } });
   const researcherByUser = new Map(researchers.map((r) => [r.user.toString(), r]));
-  return users.map((u) => {
+  const mappedUsers = users.map((u) => {
     const uObj = u.toObject();
     const r = researcherByUser.get(u._id.toString());
-    if (r) uObj.researcherStatus = r.status;
+    if (r) {
+      uObj.researcherStatus = r.status;
+      uObj.researcherId = r.researcherId || null;
+    }
     return uObj;
   });
+
+  mappedUsers.sort((a, b) => {
+    const aAdmin = String(a.role || "").toLowerCase() === USER_ROLE.ADMIN ? 1 : 0;
+    const bAdmin = String(b.role || "").toLowerCase() === USER_ROLE.ADMIN ? 1 : 0;
+    if (aAdmin !== bAdmin) return bAdmin - aAdmin;
+    return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+  });
+
+  return mappedUsers;
 }
 
 async function deleteExperimentWithOptions(experimentId, options, adminUserId) {
@@ -128,7 +188,9 @@ async function getResearcherAnalytics(overdueDays = 7) {
 
 module.exports = {
   findResearcherById,
+  findResearcherByUserId,
   updateResearcherReview,
+  ensureApprovedResearcherIds,
   getUsersWithResearcherStatus,
   deleteExperimentWithOptions,
   getResearcherAnalytics,
