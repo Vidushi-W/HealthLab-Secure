@@ -21,6 +21,7 @@ import { getCurrentUser, logoutUser } from './api/auth';
 function App() {
   const [user, setUser] = useState(getCurrentUser());
   const location = useLocation();
+  const isHomePage = location.pathname === '/';
 
   useEffect(() => {
     setUser(getCurrentUser());
@@ -37,33 +38,35 @@ function App() {
 
   const Layout = ({ children }) => (
     <div className="app-container">
-      <header className="app-header">
-        <div className="logo">HealthLab</div>
-        <nav>
-          <Link to="/" className="nav-btn">Home</Link>
-          <Link to="/experiments" className="nav-btn">Experiments</Link>
-          <Link to="/community" className="nav-btn">Community</Link>
-          <Link to="/fund" className="nav-btn">Fund</Link>
-          <Link to="/recommended" className="nav-btn">Recommended</Link>
-          <Link to="/my-studies" className="nav-btn">My Studies</Link>
-          {user && (user.role || '').toLowerCase() === 'researcher' && (
-            <Link to="/researcher/experiments" className="nav-btn">My Experiments</Link>
-          )}
-          {user && (user.role || '').toLowerCase() === 'researcher' && (
-            <Link to="/researcher/reviews" className="nav-btn">Research Reviews</Link>
-          )}
-          {user && (user.role || '').toLowerCase() === 'admin' && (
-            <Link to="/admin" className="nav-btn admin-link">Admin Dashboard</Link>
-          )}
-          {user ? (
-            <button className="nav-btn profile" onClick={handleLogout}>Logout ({user.name ? user.name.split(' ')[0] : 'User'})</button>
-          ) : (
-            <Link to="/login" className="nav-btn profile">Login</Link>
-          )}
-        </nav>
-      </header>
+      {!isHomePage && (
+        <header className="app-header">
+          <div className="logo">HealthLab</div>
+          <nav>
+            <Link to="/" className="nav-btn">Home</Link>
+            <Link to="/experiments" className="nav-btn">Experiments</Link>
+            <Link to="/community" className="nav-btn">Community</Link>
+            <Link to="/fund" className="nav-btn">Fund</Link>
+            <Link to="/recommended" className="nav-btn">Recommended</Link>
+            <Link to="/my-studies" className="nav-btn">My Studies</Link>
+            {user && (user.role || '').toLowerCase() === 'researcher' && (
+              <Link to="/researcher/experiments" className="nav-btn">My Experiments</Link>
+            )}
+            {user && (user.role || '').toLowerCase() === 'researcher' && (
+              <Link to="/researcher/reviews" className="nav-btn">Research Reviews</Link>
+            )}
+            {user && (user.role || '').toLowerCase() === 'admin' && (
+              <Link to="/admin" className="nav-btn admin-link">Admin Dashboard</Link>
+            )}
+            {user ? (
+              <button className="nav-btn profile" onClick={handleLogout}>Logout ({user.name ? user.name.split(' ')[0] : 'User'})</button>
+            ) : (
+              <Link to="/login" className="nav-btn profile">Login</Link>
+            )}
+          </nav>
+        </header>
+      )}
       <main
-        className={`main-content${researcherSoftPageBg ? ' main-content--researcher-soft' : ''}`}
+        className={`main-content${researcherSoftPageBg ? ' main-content--researcher-soft' : ''}${isHomePage ? ' main-content--home' : ''}`}
       >
         {children}
       </main>

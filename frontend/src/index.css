@@ -3,10 +3,10 @@
 @tailwind utilities;
 
 :root {
-    --primary-color: #4f46e5;
-    --primary-hover: #4338ca;
+    --primary-color: #1f67d2;
+    --primary-hover: #154ca3;
     --secondary-color: #10b981;
-    --background-color: #f3f4f6;
+    --background-color: #f3f7fd;
     --surface-color: #ffffff;
     --text-primary: #111827;
     --text-secondary: #6b7280;
@@ -15,7 +15,7 @@
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 * {
@@ -30,6 +30,10 @@ body {
     color: var(--text-primary);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+}
+
+#root {
+    width: 100%;
 }
 
 a {
@@ -310,6 +314,11 @@ nav {
     max-width: 1200px;
     margin: 0 auto;
     width: 100%;
+}
+
+.main-content--home {
+    max-width: none;
+    padding: 0;
 }
 
 /* Full-bleed soft blue for researcher experiments & reviews routes */
