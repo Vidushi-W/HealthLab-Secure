@@ -141,9 +141,6 @@ const ExperimentList = () => {
                             <SmartBadge score={experiment.matchScore} reason={experiment.matchReason} />
                             <h2>{experiment.title}</h2>
                             <p className="description">{experiment.description}</p>
-                            <div className="status-badge" data-status={experiment.status}>
-                                {experiment.status}
-                            </div>
                             <div className="experiment-details">
                                 <span>Participants: {experiment.currentParticipantCount || 0} / {experiment.participantLimit === 0 ? 'Unlimited' : experiment.participantLimit}</span>
                             </div>
