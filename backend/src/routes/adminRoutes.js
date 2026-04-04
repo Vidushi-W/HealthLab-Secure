@@ -19,8 +19,10 @@ const {
   getUnapprovedResearchers,
   approveUser,
   rejectUser,
+  deleteUser,
   deleteExperiment,
   exportResearchersPdf,
+  exportOverviewPdf,
   getAnalytics,
   getAllRequests,
   updateStatus,
@@ -33,6 +35,7 @@ const adminGuard = [protect, authorize("admin")];
 
 // Analytics and reports
 router.get("/analytics", adminGuard, getAnalytics);
+router.get("/analytics/export/pdf", adminGuard, exportOverviewPdf);
 router.get("/fund-analytics", adminGuard, getAnalytics);
 router.get("/fund-reports", adminGuard, getReports);
 
@@ -41,6 +44,7 @@ router.get("/users", adminGuard, getUsers);
 router.get("/users/unapproved", adminGuard, getUnapprovedResearchers);
 router.patch("/users/approve/:id", adminGuard, userActionRules(), validate, approveUser);
 router.patch("/users/reject/:id", adminGuard, userActionRules(), validate, rejectUser);
+router.delete("/users/:id", adminGuard, userActionRules(), validate, deleteUser);
 
 // Researchers: list pending, list (optional status filter), get one, approve/reject, delete, export PDF
 router.get("/researchers/pending", adminGuard, getPendingResearchers);

@@ -1,6 +1,7 @@
 // Community routes: posts (list, get, create, update, delete), likes, share, save, comments, and chat
 const router = require("express").Router();
 const { protect } = require("../../middleware/authMiddleware");
+const { uploadPostImage } = require("../../middleware/upload");
 const {
   postIdRules,
   createPostRules,
@@ -12,6 +13,7 @@ const {
 } = require("./communityValidators");
 const {
   getPosts,
+  getSearchSuggestions,
   getSavedPosts,
   getPostById,
   createPost,
@@ -30,6 +32,7 @@ const { chatRules, validate: validateChat } = require("./chatbot/chatbotValidato
 
 // List posts, saved posts, and chat (all protected)
 router.get("/", protect, getPosts);
+router.get("/suggestions", protect, getSearchSuggestions);
 router.get("/saved", protect, getSavedPosts);
 router.post("/chat", protect, chatRules(), validateChat, chat);
 
@@ -37,7 +40,7 @@ router.post("/chat", protect, chatRules(), validateChat, chat);
 router.get("/:id", protect, postIdRules(), validate, getPostById);
 
 // Create, update, delete post
-router.post("/", protect, createPostRules(), validate, createPost);
+router.post("/", protect, uploadPostImage, createPostRules(), validate, createPost);
 router.put("/:id", protect, updatePostRules(), validate, updatePost);
 router.delete("/:id", protect, postIdRules(), validate, deletePost);
 

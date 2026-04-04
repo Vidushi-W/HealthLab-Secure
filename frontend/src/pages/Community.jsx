@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import './Community.css';
 import {
   getPosts,
+  getPostSuggestions,
   createPost,
+  getPostImageUrl,
   likeToggle,
   sharePost,
   savePost,
@@ -12,6 +13,16 @@ import {
   deletePost,
   sendChatMessage,
 } from '../api/posts';
+import {
+  Button,
+  Card,
+  Modal,
+  Input,
+  Textarea,
+  PostCardSkeleton,
+  EmptyState,
+  ErrorMessage,
+} from '../components/ui';
 
 const Community = () => {
   const navigate = useNavigate();
@@ -21,46 +32,102 @@ const Community = () => {
   const [error, setError] = useState('');
   const [sort, setSort] = useState('latest');
   const [search, setSearch] = useState('');
+  const [activeTag, setActiveTag] = useState('');
+  const [activeAuthor, setActiveAuthor] = useState('');
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [formData, setFormData] = useState({ title: '', content: '', tags: '' });
+  const [postImageFile, setPostImageFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState('feed'); // 'feed' | 'saved'
+  const [activeTab, setActiveTab] = useState('feed');
   const [likedPostIds, setLikedPostIds] = useState(new Set());
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState('');
+  const [voteStateByPost, setVoteStateByPost] = useState({});
+  const suggestionHideTimerRef = useRef(null);
 
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const userId = user._id;
+  const [followedTopics, setFollowedTopics] = useState(() => {
+    try {
+      const raw = localStorage.getItem('community_followed_topics');
+      const parsed = JSON.parse(raw || '[]');
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+      return [];
+    }
+  });
 
   useEffect(() => {
     if (!token) {
       navigate('/login');
       return;
     }
-    fetchFeed();
-  }, [token, sort, activeTab]);
+    if (activeTab === 'feed') {
+      fetchFeed();
+    }
+  }, [token, sort, activeTab, activeTag, activeAuthor, followedTopics]);
 
   useEffect(() => {
     if (token && activeTab === 'saved') fetchSaved();
   }, [token, activeTab]);
 
-  const fetchFeed = async () => {
+  useEffect(() => {
+    if (activeTab !== 'feed') {
+      setSearchSuggestions([]);
+      return;
+    }
+    const term = search.trim();
+    if (term.length < 2) {
+      setSearchSuggestions([]);
+      return;
+    }
+    const handle = setTimeout(async () => {
+      try {
+        const { data } = await getPostSuggestions(term);
+        setSearchSuggestions(Array.isArray(data?.suggestions) ? data.suggestions : []);
+      } catch (_) {
+        setSearchSuggestions([]);
+      }
+    }, 220);
+    return () => clearTimeout(handle);
+  }, [search, activeTab]);
+
+  const fetchFeed = async (overrides = {}) => {
     try {
       setLoading(true);
-      const params = { sort };
-      if (search.trim()) params.q = search.trim();
+      const appliedSort = overrides.sort ?? sort;
+      const appliedSearch = overrides.search ?? search;
+      const appliedTag = overrides.tag ?? activeTag;
+      const appliedAuthor = overrides.author ?? activeAuthor;
+
+      const params = { sort: appliedSort };
+      if (String(appliedSearch || '').trim()) params.q = String(appliedSearch).trim();
+      if (appliedTag) params.tag = appliedTag;
+      if (appliedAuthor) params.author = appliedAuthor;
+      if (appliedSort === 'following' && followedTopics.length > 0) {
+        params.followingTags = followedTopics.join(',');
+      }
       const { data } = await getPosts(params);
       const list = data.posts || [];
       setPosts(list);
       const liked = new Set();
+      const voteState = {};
       list.forEach((p) => {
-        if (p.likes && userId && p.likes.some((l) => String(l === 'object' ? l._id : l) === String(userId))) liked.add(p._id);
+        const likeIds = Array.isArray(p.likes) ? p.likes : [];
+        const downvoteIds = Array.isArray(p.downvotes) ? p.downvotes : [];
+        const likedByMe = likeIds.some((l) => String(l && (l._id || l)) === String(userId));
+        const downvotedByMe = downvoteIds.some((l) => String(l && (l._id || l)) === String(userId));
+        if (likedByMe) liked.add(p._id);
+        voteState[p._id] = likedByMe ? 'up' : (downvotedByMe ? 'down' : null);
       });
       setLikedPostIds(liked);
+      setVoteStateByPost(voteState);
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load posts');
@@ -77,6 +144,15 @@ const Community = () => {
       const list = data.posts || [];
       setPosts(list);
       setSavedIds(new Set(list.map((p) => p._id)));
+      const voteState = {};
+      list.forEach((p) => {
+        const likeIds = Array.isArray(p.likes) ? p.likes : [];
+        const downvoteIds = Array.isArray(p.downvotes) ? p.downvotes : [];
+        const likedByMe = likeIds.some((l) => String(l && (l._id || l)) === String(userId));
+        const downvotedByMe = downvoteIds.some((l) => String(l && (l._id || l)) === String(userId));
+        voteState[p._id] = likedByMe ? 'up' : (downvotedByMe ? 'down' : null);
+      });
+      setVoteStateByPost(voteState);
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load saved posts');
@@ -99,8 +175,10 @@ const Community = () => {
         content: formData.content.trim(),
         tags: formData.tags ? formData.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
       };
+      if (postImageFile) payload.imageFile = postImageFile;
       await createPost(payload);
       setFormData({ title: '', content: '', tags: '' });
+      setPostImageFile(null);
       setCreateOpen(false);
       fetchFeed();
     } catch (err) {
@@ -110,16 +188,41 @@ const Community = () => {
     }
   };
 
-  const handleLike = async (postId) => {
+  const persistFollowedTopics = (topics) => {
+    if (!Array.isArray(topics) || topics.length === 0) return;
     try {
-      const { data } = await likeToggle(postId);
-      setPosts((prev) => prev.map((p) => (p._id === postId ? { ...p, likeCount: data.likeCount } : p)));
+      const next = Array.from(new Set([...(followedTopics || []), ...topics.map((t) => String(t).trim()).filter(Boolean)])).slice(0, 30);
+      localStorage.setItem('community_followed_topics', JSON.stringify(next));
+      setFollowedTopics(next);
+    } catch (_) {}
+  };
+
+  const handleLike = async (postId, vote = 'up') => {
+    try {
+      const { data } = await likeToggle(postId, { vote });
+      setPosts((prev) => prev.map((p) => (
+        p._id === postId
+          ? {
+              ...p,
+              likeCount: data.upvoteCount ?? data.likeCount ?? p.likeCount ?? 0,
+              upvoteCount: data.upvoteCount ?? p.upvoteCount ?? p.likeCount ?? 0,
+              downvoteCount: data.downvoteCount ?? p.downvoteCount ?? 0,
+              score: data.score ?? ((data.upvoteCount ?? p.upvoteCount ?? 0) - (data.downvoteCount ?? p.downvoteCount ?? 0)),
+            }
+          : p
+      )));
       setLikedPostIds((prev) => {
         const next = new Set(prev);
-        if (data.liked) next.add(postId);
+        if (data.voted === 'up' || data.liked) next.add(postId);
         else next.delete(postId);
         return next;
       });
+      setVoteStateByPost((prev) => ({ ...prev, [postId]: data.voted || null }));
+      const target = posts.find((p) => p._id === postId);
+      if (vote === 'up' && target) {
+        const tags = [...(target.tags || []), ...(target.aiTags || [])];
+        persistFollowedTopics(tags);
+      }
     } catch (_) {}
   };
 
@@ -148,8 +251,49 @@ const Community = () => {
     } catch (_) {}
   };
 
-  const isLiked = (post) => likedPostIds.has(post._id);
+  const handleTagClick = (tag) => {
+    setActiveTag(tag);
+    setActiveAuthor('');
+    setSort('latest');
+  };
 
+  const clearDiscoveryFilters = () => {
+    setActiveTag('');
+    setActiveAuthor('');
+  };
+
+  const applySuggestion = (suggestion) => {
+    if (!suggestion) return;
+    if (suggestion.type === 'tag') {
+      setActiveTag(suggestion.value);
+      setActiveAuthor('');
+      setSearch('');
+    } else if (suggestion.type === 'user') {
+      setActiveAuthor(suggestion.value);
+      setActiveTag('');
+      setSearch('');
+    } else {
+      setSearch(suggestion.value);
+      fetchFeed({ search: suggestion.value });
+    }
+    setShowSuggestions(false);
+  };
+
+  const highlightText = (text, term) => {
+    const value = String(text || '');
+    const query = String(term || '').trim();
+    if (!query) return value;
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escaped})`, 'i');
+    const parts = value.split(regex);
+    return parts.map((part, idx) => (
+      part.toLowerCase() === query.toLowerCase()
+        ? <mark key={`m-${idx}`} className="bg-amber-100 text-amber-900 px-0.5 rounded-sm">{part}</mark>
+        : <React.Fragment key={`t-${idx}`}>{part}</React.Fragment>
+    ));
+  };
+
+  const isLiked = (post) => likedPostIds.has(post._id);
   const isAuthor = (post) => {
     if (!userId || !post.author) return false;
     const authorId = post.author._id || post.author;
@@ -190,213 +334,411 @@ const Community = () => {
   if (!token) return null;
 
   return (
-    <div className="community-page">
-      <div className="community-header">
-        <h1>Community</h1>
-        <p className="community-subtitle">Discuss, share, and connect with researchers and participants.</p>
-      </div>
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <header className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Community</h1>
+        <p className="mt-1 text-gray-600">Discuss, share, and connect with researchers and participants.</p>
+      </header>
 
-      <div className="community-toolbar">
-        <div className="community-tabs">
-          <button className={activeTab === 'feed' ? 'active' : ''} onClick={() => setActiveTab('feed')}>
-            Feed
-          </button>
-          <button className={activeTab === 'saved' ? 'active' : ''} onClick={() => setActiveTab('saved')}>
-            Saved
-          </button>
-        </div>
-        {activeTab === 'feed' && (
-          <>
-            <div className="community-sort">
-              <label>Sort:</label>
-              <select value={sort} onChange={(e) => setSort(e.target.value)}>
-                <option value="latest">Latest</option>
-                <option value="popular">Most liked</option>
-                <option value="most_commented">Most commented</option>
-              </select>
-            </div>
-            <div className="community-search">
-              <input
-                type="text"
-                placeholder="Search posts..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && fetchFeed()}
-              />
-              <button type="button" className="btn btn-primary" onClick={fetchFeed}>
-                Search
-              </button>
-            </div>
-          </>
-        )}
-        <button className="btn btn-primary" onClick={() => setCreateOpen(!createOpen)}>
-          {createOpen ? 'Cancel' : '+ New Post'}
-        </button>
-      </div>
-
-      {error && <div className="community-error">{error}</div>}
-
-      {createOpen && (
-        <div className="community-create-card">
-          <h3>Create discussion</h3>
-          <form onSubmit={handleCreatePost}>
-            <div className="form-group">
-              <label className="form-label">Title</label>
-              <input
-                type="text"
-                className="form-input"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="Post title"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Content</label>
-              <textarea
-                className="form-input"
-                rows={4}
-                value={formData.content}
-                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                placeholder="What would you like to share?"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Tags (comma-separated)</label>
-              <input
-                type="text"
-                className="form-input"
-                value={formData.tags}
-                onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                placeholder="health, research"
-              />
-            </div>
-            <button type="submit" className="btn btn-primary" disabled={submitting}>
-              {submitting ? 'Posting...' : 'Post'}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5">
+            <button
+              type="button"
+              onClick={() => setActiveTab('feed')}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeTab === 'feed' ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              Feed
             </button>
-          </form>
+            <button
+              type="button"
+              onClick={() => setActiveTab('saved')}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeTab === 'saved' ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              Saved
+            </button>
+          </div>
+          {activeTab === 'feed' && (
+            <>
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-primary focus:border-transparent"
+              >
+                <option value="latest">Latest</option>
+                <option value="trending">Trending</option>
+                <option value="most_discussed">Most Discussed</option>
+                <option value="following">Following</option>
+              </select>
+              <div className="relative flex flex-1 min-w-0 max-w-sm">
+                <input
+                  type="text"
+                  placeholder="Search posts, tags, users..."
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => {
+                    if (suggestionHideTimerRef.current) clearTimeout(suggestionHideTimerRef.current);
+                    suggestionHideTimerRef.current = setTimeout(() => setShowSuggestions(false), 150);
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && fetchFeed()}
+                  className="block w-full rounded-l-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+                <Button type="button" size="sm" onClick={fetchFeed} className="rounded-l-none">
+                  Search
+                </Button>
+                {showSuggestions && searchSuggestions.length > 0 && (
+                  <div className="absolute top-[calc(100%+4px)] left-0 right-0 z-20 rounded-lg border border-gray-200 bg-white shadow-lg max-h-72 overflow-y-auto">
+                    {searchSuggestions.map((s, idx) => (
+                      <button
+                        key={`${s.type}-${s.value}-${idx}`}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => applySuggestion(s)}
+                        className="w-full text-left px-3 py-2 hover:bg-slate-50 border-b last:border-b-0 border-slate-100"
+                      >
+                        <p className="text-sm text-slate-800">{s.value}</p>
+                        <p className="text-[11px] uppercase tracking-wide text-slate-500">{s.type} · {s.count || 0} posts</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {(activeTag || activeAuthor) && (
+                <button
+                  type="button"
+                  onClick={clearDiscoveryFilters}
+                  className="text-xs font-semibold text-slate-600 px-2 py-1 rounded-md border border-slate-200 hover:bg-slate-50"
+                >
+                  Clear filters
+                </button>
+              )}
+            </>
+          )}
+        </div>
+        <Button
+          onClick={() => setCreateOpen(!createOpen)}
+          className="shrink-0 px-5 py-3 text-base font-semibold shadow-lg shadow-primary/20 bg-primary hover:bg-primary-hover"
+        >
+          {createOpen ? 'Cancel' : '+ New Post'}
+        </Button>
+      </div>
+
+      <div className="mb-5 rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-emerald-50 px-4 py-3 shadow-sm">
+        <p className="text-sm text-slate-700">
+          Share your research question, findings, or a quick discussion point to get feedback from the community.
+        </p>
+      </div>
+
+      {(activeTag || activeAuthor || sort === 'following') && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          {sort === 'following' && (
+            <span className="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold">
+              Following topics
+            </span>
+          )}
+          {activeTag && (
+            <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">
+              Tag: {activeTag}
+            </span>
+          )}
+          {activeAuthor && (
+            <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
+              User: {activeAuthor}
+            </span>
+          )}
         </div>
       )}
 
+      {error && (
+        <ErrorMessage message={error} onDismiss={() => setError('')} className="mb-4" />
+      )}
+
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Create discussion" size="md">
+        <form onSubmit={handleCreatePost} className="space-y-4">
+          <Input
+            label="Title"
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            placeholder="Post title"
+            required
+          />
+          <Textarea
+            label="Content"
+            rows={4}
+            value={formData.content}
+            onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+            placeholder="What would you like to share?"
+            required
+          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Image (optional)</label>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              onChange={(e) => setPostImageFile(e.target.files?.[0] || null)}
+              className="block w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white hover:file:bg-primary-hover"
+            />
+            {postImageFile && (
+              <p className="mt-1 text-xs text-gray-500">
+                {postImageFile.name} ({(postImageFile.size / 1024).toFixed(1)} KB)
+              </p>
+            )}
+          </div>
+          <Input
+            label="Tags (comma-separated)"
+            value={formData.tags}
+            onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+            placeholder="health, research"
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="secondary" onClick={() => setCreateOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? 'Posting...' : 'Post'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
       {loading ? (
-        <div className="community-loading">Loading...</div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <PostCardSkeleton key={i} />
+          ))}
+        </div>
       ) : (
-        <div className="community-feed">
+        <div className="space-y-4">
           {posts.length === 0 ? (
-            <p className="community-empty">
-              {activeTab === 'saved' ? 'No saved posts.' : 'No posts yet. Be the first to post!'}
-            </p>
+            <EmptyState
+              icon="💬"
+              title={activeTab === 'saved' ? 'No saved posts' : 'No posts yet'}
+              description={
+                activeTab === 'saved'
+                  ? 'Save posts from the feed to find them here.'
+                  : 'Be the first to start a discussion.'
+              }
+              action={
+                activeTab === 'feed' && (
+                  <Button onClick={() => setCreateOpen(true)}>Create post</Button>
+                )
+              }
+            />
           ) : (
             posts.map((post) => (
-              <article key={post._id} className="post-card">
+              <Card key={post._id} className="relative">
                 {post.category && (
-                  <div className="post-card-category-wrap">
-                    <span className="post-card-category" title="AI category">{post.category}</span>
-                  </div>
+                  <span className="absolute -top-2.5 left-4 px-3 py-1 rounded-full bg-emerald-600 text-white text-xs font-semibold uppercase tracking-wide shadow">
+                    {post.category}
+                  </span>
                 )}
-                <div className="post-card-header">
-                  <span className="post-author">
+                <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
+                  <span className="text-sm text-gray-500">
                     {post.author?.name || 'Unknown'} · {(post.author?.role || '').toLowerCase()}
                   </span>
-                  <span className="post-date">{new Date(post.createdAt).toLocaleDateString()}</span>
+                  <span className="text-xs text-gray-400">{new Date(post.createdAt).toLocaleDateString()}</span>
                   {isAuthor(post) && (
-                    <div className="post-card-author-actions">
-                      <Link to={`/community/${post._id}`} className="post-action post-action-edit">Edit</Link>
-                      <button type="button" className="post-action post-action-delete" onClick={() => handleDeletePost(post._id)}>Delete</button>
+                    <div className="flex gap-2 ml-auto">
+                      <Link
+                        to={`/community/${post._id}`}
+                        className="text-sm font-medium text-primary hover:underline"
+                      >
+                        Edit
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleDeletePost(post._id)}
+                        className="text-sm font-medium text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
                     </div>
                   )}
                 </div>
-                <h3 className="post-title">
-                  <Link to={`/community/${post._id}`}>{post.title}</Link>
+                <h3 className="text-lg sm:text-xl font-semibold text-slate-900 mb-2 tracking-tight leading-tight">
+                  <Link to={`/community/${post._id}`} className="hover:text-primary transition-colors">
+                    {highlightText(post.title, search)}
+                  </Link>
                 </h3>
-                <p className="post-content">{post.content.length > 200 ? post.content.slice(0, 200) + '...' : post.content}</p>
-                {((post.aiTags && post.aiTags.length > 0) || (post.tags && post.tags.length > 0)) && (
-                  <div className="post-tags-wrap">
-                    {post.aiTags && post.aiTags.length > 0 && (
-                      post.aiTags.map((t) => (
-                        <span key={t} className="post-tag post-tag-ai" title="AI tag">{t}</span>
-                      ))
-                    )}
-                    {post.tags && post.tags.length > 0 && (
-                      post.tags.map((t) => (
-                        <span key={'u-' + t} className="post-tag">{t}</span>
-                      ))
-                    )}
+                {post.image && (
+                  <div className="mb-3 rounded-lg overflow-hidden border border-gray-200">
+                    <img
+                      src={getPostImageUrl(post.image)}
+                      alt=""
+                      className="w-full max-h-64 object-cover"
+                    />
                   </div>
                 )}
-                <div className="post-actions">
+                <p className="text-slate-500 text-sm leading-relaxed mb-3">
+                  {highlightText(post.content.length > 220 ? post.content.slice(0, 220) + '...' : post.content, search)}
+                </p>
+                {((post.aiTags && post.aiTags.length > 0) || (post.tags && post.tags.length > 0)) && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {post.aiTags?.map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => handleTagClick(t)}
+                        className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-medium hover:bg-emerald-100 transition-colors"
+                      >
+                        {t}
+                      </button>
+                    ))}
+                    {post.tags?.map((t) => (
+                      <button
+                        key={'u-' + t}
+                        type="button"
+                        onClick={() => handleTagClick(t)}
+                        className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-medium hover:bg-slate-200 transition-colors"
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {post.topComment?.content && (
+                  <Link
+                    to={`/community/${post._id}`}
+                    className="block mb-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 hover:border-slate-300 transition-colors"
+                  >
+                    <p className="text-[11px] uppercase tracking-wide text-slate-500 mb-1">
+                      Top comment {post.topComment?.author?.name ? `by ${post.topComment.author.name}` : ''}
+                    </p>
+                    <p className="text-sm text-slate-700 leading-relaxed">
+                      {highlightText(String(post.topComment.content).slice(0, 130) + (String(post.topComment.content).length > 130 ? '...' : ''), search)}
+                    </p>
+                  </Link>
+                )}
+                <div className="flex flex-wrap items-center gap-4 pt-3 border-t border-gray-100">
+                  <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
+                    <button
+                      type="button"
+                      onClick={() => handleLike(post._id, 'up')}
+                      className={`px-2 py-1 rounded-md text-sm font-semibold transition-colors ${
+                        voteStateByPost[post._id] === 'up' ? 'bg-emerald-100 text-emerald-700' : 'text-slate-600 hover:bg-white'
+                      }`}
+                      title="Upvote"
+                    >
+                      ▲
+                    </button>
+                    <span className="min-w-8 text-center text-sm font-semibold text-slate-800">{post.score ?? ((post.upvoteCount || post.likeCount || 0) - (post.downvoteCount || 0))}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleLike(post._id, 'down')}
+                      className={`px-2 py-1 rounded-md text-sm font-semibold transition-colors ${
+                        voteStateByPost[post._id] === 'down' ? 'bg-rose-100 text-rose-700' : 'text-slate-600 hover:bg-white'
+                      }`}
+                      title="Downvote"
+                    >
+                      ▼
+                    </button>
+                  </div>
                   <button
                     type="button"
-                    className={`post-action ${isLiked(post) ? 'liked' : ''}`}
-                    onClick={() => handleLike(post._id)}
-                    title="Like"
+                    onClick={() => handleLike(post._id, 'up')}
+                    className={`flex items-center gap-1 text-sm font-medium transition-colors ${
+                      isLiked(post) ? 'text-red-600' : 'text-gray-500 hover:text-gray-700'
+                    }`}
                   >
-                    ♥ {post.likeCount || 0}
+                    <span>{isLiked(post) ? '♥' : '♡'}</span> {post.upvoteCount || post.likeCount || 0}
                   </button>
-                  <Link to={`/community/${post._id}`} className="post-action">
+                  <Link
+                    to={`/community/${post._id}`}
+                    className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+                  >
                     💬 {post.commentCount || 0}
                   </Link>
-                  <button type="button" className="post-action" onClick={() => handleShare(post._id)} title="Share / Copy link">
+                  <Link
+                    to={`/community/${post._id}?reply=1#comment-box`}
+                    className="text-sm text-primary font-semibold hover:underline"
+                  >
+                    Reply
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => handleShare(post._id)}
+                    className="text-sm text-gray-500 hover:text-gray-700"
+                  >
                     ↗ Share
                   </button>
                   <button
                     type="button"
-                    className={`post-action ${savedIds.has(post._id) ? 'saved' : ''}`}
                     onClick={() => handleSave(post._id, savedIds.has(post._id))}
-                    title="Save"
+                    className={`text-sm font-medium ${savedIds.has(post._id) ? 'text-secondary' : 'text-gray-500 hover:text-gray-700'}`}
                   >
-                    {savedIds.has(post._id) ? '✓ Saved' : 'Save'}
+                    {savedIds.has(post._id) ? '✓ Saved' : 'Bookmark'}
                   </button>
                 </div>
-              </article>
+              </Card>
             ))
           )}
         </div>
       )}
 
-      {/* AI Chatbot */}
       <button
         type="button"
-        className="community-chat-fab"
         onClick={() => setChatOpen((o) => !o)}
-        title="AI assistant"
-        aria-label="Open AI chat"
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-primary text-white shadow-lg hover:bg-primary-hover flex items-center justify-center text-xl z-50 transition-transform hover:scale-105"
+        aria-label={chatOpen ? 'Close chat' : 'Open AI assistant'}
       >
         {chatOpen ? '✕' : '💬'}
       </button>
       {chatOpen && (
-        <div className="community-chat-panel">
-          <div className="community-chat-header">
-            <h3>Community AI Assistant</h3>
-            <button type="button" className="community-chat-close" onClick={() => setChatOpen(false)} aria-label="Close">✕</button>
+        <div className="fixed bottom-24 right-6 w-full max-w-md bg-white rounded-xl shadow-xl border border-gray-200 flex flex-col max-h-[70vh] z-40 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 bg-primary text-white">
+            <h3 className="font-semibold">Community AI Assistant</h3>
+            <button
+              type="button"
+              onClick={() => setChatOpen(false)}
+              className="p-1 rounded hover:bg-white/20"
+              aria-label="Close"
+            >
+              ✕
+            </button>
           </div>
-          <div className="community-chat-messages">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[200px]">
             {chatMessages.length === 0 && (
-              <p className="community-chat-placeholder">Ask about health, research, or community. I’m here to help.</p>
+              <p className="text-sm text-gray-500">Ask about health, research, or community.</p>
             )}
             {chatMessages.map((m, i) => (
-              <div key={i} className={`community-chat-msg community-chat-msg-${m.role}`}>
-                <span className="community-chat-msg-role">{m.role === 'user' ? 'You' : 'AI'}</span>
-                <p className="community-chat-msg-content">{m.content}</p>
+              <div
+                key={i}
+                className={`flex flex-col max-w-[90%] ${
+                  m.role === 'user' ? 'ml-auto bg-primary-light rounded-lg rounded-br-none p-3' : 'bg-gray-100 rounded-lg rounded-bl-none p-3'
+                }`}
+              >
+                <span className="text-xs font-semibold text-gray-500 mb-0.5">{m.role === 'user' ? 'You' : 'AI'}</span>
+                <p className="text-sm whitespace-pre-wrap">{m.content}</p>
               </div>
             ))}
-            {chatLoading && <div className="community-chat-msg community-chat-msg-model"><p className="community-chat-msg-content">Thinking…</p></div>}
+            {chatLoading && (
+              <div className="bg-gray-100 rounded-lg rounded-bl-none p-3 max-w-[90%]">
+                <p className="text-sm text-gray-600">Thinking…</p>
+              </div>
+            )}
           </div>
-          {chatError && <p className="community-chat-error">{chatError}</p>}
-          <form onSubmit={handleSendChat} className="community-chat-form">
+          {chatError && <p className="px-4 text-sm text-red-600">{chatError}</p>}
+          <form onSubmit={handleSendChat} className="flex gap-2 p-3 border-t border-gray-200">
             <input
               type="text"
-              className="form-input community-chat-input"
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               placeholder="Type a message..."
               disabled={chatLoading}
               maxLength={4000}
+              className="flex-1 min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
             />
-            <button type="submit" className="btn btn-primary community-chat-send" disabled={chatLoading || !chatInput.trim()}>
+            <Button type="submit" disabled={chatLoading || !chatInput.trim()} size="md">
               Send
-            </button>
+            </Button>
           </form>
         </div>
       )}
