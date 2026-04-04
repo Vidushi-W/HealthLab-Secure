@@ -16,11 +16,14 @@ const SmartBadge = ({ score, reason }) => {
 
     return (
         <div className="ai-badge-container">
-            <div className={`ai-smart-badge ${badgeClass}`}>
+            <div 
+                className={`ai-smart-badge ${badgeClass}`} 
+                title={reason ? `${score}% Match - ${reason}` : `${score}% Match`}
+            >
                 <div className={`ai-badge-bg-fill ${fillClass}`} style={{ width: `${score}%` }}></div>
                 <div className="ai-badge-content">
                     <span className="ai-badge-icon">✨</span>
-                    <span className="ai-badge-text">{score}% Match</span>
+                    <span className="ai-badge-text">{score}% MATCH</span>
                     {reason && <span className="ai-badge-reason">• {reason}</span>}
                 </div>
             </div>
