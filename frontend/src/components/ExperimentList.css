@@ -42,6 +42,42 @@
     padding: 2rem;
     display: flex;
     flex-direction: column;
+    position: relative;
+}
+
+/* Highlighted state for high AI match score */
+.experiment-list .experiment-card.highly-recommended {
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    position: relative;
+    box-shadow: 0 10px 25px -5px rgba(21, 128, 61, 0.15), 0 4px 10px -3px rgba(21, 128, 61, 0.1);
+    transform: translateY(-2px);
+}
+
+/* Gradient trick for borders */
+.experiment-list .experiment-card.highly-recommended::after {
+    content: '';
+    position: absolute;
+    top: -2px; bottom: -2px; left: -2px; right: -2px;
+    background: linear-gradient(135deg, #15803d, #22c55e);
+    z-index: -1;
+    border-radius: 14px; /* Slightly larger than card */
+}
+
+.experiment-list .experiment-card.highly-recommended::before {
+    content: "✓ TOP AI MATCH";
+    position: absolute;
+    top: -12px;
+    right: 20px;
+    background: linear-gradient(90deg, #15803d, #22c55e);
+    color: white;
+    font-size: 0.70rem;
+    font-weight: 800;
+    padding: 0.3rem 0.8rem;
+    border-radius: 12px;
+    letter-spacing: 0.05em;
+    box-shadow: 0 4px 6px rgba(21, 128, 61, 0.3);
+    z-index: 2;
 }
 
 .experiment-list .experiment-card:hover {

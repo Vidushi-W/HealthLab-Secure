@@ -137,7 +137,7 @@ const ExperimentList = () => {
             ) : (
                 <div className="experiments-grid">
                     {experiments.map((experiment) => (
-                        <div key={experiment._id} className="experiment-card">
+                        <div key={experiment._id} className={`experiment-card ${experiment.matchScore >= 80 ? 'highly-recommended' : ''}`}>
                             <SmartBadge score={experiment.matchScore} reason={experiment.matchReason} />
                             <h2>{experiment.title}</h2>
                             <p className="description">{experiment.description}</p>

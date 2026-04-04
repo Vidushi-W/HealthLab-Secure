@@ -1,28 +1,35 @@
 import React from 'react';
+import './SmartBadge.css';
 
 const SmartBadge = ({ score, reason }) => {
     if (score === undefined || score === null) return null;
 
-    let badgeClass = 'badge-score-low';
-    if (score >= 80) badgeClass = 'badge-score-high';
-    else if (score >= 50) badgeClass = 'badge-score-med';
+    let badgeClass = 'ai-badge-low';
+    let fillClass = 'ai-fill-low';
+    if (score >= 80) {
+        badgeClass = 'ai-badge-high';
+        fillClass = 'ai-fill-high';
+    } else if (score >= 50) {
+        badgeClass = 'ai-badge-med';
+        fillClass = 'ai-fill-med';
+    }
 
     return (
-        <div className="smart-badge-container">
-            <div className={`smart-badge ${badgeClass}`}>
-                <span className="badge-icon">✨</span>
-                <span className="badge-text">{score}% Match</span>
-                {reason && <span className="badge-reason">• {reason}</span>}
+        <div className="ai-badge-container">
+            <div className={`ai-smart-badge ${badgeClass}`}>
+                <span className="ai-badge-icon">✨</span>
+                <span className="ai-badge-text">{score}% Match</span>
+                {reason && <span className="ai-badge-reason">• {reason}</span>}
             </div>
 
-            <div className="match-level-wrapper">
-                <div className="match-level-bar">
+            <div className="ai-match-wrapper">
+                <span className="ai-match-label">AI Match</span>
+                <div className="ai-match-bar-bg">
                     <div
-                        className={`match-level-fill ${badgeClass}`}
+                        className={`ai-match-fill ${fillClass}`}
                         style={{ width: `${score}%` }}
                     ></div>
                 </div>
-                <span className="match-level-label">Compatibility</span>
             </div>
         </div>
     );
