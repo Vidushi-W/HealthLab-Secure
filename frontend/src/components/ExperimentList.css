@@ -1,230 +1,235 @@
 /* ExperimentList.css */
 
 .experiment-list {
-    /* Full bleed layout to make the purple stretch the entire width */
-    margin: -2rem calc(-50vw + 50%) -2rem calc(-50vw + 50%);
-    border-radius: 0;
-    min-height: calc(100vh - 64px); /* stretch height based on typical header */
+    min-height: calc(100vh - 64px);
     padding: 3rem 2rem;
-
-    /* A vibrant, slick, fluid blue/violet gradient matching the Sereno reference */
-    background: 
-        radial-gradient(circle at 15% 0%, #7c3aed 0%, transparent 50%),
-        radial-gradient(circle at 85% 15%, #3b82f6 0%, transparent 55%),
-        radial-gradient(circle at 50% 100%, #3730a3 0%, transparent 60%),
-        radial-gradient(circle at 0% 100%, #6366f1 0%, transparent 50%),
-        #4f46e5; /* Vibrant indigo base */
-    background-size: 300% 300%;
-    background-repeat: no-repeat;
-    animation: gradientFlow 15s ease infinite;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    color: #ffffff;
-    position: relative;
-    overflow: hidden;
+    background-color: #f8fafc; /* Professional light gray */
+    color: #334155;
+    font-family: 'Inter', system-ui, sans-serif;
+    margin: 0 auto;
 }
 
-/* Constrain inner content to keep it aligned with the rest of the app */
+/* Constrain inner content */
 .experiment-list > h1,
 .experiment-list > p,
 .experiment-list > .alert,
 .experiment-list > .experiments-grid,
 .experiment-list > .loading,
 .experiment-list > .no-data {
-    max-width: 1150px; /* aligns roughly with inner max-width of container */
+    max-width: 1150px;
     margin-left: auto;
     margin-right: auto;
 }
 
-@keyframes gradientFlow {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-}
-
 /* Typography styles */
 .experiment-list h1 {
-    color: #ffffff;
+    color: #0f172a;
     font-weight: 700;
-    font-size: 2.5rem;
-    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 2.25rem;
     letter-spacing: -0.025em;
     margin-bottom: 2.5rem;
     text-align: center;
 }
 
-.experiment-list h1::after {
-    display: none; /* Sereno style doesn't use the underline */
-}
-
-/* Glassmorphic experiment card */
+/* Professional experiment card */
 .experiment-list .experiment-card {
-    background: rgba(255, 255, 255, 0.08); /* Very sheer white */
-    backdrop-filter: blur(32px); /* High blur for slick glass */
-    -webkit-backdrop-filter: blur(32px);
-    border: 1px solid rgba(255, 255, 255, 0.2); /* Clean translucent border */
-    border-radius: 32px; /* Very soft rounded corners like the app panels */
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15); /* Soft drop shadow */
-    color: #ffffff;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    color: #334155;
+    transition: all 0.2s ease-in-out;
     padding: 2rem;
+    display: flex;
+    flex-direction: column;
 }
 
 .experiment-list .experiment-card:hover {
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    transform: translateY(-4px);
-    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+    border-color: #cbd5e1;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
 }
 
 .experiment-list .experiment-card h2 {
-    color: #ffffff;
+    color: #0f172a;
     font-weight: 600;
-    font-size: 1.4rem;
-    font-family: 'Inter', system-ui, sans-serif;
-    letter-spacing: -0.01em;
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+    margin-top: 1rem;
 }
 
 .experiment-list .experiment-card .description {
-    color: rgba(255, 255, 255, 0.85); /* Readability */
+    color: #475569;
     font-weight: 400;
-    margin-top: 0.5rem;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    flex-grow: 1; /* Pushes button to bottom if in grid */
 }
 
 .experiment-list .experiment-details {
-    color: rgba(255, 255, 255, 0.7);
-    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #64748b;
+    border-top: 1px solid #f1f5f9;
     padding-top: 1rem;
-    margin-top: 1rem;
+    margin-top: auto;
+    font-size: 0.875rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 /* Status Badges */
 .experiment-list .status-badge {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    border-radius: 100px;
-    padding: 0.35rem 1rem;
+    display: inline-block;
+    background-color: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+    width: fit-content;
 }
 
-/* Join Button overriding */
+/* Join Button */
 .experiment-list .join-btn {
-    background: #ffffff !important; /* Solid white like the 'Take a photo' button */
+    background: #2563eb !important; /* Professional blue */
     border: none !important;
-    color: #4f46e5 !important; /* Deep vibrant text color */
-    border-radius: 100px; /* Pill shape */
-    font-weight: 600;
-    letter-spacing: 0.025em;
-    padding: 1rem;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-    transition: all 0.3s ease;
-    margin-top: 1rem;
+    color: #ffffff !important;
+    border-radius: 8px; /* Slightly rounded */
+    font-weight: 500;
+    font-size: 0.95rem;
+    padding: 0.75rem 1.5rem;
+    transition: all 0.2s ease;
+    margin-top: 1.5rem;
+    cursor: pointer;
+    width: 100%;
 }
 
 .experiment-list .join-btn:hover:not(:disabled) {
-    background: #f8fafc !important;
-    transform: scale(1.03);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+    background: #1d4ed8 !important;
 }
 
 .experiment-list .join-btn.btn-secondary {
-    background: rgba(255, 255, 255, 0.1) !important;
-    color: #ffffff !important;
-    box-shadow: none;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    background: #ffffff !important;
+    color: #2563eb !important;
+    border: 1px solid #2563eb !important;
 }
 
-.experiment-list .join-btn.btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.2) !important;
+.experiment-list .join-btn.btn-secondary:hover:not(:disabled) {
+    background: #eff6ff !important;
 }
 
 .experiment-list .join-btn.enrolled {
-    background: rgba(255, 255, 255, 0.15) !important;
-    color: rgba(255, 255, 255, 0.9) !important;
+    background: #f1f5f9 !important;
+    color: #94a3b8 !important;
+    cursor: not-allowed;
     box-shadow: none;
 }
 
 .experiment-list .join-btn:disabled {
-    opacity: 0.8;
+    opacity: 0.7;
+    cursor: not-allowed;
 }
 
 /* Empty State & Loading State */
 .experiment-list p, .experiment-list .loading {
-    color: rgba(255, 255, 255, 0.9);
+    color: #475569;
 }
 
-/* Clinical Insight Modal Glassmorphic Override */
+/* Clinical Insight Modal Overlay overrides */
+.experiment-list .modal-overlay {
+    background-color: rgba(15, 23, 42, 0.6) !important;
+    backdrop-filter: blur(4px) !important;
+}
+
+/* Modal Content Clean Design */
 .experiment-list .modal-content {
-    background: rgba(79, 70, 229, 0.6) !important; /* matches the Sereno blue tint */
-    backdrop-filter: blur(40px) !important;
-    -webkit-backdrop-filter: blur(40px) !important;
-    border: 1px solid rgba(255, 255, 255, 0.25) !important;
-    color: #ffffff !important;
-    border-radius: 32px !important;
-    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4) !important;
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #1e293b !important;
+    border-radius: 12px !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
 }
 
-.experiment-list .modal-content h2, 
+.experiment-list .modal-content h2 {
+    color: #0f172a !important;
+}
+
 .experiment-list .modal-content h4,
-.experiment-list .modal-content span {
-    color: #ffffff !important;
+.experiment-list .modal-content span:not(.font-size-adjust) {
+    color: #334155 !important;
 }
 
-.experiment-list .modal-content p,
-.experiment-list .modal-content div {
-    color: rgba(255, 255, 255, 0.9) !important;
+.experiment-list .modal-content p {
+    color: #475569 !important;
 }
 
 .experiment-list .modal-content div[style*="background-color: #f8f9fa"],
 .experiment-list .modal-content div[style*="background-color: #f0f7ff"] {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
-    border-radius: 16px !important;
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    color: #475569 !important;
 }
 
 .experiment-list .modal-content button {
-    border-radius: 100px !important; /* fully rounded */
+    border-radius: 8px !important;
 }
 
 .experiment-list .modal-content .btn-primary {
-    background: #ffffff !important;
-    color: #4f46e5 !important;
+    background: #2563eb !important;
+    color: #ffffff !important;
     border: none !important;
 }
 
-.experiment-list .modal-content .btn-secondary {
-    background: rgba(255, 255, 255, 0.15) !important;
-    border: 1px solid rgba(255, 255, 255, 0.25) !important;
-    color: white !important;
+.experiment-list .modal-content .btn-primary:hover:not(:disabled) {
+    background: #1d4ed8 !important;
 }
 
-.experiment-list .modal-content .btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.25) !important;
+.experiment-list .modal-content .btn-secondary {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #475569 !important;
+}
+
+.experiment-list .modal-content .btn-secondary:hover:not(:disabled) {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
 }
 
 /* Smart badge specific to ExperimentList */
 .experiment-list .smart-badge {
-    color: #ffffff;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    background: rgba(255, 255, 255, 0.15) !important;
-    backdrop-filter: blur(12px);
+    color: #15803d; /* Professional dark green for high score */
+    border: 1px solid #bbf7d0;
+    background: #f0fdf4 !important;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 500;
+    display: inline-block;
+    margin-bottom: 0.5rem;
 }
 
 .experiment-list .badge-score-low {
-    background: rgba(255, 255, 255, 0.1) !important;
-    color: #ffffff !important;
+    background: #fef2f2 !important;
+    color: #b91c1c !important;
+    border: 1px solid #fecaca;
 }
 
 /* Alerts */
 .experiment-list .alert-success {
-    background: rgba(22, 101, 52, 0.4) !important;
-    border: 1px solid rgba(34, 197, 94, 0.5) !important;
-    color: #ffffff !important;
-    backdrop-filter: blur(16px);
-    border-radius: 20px;
+    background: #f0fdf4 !important;
+    border: 1px solid #bbf7d0 !important;
+    color: #166534 !important;
+    border-radius: 8px;
 }
 
 .experiment-list .alert-error {
-    background: rgba(153, 27, 27, 0.4) !important;
-    border: 1px solid rgba(239, 68, 68, 0.5) !important;
-    color: #ffffff !important;
-    backdrop-filter: blur(16px);
-    border-radius: 20px;
+    background: #fef2f2 !important;
+    border: 1px solid #fecaca !important;
+    color: #991b1b !important;
+    border-radius: 8px;
 }
