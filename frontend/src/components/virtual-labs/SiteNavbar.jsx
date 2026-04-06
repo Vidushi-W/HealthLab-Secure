@@ -28,7 +28,7 @@ const SiteNavbar = () => {
       )}
       aria-label="Primary"
     >
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-1 px-4 py-2 sm:justify-between sm:gap-2 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-1 px-4 py-2 sm:px-6 lg:px-8">
         <ul className="flex flex-wrap items-center justify-center gap-1 sm:gap-2">
           {links.map(({ label, href, router }) => (
             <li key={label}>
@@ -50,7 +50,6 @@ const SiteNavbar = () => {
             </li>
           ))}
         </ul>
-        <div className="hidden text-xs text-blue-200/70 sm:block">Remote lab simulations · NMEICT</div>
       </div>
     </nav>
   );
