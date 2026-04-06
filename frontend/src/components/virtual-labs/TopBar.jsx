@@ -6,12 +6,8 @@ const TopBar = () => {
 
   return (
     <div className="border-b border-slate-200/80 bg-white/90 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-        <div>
-          <p className="text-lg font-bold tracking-tight text-blue-950 sm:text-xl">Virtual Labs</p>
-          <p className="text-xs font-medium text-slate-600 sm:text-sm">Ministry of Education Initiative</p>
-        </div>
-        <label className="relative w-full sm:max-w-xs lg:max-w-md" htmlFor="vl-search">
+      <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
+        <label className="relative mx-auto block w-full max-w-md lg:max-w-lg" htmlFor="vl-search">
           <span className="sr-only">Search labs</span>
           <Search
             className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
