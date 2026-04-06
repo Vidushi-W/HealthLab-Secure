@@ -100,49 +100,6 @@ const ResearcherWallet = () => {
                 </div>
             </div>
 
-            {/* Detailed Funding Graph Section */}
-            {selectedData && selectedData.fundReq && (
-                <div className="wallet-detail-panel">
-                    <div className="detail-header">
-                        <h3>📈 Funding Graph: {selectedData.experiment.title}</h3>
-                        <span className="detail-status-pill">{selectedData.fundReq.status.replace(/_/g, ' ')}</span>
-                    </div>
-
-                    <div className="funding-graph-container">
-                        <div className="graph-stats">
-                            <div className="stat-item">
-                                <span className="stat-label">Raised Amount</span>
-                                <span className="stat-value">LKR {selectedData.fundReq.raisedAmount.toLocaleString()}</span>
-                            </div>
-                            <div className="stat-item">
-                                <span className="stat-label">Target Goal</span>
-                                <span className="stat-value">LKR {selectedData.fundReq.targetAmount.toLocaleString()}</span>
-                            </div>
-                            <div className="stat-item">
-                                <span className="stat-label">Completion</span>
-                                <span className="stat-value highlight">
-                                    {calcPct(selectedData.fundReq.raisedAmount, selectedData.fundReq.targetAmount)}%
-                                </span>
-                            </div>
-                        </div>
-
-                        <div className="funding-progress-detailed">
-                            <div className="progress-track">
-                                <div
-                                    className="progress-fill-gradient"
-                                    style={{ width: `${calcPct(selectedData.fundReq.raisedAmount, selectedData.fundReq.targetAmount)}%` }}
-                                />
-                            </div>
-                            <div className="progress-markers">
-                                <span>0%</span>
-                                <span>50%</span>
-                                <span>100%</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {error && <div className="wallet-error">{error}</div>}
 
             {loading ? (
@@ -170,12 +127,11 @@ const ResearcherWallet = () => {
                                 {walletsWithBalance.map(({ experiment, wallet, fundReq }) => (
                                     <tr
                                         key={experiment._id}
-                                        className={`wallet-row-clickable ${selectedExpId === experiment._id ? 'active' : ''}`}
-                                        onClick={() => setSelectedExpId(experiment._id)}
+                                        className="wallet-row-clickable"
+                                        onClick={() => navigate(`/researcher/wallet/${experiment._id}`)}
                                     >
                                         <td className="title-cell">
                                             <div className="title-with-icon">
-                                                {selectedExpId === experiment._id && <span className="active-indicator">▶</span>}
                                                 {experiment.title}
                                             </div>
                                         </td>
