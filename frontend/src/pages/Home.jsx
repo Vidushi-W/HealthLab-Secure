@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  TopBar,
   SiteNavbar,
   Hero,
   ObjectivesSection,
@@ -18,7 +17,6 @@ import {
  */
 const Home = () => (
   <div className="min-h-screen bg-[#e6f2ff] text-slate-900 antialiased">
-    <TopBar />
     <SiteNavbar />
     <Hero />
     <ObjectivesSection />

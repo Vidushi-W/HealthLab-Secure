@@ -1,4 +1,3 @@
-export { default as TopBar } from './TopBar';
 export { default as SiteNavbar } from './SiteNavbar';
 export { default as Hero } from './Hero';
 export { default as ObjectivesSection } from './ObjectivesSection';
