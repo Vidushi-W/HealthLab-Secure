@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/api';
-import { getExperimentWallet } from '../api/funds';
+import { getExperimentWallet, getMyFundRequests } from '../api/funds';
 import './ResearcherWallet.css';
 
 const ResearcherWallet = () => {
@@ -10,6 +10,7 @@ const ResearcherWallet = () => {
     const userId = user._id || user.id;
 
     const [wallets, setWallets] = useState([]);
+    const [selectedExpId, setSelectedExpId] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -32,14 +33,22 @@ const ResearcherWallet = () => {
                 ? allExperiments.filter((e) => String(e.ownerId || e.createdBy) === String(userId))
                 : [];
 
-            // 2. Fetch wallet for each experiment
+            // 2. Fetch all fund requests for this researcher
+            const { data: myFundRequests } = await getMyFundRequests();
+
+            // 3. Fetch wallet for each experiment and merge with fund info
             const walletResults = await Promise.allSettled(
                 myExperiments.map(async (exp) => {
                     try {
-                        const { data } = await getExperimentWallet(exp._id);
-                        return { experiment: exp, wallet: data };
+                        const { data: walletData } = await getExperimentWallet(exp._id);
+                        // Find related fund request
+                        const fundReq = (myFundRequests || []).find(r =>
+                            (r.experimentId?._id || r.experimentId) === exp._id &&
+                            ['OPEN_FOR_FUNDING', 'FUNDED', 'CLOSED'].includes(r.status)
+                        );
+                        return { experiment: exp, wallet: walletData, fundReq };
                     } catch {
-                        return { experiment: exp, wallet: null };
+                        return { experiment: exp, wallet: null, fundReq: null };
                     }
                 })
             );
@@ -49,6 +58,11 @@ const ResearcherWallet = () => {
                 .map((r) => r.value);
 
             setWallets(allWallets);
+            if (allWallets.length > 0 && !selectedExpId) {
+                // Auto-select first funded experiment if exists
+                const firstFunded = allWallets.find(w => w.wallet && w.wallet.balance > 0);
+                if (firstFunded) setSelectedExpId(firstFunded.experiment._id);
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to load wallet information.');
         } finally {
@@ -58,6 +72,9 @@ const ResearcherWallet = () => {
 
     const totalBalance = wallets.reduce((sum, w) => sum + (w.wallet?.balance || 0), 0);
     const walletsWithBalance = wallets.filter((w) => w.wallet && w.wallet.balance > 0);
+    const selectedData = walletsWithBalance.find(w => w.experiment._id === selectedExpId);
+
+    const calcPct = (raised, target) => target > 0 ? Math.min(100, Math.round((raised / target) * 100)) : 0;
 
     if (!userId) return null;
 
@@ -83,6 +100,49 @@ const ResearcherWallet = () => {
                 </div>
             </div>
 
+            {/* Detailed Funding Graph Section */}
+            {selectedData && selectedData.fundReq && (
+                <div className="wallet-detail-panel">
+                    <div className="detail-header">
+                        <h3>📈 Funding Graph: {selectedData.experiment.title}</h3>
+                        <span className="detail-status-pill">{selectedData.fundReq.status.replace(/_/g, ' ')}</span>
+                    </div>
+
+                    <div className="funding-graph-container">
+                        <div className="graph-stats">
+                            <div className="stat-item">
+                                <span className="stat-label">Raised Amount</span>
+                                <span className="stat-value">LKR {selectedData.fundReq.raisedAmount.toLocaleString()}</span>
+                            </div>
+                            <div className="stat-item">
+                                <span className="stat-label">Target Goal</span>
+                                <span className="stat-value">LKR {selectedData.fundReq.targetAmount.toLocaleString()}</span>
+                            </div>
+                            <div className="stat-item">
+                                <span className="stat-label">Completion</span>
+                                <span className="stat-value highlight">
+                                    {calcPct(selectedData.fundReq.raisedAmount, selectedData.fundReq.targetAmount)}%
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="funding-progress-detailed">
+                            <div className="progress-track">
+                                <div
+                                    className="progress-fill-gradient"
+                                    style={{ width: `${calcPct(selectedData.fundReq.raisedAmount, selectedData.fundReq.targetAmount)}%` }}
+                                />
+                            </div>
+                            <div className="progress-markers">
+                                <span>0%</span>
+                                <span>50%</span>
+                                <span>100%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {error && <div className="wallet-error">{error}</div>}
 
             {loading ? (
@@ -102,14 +162,23 @@ const ResearcherWallet = () => {
                                     <th>Experiment</th>
                                     <th>Status</th>
                                     <th>Wallet Balance</th>
-                                    <th>Currency</th>
+                                    <th>% Goal</th>
                                     <th>Last Updated</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {walletsWithBalance.map(({ experiment, wallet }) => (
-                                    <tr key={experiment._id}>
-                                        <td className="title-cell">{experiment.title}</td>
+                                {walletsWithBalance.map(({ experiment, wallet, fundReq }) => (
+                                    <tr
+                                        key={experiment._id}
+                                        className={`wallet-row-clickable ${selectedExpId === experiment._id ? 'active' : ''}`}
+                                        onClick={() => setSelectedExpId(experiment._id)}
+                                    >
+                                        <td className="title-cell">
+                                            <div className="title-with-icon">
+                                                {selectedExpId === experiment._id && <span className="active-indicator">▶</span>}
+                                                {experiment.title}
+                                            </div>
+                                        </td>
                                         <td>
                                             <span className={`wallet-badge status-${experiment.status}`}>
                                                 {experiment.status}
@@ -118,7 +187,13 @@ const ResearcherWallet = () => {
                                         <td className="wallet-balance">
                                             LKR {wallet.balance.toLocaleString()}
                                         </td>
-                                        <td>{wallet.currency || '—'}</td>
+                                        <td className="goal-pct-cell">
+                                            {fundReq ? (
+                                                <span className="goal-pct">
+                                                    {calcPct(fundReq.raisedAmount, fundReq.targetAmount)}%
+                                                </span>
+                                            ) : '—'}
+                                        </td>
                                         <td>
                                             {wallet.lastUpdatedAt
                                                 ? new Date(wallet.lastUpdatedAt).toLocaleDateString()
