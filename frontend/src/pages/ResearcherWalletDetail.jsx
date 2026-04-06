@@ -57,6 +57,13 @@ const ResearcherWalletDetail = () => {
     const { experiment, wallet, fundReq } = data;
     const percentage = fundReq ? calcPct(fundReq.raisedAmount, fundReq.targetAmount) : 0;
 
+    // SVG Donut Logic
+    const radius = 70;
+    const stroke = 12;
+    const normalizedRadius = radius - stroke * 2;
+    const circumference = normalizedRadius * 2 * Math.PI;
+    const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
     return (
         <div className="researcher-wallet-page">
             <section className="wallet-hero">
@@ -70,54 +77,109 @@ const ResearcherWalletDetail = () => {
                 </div>
             </section>
 
-            <div className="wallet-detail-panel standalone">
-                <div className="detail-header">
-                    <h3>📈 Funding Performance</h3>
-                    <span className="detail-status-pill">{fundReq?.status.replace(/_/g, ' ') || experiment.status}</span>
+            <div className="wallet-detail-container">
+                <div className="wallet-detail-panel standalone">
+                    <div className="detail-header">
+                        <h3>📈 Funding Performance</h3>
+                        <span className="detail-status-pill">{fundReq?.status.replace(/_/g, ' ') || experiment.status}</span>
+                    </div>
+
+                    <div className="funding-graph-container">
+                        <div className="graph-stats">
+                            <div className="stat-item">
+                                <span className="stat-label">Raised Amount</span>
+                                <span className="stat-value">LKR {fundReq?.raisedAmount.toLocaleString() || '0'}</span>
+                            </div>
+                            <div className="stat-item">
+                                <span className="stat-label">Target Goal</span>
+                                <span className="stat-value">LKR {fundReq?.targetAmount.toLocaleString() || '—'}</span>
+                            </div>
+                            <div className="stat-item">
+                                <span className="stat-label">Completion</span>
+                                <span className="stat-value highlight">{percentage}%</span>
+                            </div>
+                        </div>
+
+                        <div className="funding-progress-detailed">
+                            <div className="progress-track">
+                                <div
+                                    className="progress-fill-gradient"
+                                    style={{ width: `${percentage}%` }}
+                                />
+                            </div>
+                            <div className="progress-markers">
+                                <span>0%</span>
+                                <span>50%</span>
+                                <span>100%</span>
+                            </div>
+                        </div>
+
+                        <div className="additional-info-grid">
+                            <div className="info-box">
+                                <span className="info-label">Current Balance</span>
+                                <span className="info-value">LKR {wallet?.balance.toLocaleString() || '0'}</span>
+                            </div>
+                            <div className="info-box">
+                                <span className="info-label">Currency</span>
+                                <span className="info-value">{wallet?.currency || 'LKR'}</span>
+                            </div>
+                            <div className="info-box">
+                                <span className="info-label">Last Activity</span>
+                                <span className="info-value">{wallet?.lastUpdatedAt ? new Date(wallet.lastUpdatedAt).toLocaleDateString() : 'No activity'}</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="funding-graph-container">
-                    <div className="graph-stats">
-                        <div className="stat-item">
-                            <span className="stat-label">Raised Amount</span>
-                            <span className="stat-value">LKR {fundReq?.raisedAmount.toLocaleString() || '0'}</span>
-                        </div>
-                        <div className="stat-item">
-                            <span className="stat-label">Target Goal</span>
-                            <span className="stat-value">LKR {fundReq?.targetAmount.toLocaleString() || '—'}</span>
-                        </div>
-                        <div className="stat-item">
-                            <span className="stat-label">Completion</span>
-                            <span className="stat-value highlight">{percentage}%</span>
-                        </div>
-                    </div>
-
-                    <div className="funding-progress-detailed">
-                        <div className="progress-track">
-                            <div
-                                className="progress-fill-gradient"
-                                style={{ width: `${percentage}%` }}
-                            />
-                        </div>
-                        <div className="progress-markers">
-                            <span>0%</span>
-                            <span>50%</span>
-                            <span>100%</span>
-                        </div>
-                    </div>
-
-                    <div className="additional-info-grid">
-                        <div className="info-box">
-                            <span className="info-label">Current Balance</span>
-                            <span className="info-value">LKR {wallet?.balance.toLocaleString() || '0'}</span>
-                        </div>
-                        <div className="info-box">
-                            <span className="info-label">Currency</span>
-                            <span className="info-value">{wallet?.currency || 'LKR'}</span>
-                        </div>
-                        <div className="info-box">
-                            <span className="info-label">Last Activity</span>
-                            <span className="info-value">{wallet?.lastUpdatedAt ? new Date(wallet.lastUpdatedAt).toLocaleDateString() : 'No activity'}</span>
+                <div className="wallet-side-panel">
+                    <div className="pie-chart-card">
+                        <h3>Funding Distribution</h3>
+                        <div className="pie-chart-container">
+                            <svg
+                                height={radius * 2}
+                                width={radius * 2}
+                                className="donut-svg"
+                            >
+                                <circle
+                                    stroke="rgba(0,0,0,0.05)"
+                                    fill="transparent"
+                                    strokeWidth={stroke}
+                                    r={normalizedRadius}
+                                    cx={radius}
+                                    cy={radius}
+                                />
+                                <circle
+                                    stroke="#2563eb"
+                                    fill="transparent"
+                                    strokeWidth={stroke}
+                                    strokeDasharray={circumference + ' ' + circumference}
+                                    style={{ strokeDashoffset }}
+                                    strokeLinecap="round"
+                                    r={normalizedRadius}
+                                    cx={radius}
+                                    cy={radius}
+                                    className="donut-ring-progress"
+                                />
+                                <text
+                                    x="50%"
+                                    y="50%"
+                                    dy=".3em"
+                                    textAnchor="middle"
+                                    className="donut-text"
+                                >
+                                    {percentage}%
+                                </text>
+                            </svg>
+                            <div className="pie-legend">
+                                <div className="legend-item">
+                                    <span className="dot dot-funded"></span>
+                                    <span>Funded</span>
+                                </div>
+                                <div className="legend-item">
+                                    <span className="dot dot-remaining"></span>
+                                    <span>Remaining</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
