@@ -140,6 +140,9 @@ const OpenFundRequests = () => {
                         {user && (user.role || '').toLowerCase() === 'researcher' && (
                             <Link to="/fund-requests" className="btn btn-hero-link">💰 My Fund Requests</Link>
                         )}
+                        {user && (user.role || '').toLowerCase() === 'researcher' && (
+                            <Link to="/researcher/wallet" className="btn btn-hero-link">🏦 My Wallet</Link>
+                        )}
                     </div>
                 </div>
             </section>

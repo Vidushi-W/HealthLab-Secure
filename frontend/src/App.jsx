@@ -15,6 +15,7 @@ import PostDetail from './pages/PostDetail';
 import FundRequests from './pages/FundRequests';
 import OpenFundRequests from './pages/OpenFundRequests';
 import MyContributions from './pages/MyContributions';
+import ResearcherWallet from './pages/ResearcherWallet';
 import { getCurrentUser, logoutUser } from './api/auth';
 
 
@@ -79,6 +80,9 @@ function App() {
       )}
       {user && (user.role || '').toLowerCase() === 'researcher' && (
         <Route path="/fund-requests" element={<Layout><FundRequests /></Layout>} />
+      )}
+      {user && (user.role || '').toLowerCase() === 'researcher' && (
+        <Route path="/researcher/wallet" element={<Layout><ResearcherWallet /></Layout>} />
       )}
       <Route path="/my-studies" element={<Layout><MyStudies /></Layout>} />
       <Route path="/my-contributions" element={<Layout><MyContributions /></Layout>} />

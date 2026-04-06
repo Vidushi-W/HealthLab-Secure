@@ -1,0 +1,214 @@
+/* ── ResearcherWallet Page ────────────────────────────────────────── */
+
+/* Hero */
+.wallet-hero {
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+    min-height: 180px;
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, #065f46 0%, #059669 50%, #34d399 100%);
+}
+
+.wallet-hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.12);
+}
+
+.wallet-hero-inner {
+    position: relative;
+    z-index: 1;
+    padding: 2.5rem 3rem;
+    color: #fff;
+}
+
+.wallet-hero-inner h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+}
+
+.wallet-hero-inner .subtitle {
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 1.05rem;
+}
+
+/* Total Balance Card */
+.wallet-total-card {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    background: linear-gradient(135deg, rgba(6, 95, 70, 0.08) 0%, rgba(52, 211, 153, 0.12) 100%);
+    border: 1px solid rgba(5, 150, 105, 0.18);
+    border-radius: 16px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2rem;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 24px rgba(5, 150, 105, 0.08);
+}
+
+.wallet-total-icon {
+    font-size: 2.5rem;
+    line-height: 1;
+}
+
+.wallet-total-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.wallet-total-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-secondary);
+    margin-bottom: 0.15rem;
+}
+
+.wallet-total-amount {
+    font-size: 1.85rem;
+    font-weight: 800;
+    color: #065f46;
+    letter-spacing: -0.02em;
+}
+
+.wallet-total-count {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #059669;
+    background: rgba(5, 150, 105, 0.1);
+    padding: 0.35rem 0.9rem;
+    border-radius: 9999px;
+    white-space: nowrap;
+}
+
+/* Error / Loading / Empty */
+.wallet-error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+    padding: 0.85rem 1.25rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1.5rem;
+    font-weight: 500;
+}
+
+.wallet-loading,
+.wallet-empty {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+}
+
+/* Table */
+.wallet-table-wrap {
+    overflow-x: auto;
+}
+
+.wallet-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--surface-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+.wallet-table thead th {
+    background: #f9fafb;
+    padding: 1rem 1.25rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-secondary);
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.wallet-table tbody td {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 0.95rem;
+    vertical-align: middle;
+}
+
+.wallet-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.wallet-table .title-cell {
+    font-weight: 600;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Balance */
+.wallet-balance {
+    font-weight: 700;
+    color: #065f46;
+    font-size: 1rem;
+}
+
+.no-wallet {
+    color: var(--text-secondary);
+    font-style: italic;
+    font-weight: 400;
+}
+
+/* Status Badges */
+.wallet-badge {
+    display: inline-block;
+    padding: 0.2rem 0.7rem;
+    border-radius: 9999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.wallet-badge.status-draft {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.wallet-badge.status-published {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.wallet-badge.status-closed {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .wallet-hero-inner {
+        padding: 1.5rem 1.25rem;
+    }
+
+    .wallet-hero-inner h1 {
+        font-size: 1.5rem;
+    }
+
+    .wallet-total-card {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.75rem;
+        padding: 1.25rem;
+    }
+
+    .wallet-total-amount {
+        font-size: 1.5rem;
+    }
+}

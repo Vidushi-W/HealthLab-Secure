@@ -18,6 +18,9 @@ export const createPayment = (data) => api.post('/payments/create', data);
 export const getPaymentStatus = (orderId) => api.get(`/payments/status/${orderId}`);
 export const devConfirmPayment = (orderId) => api.post(`/payments/dev-confirm/${orderId}`);
 
+// ── Wallet ──────────────────────────────────────────────────────────
+export const getExperimentWallet = (experimentId) => api.get(`/experiments/${experimentId}/wallet`);
+
 // ── Admin Fund Requests ─────────────────────────────────────────────
 export const getAllFundRequests = (params) => api.get('/admin/fund-requests', { params });
 export const updateFundRequestStatus = (id, data) => api.patch(`/admin/fund-requests/${id}/status`, data);
