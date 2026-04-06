@@ -89,9 +89,11 @@ const ResearcherWallet = () => {
                 <div className="wallet-loading">Loading your wallet...</div>
             ) : (
                 <div className="wallet-table-wrap">
-                    {wallets.length === 0 ? (
+                    {walletsWithBalance.length === 0 ? (
                         <p className="wallet-empty">
-                            You don't have any experiments yet. Create an experiment and set up funding to see your wallet here.
+                            {wallets.length === 0
+                                ? "You don't have any experiments yet. Create an experiment and set up funding to see your wallet here."
+                                : "You have experiments, but none of them have received funding yet."}
                         </p>
                     ) : (
                         <table className="wallet-table">
@@ -105,7 +107,7 @@ const ResearcherWallet = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {wallets.map(({ experiment, wallet }) => (
+                                {walletsWithBalance.map(({ experiment, wallet }) => (
                                     <tr key={experiment._id}>
                                         <td className="title-cell">{experiment.title}</td>
                                         <td>
@@ -114,15 +116,11 @@ const ResearcherWallet = () => {
                                             </span>
                                         </td>
                                         <td className="wallet-balance">
-                                            {wallet ? (
-                                                <>LKR {wallet.balance.toLocaleString()}</>
-                                            ) : (
-                                                <span className="no-wallet">No wallet yet</span>
-                                            )}
+                                            LKR {wallet.balance.toLocaleString()}
                                         </td>
-                                        <td>{wallet?.currency || '—'}</td>
+                                        <td>{wallet.currency || '—'}</td>
                                         <td>
-                                            {wallet?.lastUpdatedAt
+                                            {wallet.lastUpdatedAt
                                                 ? new Date(wallet.lastUpdatedAt).toLocaleDateString()
                                                 : '—'}
                                         </td>
