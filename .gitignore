@@ -110,6 +110,11 @@ backend/*.txt
 backend/db-structure.json
 !backend/package.json
 
+# Generated report exports
+*-report-*.pdf
+researchers-report-*.pdf
+admin-overview-report-*.pdf
+
 # Process/runtime artifacts
 *.pid
 *.pid.lock
