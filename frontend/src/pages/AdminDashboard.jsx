@@ -10,7 +10,7 @@ import {
   EmptyState,
   TableRowSkeleton,
 } from '../components/ui';
-import { Users, UserCheck, UserX, Clock, Search, Download, Calendar, Filter, FileSpreadsheet, PieChart as PieChartIcon, LayoutDashboard, Database, Activity } from 'lucide-react';
+import { Users, UserCheck, Clock, Search, Download, Calendar, Filter, FileSpreadsheet, PieChart as PieChartIcon, LayoutDashboard, Database, Activity, Check, X, Ban } from 'lucide-react';
 import StatCard from '../components/admin/StatCard';
 import { TrendChart, DistributionChart, QualificationChart } from '../components/admin/DashboardCharts';
 
@@ -364,6 +364,28 @@ const AdminDashboard = () => {
     return 'pending';
   };
 
+  const getUserCode = (user, index) => {
+    if ((user?.role || '').toLowerCase() === 'admin') return '-';
+    return `TT${String(index + 1).padStart(3, '0')}`;
+  };
+
+  const getExpertiseTags = (user) => {
+    if (Array.isArray(user?.expertise) && user.expertise.length > 0) {
+      return user.expertise.slice(0, 3);
+    }
+    if ((user?.role || '').toLowerCase() === 'admin') return ['developer'];
+    if ((user?.role || '').toLowerCase() === 'researcher') return ['research'];
+    return ['community'];
+  };
+
+  const getUserRep = (user) => Number(user?.reputation ?? user?.rep ?? 0) || 0;
+
+  const getResearcherTypeTag = (researcher) => {
+    const type = String(researcher?.researcherType || '').trim();
+    if (!type) return 'general';
+    return type.toLowerCase().includes('organization') ? 'affiliated' : type.toLowerCase();
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       <header className="mb-8">
@@ -560,35 +582,59 @@ const AdminDashboard = () => {
               </Button>
             </div>
           </div>
+          <div className="mb-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+              <p className="text-[11px] font-semibold tracking-wide uppercase text-slate-500">Total</p>
+              <p className="text-3xl font-bold text-slate-800 leading-tight mt-1">{filteredResearchers.length}</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+              <p className="text-[11px] font-semibold tracking-wide uppercase text-slate-500">Pending</p>
+              <p className="text-3xl font-bold text-slate-800 leading-tight mt-1">
+                {filteredResearchers.filter((r) => (r.status || 'pending').toLowerCase() === 'pending').length}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+              <p className="text-[11px] font-semibold tracking-wide uppercase text-slate-500">Approved</p>
+              <p className="text-3xl font-bold text-slate-800 leading-tight mt-1">
+                {filteredResearchers.filter((r) => (r.status || '').toLowerCase() === 'approved').length}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+              <p className="text-[11px] font-semibold tracking-wide uppercase text-slate-500">Rejected</p>
+              <p className="text-3xl font-bold text-slate-800 leading-tight mt-1">
+                {filteredResearchers.filter((r) => (r.status || '').toLowerCase() === 'rejected').length}
+              </p>
+            </div>
+          </div>
           <Card padding={false} className="overflow-hidden border border-slate-200 bg-[#F8FAFC] shadow-sm rounded-2xl">
             <div className="overflow-x-auto">
-              <table className="min-w-full border-separate border-spacing-0">
+              <table className="min-w-full border-separate border-spacing-x-0 border-spacing-y-2 px-2">
                 <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[110px] border-b border-slate-100">
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider min-w-[95px] border-b border-slate-100">
                       ID
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[200px] border-b border-slate-100">
-                      Name
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider min-w-[230px] border-b border-slate-100">
+                      Researcher
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
-                      Email
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
                       Qualification
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider max-w-[200px] border-b border-slate-100">
-                      Purpose
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                      Type
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
                       Status
                     </th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
-                      Actions
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                      Joined
+                    </th>
+                    <th className="px-4 py-4 text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                      Action
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-slate-100">
+                <tbody className="bg-[#F8FAFC]">
                   {researchersLoading ? (
                     Array.from({ length: 5 }).map((_, i) => (
                       <TableRowSkeleton key={i} cols={7} />
@@ -601,56 +647,67 @@ const AdminDashboard = () => {
                         <tr
                           key={r._id}
                           onClick={() => setDetailModalResearcher(r)}
-                          className="hover:bg-white/80 cursor-pointer transition-colors"
+                          className="hover:bg-slate-50/70 cursor-pointer transition-colors"
                         >
-                          <td className="px-6 py-4 text-sm font-semibold text-slate-700">
-                            {s === 'approved' ? (r.researcherId || '—') : '—'}
+                          <td className="px-4 py-4 text-sm font-semibold text-slate-700">
+                            <span className="inline-flex items-center justify-center min-w-[62px] px-2.5 py-1 rounded-lg bg-sky-50 text-sky-700 text-xs font-semibold">
+                              {s === 'approved' ? (r.researcherId || '—') : '—'}
+                            </span>
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-900">
-                            <div className="flex items-center gap-2">
-                              <span>{r.fullName || (r.user && r.user.name) || '—'}</span>
+                          <td className="px-4 py-4 text-sm text-gray-900">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-slate-800">{r.fullName || (r.user && r.user.name) || '—'}</span>
                               {r.isFlagged && <Badge status="rejected">Flagged</Badge>}
                             </div>
+                            <p className="text-slate-500 text-sm mt-1">{r.user?.email || '—'}</p>
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-600">
-                            {r.user?.email || '—'}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-600">
+                          <td className="px-4 py-4 text-sm text-gray-600">
                             {r.highestAcademicQualification || '—'}
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-600 max-w-[200px] truncate" title={r.purpose}>
-                            {r.purpose ? (r.purpose.length > 60 ? r.purpose.slice(0, 60) + '…' : r.purpose) : '—'}
+                          <td className="px-4 py-4 text-sm text-gray-600">
+                            <span className="inline-flex px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">
+                              {getResearcherTypeTag(r)}
+                            </span>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-4 py-4">
                             <Badge status={getStatusVariant(r.status)}>{r.status || 'pending'}</Badge>
                           </td>
-                          <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex flex-wrap justify-end gap-1">
+                          <td className="px-4 py-4 text-sm text-slate-600">
+                            {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—'}
+                          </td>
+                          <td className="px-4 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex flex-wrap justify-end gap-2">
                               {isPending && (
                                 <>
                                   <Button
                                     size="sm"
                                     variant="success"
+                                    className="px-2 py-1 text-xs gap-1 rounded-md"
                                     onClick={() => setReviewModal({ type: 'approve', researcher: r })}
+                                    title="Approve researcher"
                                   >
+                                    <Check size={13} />
                                     Approve
                                   </Button>
                                   <Button
                                     size="sm"
                                     variant="danger"
+                                    className="px-2 py-1 text-xs rounded-md bg-red-700 hover:bg-red-800"
                                     onClick={() => setReviewModal({ type: 'reject', researcher: r })}
+                                    title="Reject researcher"
                                   >
-                                    Reject
+                                    <X size={13} />
                                   </Button>
                                 </>
                               )}
                               <Button
                                 size="sm"
                                 variant="danger"
+                                className="px-2 py-1 text-xs rounded-md bg-red-700 hover:bg-red-800"
                                 onClick={() => setDeleteResearcherModal(r)}
-                                title="Remove researcher; user becomes ordinary user"
+                                title="Ban researcher"
                               >
-                                Delete
+                                <Ban size={13} />
                               </Button>
                             </div>
                           </td>
@@ -709,59 +766,94 @@ const AdminDashboard = () => {
               <FileSpreadsheet size={16} /> Export CSV
             </Button>
           </div>
+          <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+              <p className="text-[11px] font-semibold tracking-wide uppercase text-slate-500">Total Users</p>
+              <p className="text-3xl font-bold text-slate-800 leading-tight mt-1">{filteredUsers.length}</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+              <p className="text-[11px] font-semibold tracking-wide uppercase text-slate-500">Administrators</p>
+              <p className="text-3xl font-bold text-slate-800 leading-tight mt-1">
+                {filteredUsers.filter((u) => (u.role || '').toLowerCase() === 'admin').length}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+              <p className="text-[11px] font-semibold tracking-wide uppercase text-slate-500">Highest Rep</p>
+              <p className="text-3xl font-bold text-slate-800 leading-tight mt-1">
+                {filteredUsers.reduce((max, u) => Math.max(max, getUserRep(u)), 0)}
+              </p>
+            </div>
+          </div>
           <Card padding={false} className="overflow-hidden border border-slate-200 bg-[#F8FAFC] shadow-sm rounded-2xl">
             <div className="overflow-x-auto">
               <table className="min-w-full border-separate border-spacing-0">
                 <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Name</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Email</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Role</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Researcher Status</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Registered</th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Actions</th>
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">ID</th>
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">User</th>
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Expertise</th>
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Role</th>
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Joined</th>
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Reputation</th>
+                    <th className="px-4 py-4 text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Action</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-100">
                   {usersLoading ? (
                     Array.from({ length: 5 }).map((_, i) => (
-                      <TableRowSkeleton key={i} cols={6} />
+                      <TableRowSkeleton key={i} cols={7} />
                     ))
                   ) : filteredUsers.length > 0 ? (
-                    filteredUsers.map((user) => {
+                    filteredUsers.map((user, index) => {
                       const role = (user.role || '').toLowerCase();
                       const isAdmin = role === 'admin';
                       const resStatus = (user.researcherStatus || '').toLowerCase();
                       const isResearcherPending = !isAdmin && role === 'researcher' && (resStatus === 'pending' || resStatus === '');
+                      const tags = getExpertiseTags(user);
                       return (
-                        <tr key={user._id} className={`${isAdmin ? 'bg-amber-50/40' : 'hover:bg-white/80'} transition-colors`}>
-                          <td className="px-6 py-4 text-sm text-gray-900">{user.name}</td>
-                          <td className="px-6 py-4 text-sm text-gray-600">{user.email}</td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-2">
-                              <Badge role={role}>{user.role || '—'}</Badge>
-                              {isAdmin && <span className="text-[11px] font-semibold text-amber-700">Pinned</span>}
+                        <tr key={user._id} className={`${isAdmin ? 'shadow-[0_2px_8px_rgba(120,53,15,0.12)]' : 'shadow-sm hover:shadow-md'} transition-all`}>
+                          <td className={`px-4 py-4 border-y border-l border-slate-200 first:rounded-l-xl ${isAdmin ? 'bg-amber-50/60' : 'bg-white'}`}>
+                            <span className="inline-flex items-center justify-center min-w-[62px] px-2.5 py-1 rounded-lg bg-sky-50 text-sky-700 text-xs font-semibold">
+                              {getUserCode(user, index)}
+                            </span>
+                          </td>
+                          <td className={`px-4 py-4 text-sm text-gray-900 border-y border-slate-200 ${isAdmin ? 'bg-amber-50/60' : 'bg-white'}`}>
+                            <p className="font-semibold text-slate-800 leading-tight">{user.name || 'Unknown User'}</p>
+                            <p className="text-slate-500 text-sm mt-1">{user.email || '—'}</p>
+                          </td>
+                          <td className={`px-4 py-4 border-y border-slate-200 ${isAdmin ? 'bg-amber-50/60' : 'bg-white'}`}>
+                            <div className="flex flex-wrap gap-1.5">
+                              {tags.map((tag) => (
+                                <span
+                                  key={`${user._id}-${tag}`}
+                                  className="inline-flex px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-medium"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
                             </div>
                           </td>
-                          <td className="px-6 py-4">
-                            {user.researcherStatus ? (
-                              <Badge status={getStatusVariant(user.researcherStatus)}>{user.researcherStatus}</Badge>
-                            ) : (
-                              '—'
-                            )}
+                          <td className={`px-4 py-4 border-y border-slate-200 ${isAdmin ? 'bg-amber-50/60' : 'bg-white'}`}>
+                            <div className="flex items-center gap-2">
+                              <Badge role={role}>{user.role || '—'}</Badge>
+                              {isAdmin && <span className="text-[11px] font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">Pinned</span>}
+                            </div>
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-600">
+                          <td className={`px-4 py-4 text-sm text-slate-600 border-y border-slate-200 ${isAdmin ? 'bg-amber-50/60' : 'bg-white'}`}>
                             {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—'}
                           </td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex justify-end items-center gap-1 flex-wrap">
+                          <td className={`px-4 py-4 text-sm font-semibold text-slate-800 border-y border-slate-200 ${isAdmin ? 'bg-amber-50/60' : 'bg-white'}`}>{getUserRep(user)}</td>
+                          <td className={`px-4 py-4 text-right border-y border-r border-slate-200 last:rounded-r-xl ${isAdmin ? 'bg-amber-50/60' : 'bg-white'}`}>
+                            <div className="flex justify-end items-center gap-2 flex-wrap">
                               {isAdmin ? (
                                 <span className="text-xs text-gray-500">Protected account</span>
                               ) : null}
                               {isResearcherPending && (
                                 <>
                                   <Button size="sm" variant="success" onClick={() => handleApproveUser(user._id)}>Approve</Button>
-                                  <Button size="sm" variant="danger" onClick={() => handleRejectUser(user._id)}>Reject</Button>
+                                  <Button size="sm" variant="danger" className="px-2 py-1 text-xs rounded-md bg-red-700 hover:bg-red-800" onClick={() => handleRejectUser(user._id)} title="Reject user">
+                                    <X size={13} />
+                                  </Button>
                                 </>
                               )}
                               {isAdmin ? null : String(user._id) === String(currentUserId) ? (
@@ -770,10 +862,11 @@ const AdminDashboard = () => {
                                 <Button
                                   size="sm"
                                   variant="danger"
+                                  className="px-2 py-1 text-xs rounded-md bg-red-700 hover:bg-red-800"
                                   onClick={() => setDeleteUserModal(user)}
-                                  title="Permanently delete this user"
+                                  title="Ban user"
                                 >
-                                  Delete
+                                  <Ban size={13} />
                                 </Button>
                               )}
                             </div>
@@ -783,7 +876,7 @@ const AdminDashboard = () => {
                     })
                   ) : (
                     <tr>
-                      <td colSpan={6} className="px-4 py-12">
+                      <td colSpan={7} className="px-4 py-12">
                         <EmptyState title="No users found" description="Try changing the role filter." />
                       </td>
                     </tr>
