@@ -34,7 +34,7 @@ const protect = async (req, res, next) => {
       }
 
       console.log(`✅ Auth: Authenticated user ${req.user.email}`);
-      console.log(`   Profile: Gender [${req.user.gender}], Age [${req.user.age}], BMI [${req.user.bmi}]`);
+      console.log(`   Profile: Gender [${req.user.gender}], Age [${req.user.age}], BMI [${req.user.bmi}], Activity [${req.user.activityLevel || "N/A"}], Sleep [${req.user.sleepPatterns || "N/A"}], Smoking [${req.user.smokingStatus || "N/A"}]`);
       return next();
     } catch (error) {
       console.error("❌ Auth Error during verification:", error.message);
@@ -58,8 +58,8 @@ const requireAuth = (req, res, next) => {
   }
   next();
 };
-
-const authorize = (allowedRoles = []) => {
+const authorize = (...args) => {
+  const allowedRoles = args.flat();
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ error: "Unauthorized", message: "Authentication required" });

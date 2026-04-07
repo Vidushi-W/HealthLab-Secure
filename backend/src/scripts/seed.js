@@ -38,6 +38,8 @@ const seedData = async () => {
         const experiment = await Experiment.create({
             ownerId: researcherUser._id,
             title: 'Cancer Research Phase 1',
+            description: 'A study on metabolic markers and their correlation with early-stage diagnosis.',
+            tags: ['metabolic-health', 'circadian-rhythm'],
             fundingTargetAmount: 50000,
             minTopUpAmount: 100,
             maxTopUpAmount: 5000,

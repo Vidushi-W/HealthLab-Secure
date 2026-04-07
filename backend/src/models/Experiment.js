@@ -62,6 +62,12 @@ const experimentSchema = new mongoose.Schema(
       required: true
     },
 
+    // ✅ Metadata tags for discovery and insights
+    tags: { type: [String], default: [] },
+
+    // ✅ Associated Exercises for Safety Preview (WGER API)
+    associatedExercises: { type: [String], default: [] },
+
     // ✅ Conflict tags
     conflictTags: { type: [String], default: [] },
 
@@ -77,6 +83,10 @@ const experimentSchema = new mongoose.Schema(
     // Existing lifecycle fields
     publishedAt: { type: Date, default: null },
     closedAt: { type: Date, default: null },
+
+    // AI-generated summary (Gemini) based on experiment + participant log data
+    aiSummary: { type: String, default: "" },
+    aiSummaryUpdatedAt: { type: Date },
   },
   {
     timestamps: true,

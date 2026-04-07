@@ -1,3 +1,4 @@
+// Groq chat: build messages and call Groq API for HealthLab community assistant reply
 const axios = require("axios");
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -6,6 +7,7 @@ const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 const SYSTEM_PROMPT = `You are a helpful, friendly community assistant for a health and research platform called HealthLab. You help users with questions about community discussions, health topics, research participation, and general guidance. Keep replies concise, clear, and supportive. Do not give medical diagnoses; suggest consulting healthcare providers when appropriate.`;
 
+// System message + history (user/model) + current user message
 function buildMessages(userMessage, history = []) {
   const messages = [{ role: "system", content: SYSTEM_PROMPT }];
   for (const m of history) {
@@ -16,6 +18,7 @@ function buildMessages(userMessage, history = []) {
   return messages;
 }
 
+// Call Groq API; throws if no key, empty message, or API error (auth/rate limit)
 async function getReply(message, history = []) {
   if (!GROQ_API_KEY || !GROQ_API_KEY.trim()) throw new Error("GROQ_API_KEY is not configured");
   const trimmedMessage = String(message || "").trim();

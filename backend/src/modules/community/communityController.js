@@ -1,11 +1,14 @@
+// Community controller: HTTP handlers for posts, likes, save, comments; delegates to communityService
 const { HTTP_STATUS } = require("../../config/constants");
 const { error: errorResponse } = require("../../utils/response");
 const communityService = require("./services/communityService");
 
+// Get current user id from auth middleware
 function getUserId(req) {
   return req.user && (req.user.id || req.user._id);
 }
 
+// List posts with query (sort, q); returns { success, posts }
 async function getPosts(req, res, next) {
   try {
     const posts = await communityService.getPosts(req.query);
@@ -24,6 +27,7 @@ async function getSearchSuggestions(req, res, next) {
   }
 }
 
+// List posts saved by current user
 async function getSavedPosts(req, res, next) {
   try {
     const userId = getUserId(req);
@@ -35,6 +39,7 @@ async function getSavedPosts(req, res, next) {
   }
 }
 
+// Get single post by id; 404 if not found
 async function getPostById(req, res, next) {
   try {
     const post = await communityService.getPostById(req.params.id);
@@ -45,6 +50,7 @@ async function getPostById(req, res, next) {
   }
 }
 
+// Create post; may include ai category/tags in response
 async function createPost(req, res, next) {
   try {
     const userId = getUserId(req);
@@ -69,6 +75,7 @@ async function createPost(req, res, next) {
   }
 }
 
+// Update post; author only; 403 if not owner
 async function updatePost(req, res, next) {
   try {
     const userId = getUserId(req);
@@ -82,6 +89,7 @@ async function updatePost(req, res, next) {
   }
 }
 
+// Delete post; author only; 403 if not owner
 async function deletePost(req, res, next) {
   try {
     const userId = getUserId(req);
@@ -95,6 +103,7 @@ async function deletePost(req, res, next) {
   }
 }
 
+// Toggle like on post; returns likeCount and liked
 async function likeToggle(req, res, next) {
   try {
     const userId = getUserId(req);
@@ -108,6 +117,7 @@ async function likeToggle(req, res, next) {
   }
 }
 
+// Increment share count for post
 async function sharePost(req, res, next) {
   try {
     const result = await communityService.sharePost(req.params.id);
@@ -118,6 +128,7 @@ async function sharePost(req, res, next) {
   }
 }
 
+// Add post to current user's saved list
 async function savePost(req, res, next) {
   try {
     const userId = getUserId(req);
@@ -130,6 +141,7 @@ async function savePost(req, res, next) {
   }
 }
 
+// Remove post from saved list
 async function unsavePost(req, res, next) {
   try {
     const userId = getUserId(req);
@@ -141,6 +153,7 @@ async function unsavePost(req, res, next) {
   }
 }
 
+// Add comment to post; returns updated post and commentCount
 async function addComment(req, res, next) {
   try {
     const userId = getUserId(req);
@@ -155,6 +168,7 @@ async function addComment(req, res, next) {
   }
 }
 
+// Update comment; author only; 403/404 on failure
 async function updateComment(req, res, next) {
   try {
     const userId = getUserId(req);
@@ -171,6 +185,7 @@ async function updateComment(req, res, next) {
   }
 }
 
+// Delete comment; author only; 403/404 on failure
 async function deleteComment(req, res, next) {
   try {
     const userId = getUserId(req);

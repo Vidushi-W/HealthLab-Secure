@@ -102,8 +102,33 @@ const joinExperiment = async (req, res, next) => {
     return res.status(statusCode).json({
       error: err.name || "JoinError",
       message: err.message,
-      ...(err.conflictingStudies && { conflictingStudies: err.conflictingStudies })
+      ...(err.conflictingStudies && { conflictingStudies: err.conflictingStudies }),
+      ...(err.reason && { reason: err.reason }),
+      ...(err.explanation && { explanation: err.explanation })
     });
+  }
+};
+
+
+/**
+ * GET /participations/preview-analysis/:experimentId
+ * Pre-enrollment clinical insight report
+ */
+const getPreJoinAnalysis = async (req, res, next) => {
+  console.log(`🔍 [Preview Analysis] Hit for Experiment: ${req.params.experimentId}`);
+  try {
+    const { experimentId } = req.params;
+    const currentUser = req.user;
+
+    if (!currentUser) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
+    const report = await eligibilityService.analyzeProtocolBenefits(currentUser, experimentId);
+
+    return res.status(200).json(report);
+  } catch (err) {
+    next(err);
   }
 };
 
@@ -313,4 +338,5 @@ module.exports = {
   getParticipationDetail,
   submitDailyLog,
   deleteDailyLog,
+  getPreJoinAnalysis,
 };
