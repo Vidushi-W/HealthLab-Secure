@@ -38,19 +38,21 @@ const ResearcherWallet = () => {
 
             // 3. Fetch wallet for each experiment and merge with fund info
             const walletResults = await Promise.allSettled(
-                myExperiments.map(async (exp) => {
-                    try {
-                        const { data: walletData } = await getExperimentWallet(exp._id);
-                        // Find related fund request
-                        const fundReq = (myFundRequests || []).find(r =>
-                            (r.experimentId?._id || r.experimentId) === exp._id &&
-                            ['OPEN_FOR_FUNDING', 'FUNDED', 'CLOSED'].includes(r.status)
-                        );
-                        return { experiment: exp, wallet: walletData, fundReq };
-                    } catch {
-                        return { experiment: exp, wallet: null, fundReq: null };
-                    }
-                })
+                myExperiments
+                    .filter(exp => myFundRequests.some(fr => (fr.experimentId?._id || fr.experimentId) === String(exp._id)))
+                    .map(async (exp) => {
+                        try {
+                            const { data: walletData } = await getExperimentWallet(exp._id);
+                            // Find related fund request
+                            const fundReq = (myFundRequests || []).find(r =>
+                                (r.experimentId?._id || r.experimentId) === exp._id &&
+                                ['OPEN_FOR_FUNDING', 'FUNDED', 'CLOSED'].includes(r.status)
+                            );
+                            return { experiment: exp, wallet: walletData, fundReq };
+                        } catch {
+                            return { experiment: exp, wallet: null, fundReq: null };
+                        }
+                    })
             );
 
             const allWallets = walletResults

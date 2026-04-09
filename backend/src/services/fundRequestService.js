@@ -82,19 +82,7 @@ const createRequest = async (user, data) => {
 };
 
 const getMyRequests = async (userId) => {
-    // 1. Get all experiments owned by this researcher
-    const myExperiments = await Experiment.find({
-        $or: [{ ownerId: userId }, { createdBy: userId }]
-    }).select('_id');
-    const myExperimentIds = myExperiments.map(e => e._id);
-
-    // 2. Return requests where the researcher is the creator OR owns the experiment
-    return await FundRequest.find({
-        $or: [
-            { researcherId: userId },
-            { experimentId: { $in: myExperimentIds } }
-        ]
-    })
+    return await FundRequest.find({ researcherId: userId })
         .sort({ createdAt: -1 })
         .populate('experimentId', 'title');
 };
