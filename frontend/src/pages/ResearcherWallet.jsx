@@ -93,7 +93,9 @@ const ResearcherWallet = () => {
                 <div className="wallet-total-icon">🏦</div>
                 <div className="wallet-total-info">
                     <span className="wallet-total-label">Total Balance</span>
-                    <span className="wallet-total-amount">LKR {totalBalance.toLocaleString()}</span>
+                    <span className="wallet-total-amount">
+                        LKR {totalBalance.toLocaleString()}
+                    </span>
                 </div>
                 <div className="wallet-total-count">
                     {walletsWithBalance.length} experiment{walletsWithBalance.length !== 1 ? 's' : ''} funded

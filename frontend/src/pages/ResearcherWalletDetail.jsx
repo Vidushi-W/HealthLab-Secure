@@ -121,7 +121,7 @@ const ResearcherWalletDetail = () => {
                             </div>
                             <div className="info-box">
                                 <span className="info-label">Currency</span>
-                                <span className="info-value">{wallet?.currency || 'LKR'}</span>
+                                <span className="info-value">LKR</span>
                             </div>
                             <div className="info-box">
                                 <span className="info-label">Last Activity</span>
