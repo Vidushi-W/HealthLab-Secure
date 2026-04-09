@@ -98,6 +98,12 @@ const ResearcherWalletDetail = () => {
                                 <span className="stat-label">Completion</span>
                                 <span className="stat-value highlight">{percentage}%</span>
                             </div>
+                            {fundReq?.aiPredictionDays !== null && fundReq?.aiPredictionDays !== undefined && fundReq?.raisedAmount < fundReq?.targetAmount && (
+                                <div className="stat-item prediction">
+                                    <span className="stat-label">AI Forecast</span>
+                                    <span className="stat-value ai-highlight">~ {fundReq.aiPredictionDays} Days Left</span>
+                                </div>
+                            )}
                         </div>
 
                         <div className="funding-progress-detailed">

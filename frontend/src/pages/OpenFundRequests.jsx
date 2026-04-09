@@ -181,6 +181,15 @@ const OpenFundRequests = () => {
                                         <span className="open-fund-card-raised">LKR {raised.toLocaleString()} raised</span>
                                         <span className="open-fund-card-target">of LKR {target.toLocaleString()}</span>
                                     </div>
+
+                                    {req.aiPredictionDays !== null && req.aiPredictionDays !== undefined && remaining > 0 && (
+                                        <div className="open-fund-card-prediction">
+                                            <span className="prediction-icon">🤖</span>
+                                            <span className="prediction-text">
+                                                AI Predicts: <strong>{req.aiPredictionDays === 0 ? 'Goal reached today!' : `${req.aiPredictionDays} days to go`}</strong>
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <button
