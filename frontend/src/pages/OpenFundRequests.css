@@ -276,3 +276,45 @@
     margin-bottom: 1.5rem;
     font-weight: 500;
 }
+
+/* AI Predictor */
+.open-fund-card-prediction {
+    background: rgba(37, 99, 235, 0.08);
+    border-radius: 12px;
+    padding: 12px;
+    margin-top: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px dashed rgba(37, 99, 235, 0.3);
+    animation: pulseGlow 2s infinite ease-in-out;
+}
+
+@keyframes pulseGlow {
+    0% {
+        background: rgba(37, 99, 235, 0.08);
+    }
+
+    50% {
+        background: rgba(37, 99, 235, 0.12);
+    }
+
+    100% {
+        background: rgba(37, 99, 235, 0.08);
+    }
+}
+
+.prediction-icon {
+    font-size: 1.4rem;
+}
+
+.prediction-text {
+    font-size: 0.85rem;
+    color: #1e40af;
+    line-height: 1.4;
+}
+
+.prediction-text strong {
+    color: #2563eb;
+    font-weight: 800;
+}
