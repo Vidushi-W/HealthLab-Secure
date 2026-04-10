@@ -63,9 +63,13 @@ function formatPollForUser(poll, userId = null) {
   };
 }
 
-// List posts with optional sort (latest|popular|most_commented) and search q
+// List posts with optional sort (latest|popular|most_commented) and search q, with pagination support
 async function getPosts(query = {}, userId = null) {
-  const { sort = "latest", q, tag, tags, followingTags, author } = query;
+  const { sort = "latest", q, tag, tags, followingTags, author, page = 1, limit = 10 } = query;
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const limitNum = Math.max(1, parseInt(limit, 10) || 10);
+  const skip = (pageNum - 1) * limitNum;
+  
   const match = {};
   if (q && String(q).trim()) {
     const term = String(q).trim();
@@ -195,12 +199,33 @@ async function getPosts(query = {}, userId = null) {
       },
     },
   ];
-  const posts = await Post.aggregate(pipeline);
-  return posts.map((p) => ({
-    ...p,
-    image: p.image || null,
-    poll: formatPollForUser(p.poll, userId),
-  }));
+  
+  // Get total count before pagination
+  const countPipeline = pipeline.slice(0, pipeline.length - 1); // Remove $project stage
+  countPipeline.push({ $count: "total" });
+  const countResult = await Post.aggregate(countPipeline);
+  const total = countResult.length > 0 ? countResult[0].total : 0;
+  const totalPages = Math.ceil(total / limitNum);
+  
+  // Add pagination stages
+  const paginatedPipeline = [...pipeline, { $skip: skip }, { $limit: limitNum }];
+  const posts = await Post.aggregate(paginatedPipeline);
+  
+  return {
+    posts: posts.map((p) => ({
+      ...p,
+      image: p.image || null,
+      poll: formatPollForUser(p.poll, userId),
+    })),
+    pagination: {
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages,
+      hasNextPage: pageNum < totalPages,
+      hasPrevPage: pageNum > 1,
+    },
+  };
 }
 
 // Posts saved by user; includes likeCount, commentCount

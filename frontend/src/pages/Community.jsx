@@ -52,6 +52,13 @@ const Community = () => {
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState('');
   const [voteStateByPost, setVoteStateByPost] = useState({});
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPrevPage, setHasPrevPage] = useState(false);
+  const [pageSize] = useState(10);
+  const [pageWindowStart, setPageWindowStart] = useState(1);
   const suggestionHideTimerRef = useRef(null);
 
   const token = localStorage.getItem('token');
@@ -73,12 +80,18 @@ const Community = () => {
       return;
     }
     if (activeTab === 'feed') {
-      fetchFeed();
+      setPage(1);
+      setPageWindowStart(1);
+      fetchFeed({ newPage: 1 });
     }
   }, [token, sort, activeTab, activeTag, activeAuthor, followedTopics]);
 
   useEffect(() => {
-    if (token && activeTab === 'saved') fetchSaved();
+    if (token && activeTab === 'saved') {
+      setPage(1);
+      setPageWindowStart(1);
+      fetchSaved();
+    }
   }, [token, activeTab]);
 
   useEffect(() => {
@@ -109,8 +122,9 @@ const Community = () => {
       const appliedSearch = overrides.search ?? search;
       const appliedTag = overrides.tag ?? activeTag;
       const appliedAuthor = overrides.author ?? activeAuthor;
+      const appliedPage = overrides.newPage ?? page;
 
-      const params = { sort: appliedSort };
+      const params = { sort: appliedSort, page: appliedPage, limit: pageSize };
       if (String(appliedSearch || '').trim()) params.q = String(appliedSearch).trim();
       if (appliedTag) params.tag = appliedTag;
       if (appliedAuthor) params.author = appliedAuthor;
@@ -120,6 +134,16 @@ const Community = () => {
       const { data } = await getPosts(params);
       const list = data.posts || [];
       setPosts(list);
+      
+      // Handle pagination metadata
+      if (data.pagination) {
+        setTotal(data.pagination.total || 0);
+        setTotalPages(data.pagination.totalPages || 0);
+        setHasNextPage(data.pagination.hasNextPage || false);
+        setHasPrevPage(data.pagination.hasPrevPage || false);
+        setPage(appliedPage);
+      }
+      
       const liked = new Set();
       const voteState = {};
       list.forEach((p) => {
@@ -310,13 +334,19 @@ const Community = () => {
       setActiveTag(suggestion.value);
       setActiveAuthor('');
       setSearch('');
+      setPage(1);
+      setPageWindowStart(1);
     } else if (suggestion.type === 'user') {
       setActiveAuthor(suggestion.value);
       setActiveTag('');
       setSearch('');
+      setPage(1);
+      setPageWindowStart(1);
     } else {
       setSearch(suggestion.value);
-      fetchFeed({ search: suggestion.value });
+      setPage(1);
+      setPageWindowStart(1);
+      fetchFeed({ search: suggestion.value, newPage: 1 });
     }
     setShowSuggestions(false);
   };
@@ -385,7 +415,7 @@ const Community = () => {
           </div>
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center rounded-full bg-white/80 border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700">
-              {posts.length} visible posts
+              {total > 0 ? `${posts.length} on page ${page}` : '0'} posts
             </span>
             <span className="inline-flex items-center rounded-full bg-white/80 border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700">
               {savedIds.size} saved
@@ -443,10 +473,10 @@ const Community = () => {
                     if (suggestionHideTimerRef.current) clearTimeout(suggestionHideTimerRef.current);
                     suggestionHideTimerRef.current = setTimeout(() => setShowSuggestions(false), 150);
                   }}
-                  onKeyDown={(e) => e.key === 'Enter' && fetchFeed()}
+                  onKeyDown={(e) => e.key === 'Enter' && fetchFeed({ newPage: 1 })}
                   className="block w-full rounded-l-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
-                <Button type="button" size="sm" onClick={fetchFeed} className="rounded-l-none shadow-none">
+                <Button type="button" size="sm" onClick={() => fetchFeed({ newPage: 1 })} className="rounded-l-none shadow-none">
                   Search
                 </Button>
                 {showSuggestions && searchSuggestions.length > 0 && (
@@ -822,6 +852,52 @@ const Community = () => {
                 </div>
               </Card>
             ))
+          )}
+        </div>
+      )}
+
+      {total >= 10 && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 mt-8 px-4 py-6 rounded-2xl border border-slate-200 bg-slate-50">
+          {totalPages > 3 && (
+            <button
+              onClick={() => setPageWindowStart(Math.max(1, pageWindowStart - 3))}
+              disabled={pageWindowStart === 1 || loading}
+              className="btn btn-sm btn-ghost disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Previous pages"
+            >
+              ←
+            </button>
+          )}
+          
+          <div className="flex gap-2">
+            {Array.from({ length: Math.min(3, totalPages - pageWindowStart + 1) }, (_, i) => pageWindowStart + i).map((pageNum) => (
+              <button
+                key={`page-${pageNum}`}
+                onClick={() => {
+                  setPage(pageNum);
+                  fetchFeed({ newPage: pageNum });
+                }}
+                disabled={loading}
+                className={`btn btn-sm w-12 h-12 rounded-lg border-2 transition-all ${
+                  pageNum === page 
+                    ? 'btn-active bg-primary text-white border-primary' 
+                    : 'bg-white text-slate-700 border-slate-300 hover:border-slate-400'
+                }`}
+              >
+                {pageNum}
+              </button>
+            ))}
+          </div>
+          
+          {totalPages > 3 && pageWindowStart + 2 < totalPages && (
+            <button
+              onClick={() => setPageWindowStart(Math.min(totalPages - 2, pageWindowStart + 3))}
+              disabled={pageWindowStart + 2 >= totalPages || loading}
+              className="btn btn-sm btn-ghost disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Next pages"
+            >
+              →
+            </button>
           )}
         </div>
       )}

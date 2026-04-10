@@ -8,12 +8,16 @@ function getUserId(req) {
   return req.user && (req.user.id || req.user._id);
 }
 
-// List posts with query (sort, q); returns { success, posts }
+// List posts with query (sort, q, page, limit); returns { success, posts, pagination }
 async function getPosts(req, res, next) {
   try {
     const userId = getUserId(req);
-    const posts = await communityService.getPosts(req.query, userId);
-    return res.status(HTTP_STATUS.OK).json({ success: true, posts });
+    const result = await communityService.getPosts(req.query, userId);
+    return res.status(HTTP_STATUS.OK).json({
+      success: true,
+      posts: result.posts,
+      pagination: result.pagination,
+    });
   } catch (err) {
     next(err);
   }
