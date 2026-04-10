@@ -9,8 +9,10 @@ const {
   commentIdRules,
   addCommentRules,
   updateCommentRules,
+  pollVoteRules,
   validate,
 } = require("./communityValidators");
+const { reportRules } = require("./validators/reportValidators");
 const {
   getPosts,
   getSearchSuggestions,
@@ -20,6 +22,7 @@ const {
   updatePost,
   deletePost,
   likeToggle,
+  votePoll,
   sharePost,
   savePost,
   unsavePost,
@@ -27,6 +30,13 @@ const {
   updateComment,
   deleteComment,
 } = require("./communityController");
+const {
+  submitReport,
+  getAllReports,
+  getPostReportDetails,
+  banUserForReport,
+  deleteReportedPost,
+} = require("./controllers/reportController");
 const { chat } = require("./chatbot/chatbotController");
 const { chatRules, validate: validateChat } = require("./chatbot/chatbotValidators");
 
@@ -46,6 +56,7 @@ router.delete("/:id", protect, postIdRules(), validate, deletePost);
 
 // Like, share, save/unsave
 router.put("/:id/like", protect, postIdRules(), validate, likeToggle);
+router.put("/:id/poll/vote", protect, pollVoteRules(), validate, votePoll);
 router.post("/:id/share", protect, postIdRules(), validate, sharePost);
 router.post("/:id/save", protect, postIdRules(), validate, savePost);
 router.delete("/:id/save", protect, postIdRules(), validate, unsavePost);
@@ -54,5 +65,8 @@ router.delete("/:id/save", protect, postIdRules(), validate, unsavePost);
 router.post("/:id/comments", protect, addCommentRules(), validate, addComment);
 router.put("/:id/comments/:commentId", protect, updateCommentRules(), validate, updateComment);
 router.delete("/:id/comments/:commentId", protect, commentIdRules(), validate, deleteComment);
+
+// Report: report a post
+router.post("/:id/report", protect, postIdRules(), reportRules(), validate, submitReport);
 
 module.exports = router;

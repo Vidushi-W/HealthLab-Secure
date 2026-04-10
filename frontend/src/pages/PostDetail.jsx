@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Heart, Share2, Bookmark, ArrowLeft, Flag } from 'lucide-react';
 import {
   getPostById,
   getPostImageUrl,
   getSavedPosts,
   addComment,
   likeToggle,
+  votePoll,
   sharePost,
   savePost,
   unsavePost,
   deleteComment,
   updatePost,
   deletePost as deletePostApi,
+  reportPost,
 } from '../api/posts';
+import ReportModal from '../components/ReportModal';
 import {
   Button,
   Card,
@@ -35,6 +39,7 @@ const PostDetail = () => {
   const [saved, setSaved] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ title: '', content: '', tags: [] });
+  const [reportOpen, setReportOpen] = useState(false);
 
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -51,6 +56,7 @@ const PostDetail = () => {
     getPostById(id)
       .then(({ data }) => {
         const p = data.post ?? data;
+        console.log(`📖 Post fetched. Image field:`, p.image, 'URL would be:', p.image ? getPostImageUrl(p.image) : 'N/A');
         setPost(p);
         setLiked(p?.likes?.some((l) => String(l && (l._id || l)) === String(user._id)) || false);
         return getSavedPosts();
@@ -107,11 +113,25 @@ const PostDetail = () => {
     } catch (_) {}
   };
 
+  const handleReport = async (data) => {
+    await reportPost(id, data);
+    alert('Post reported successfully. Thank you for helping us maintain a safe community.');
+  };
+
   const handleDeleteComment = async (commentId) => {
     if (!window.confirm('Delete this comment?')) return;
     try {
       await deleteComment(id, commentId);
       fetchPost();
+    } catch (_) {}
+  };
+
+  const handlePollVote = async (optionIndex) => {
+    try {
+      const { data } = await votePoll(id, optionIndex);
+      const nextPoll = data?.poll;
+      if (!nextPoll) return;
+      setPost((p) => (p ? { ...p, poll: nextPoll } : p));
     } catch (_) {}
   };
 
@@ -173,8 +193,8 @@ const PostDetail = () => {
     return (
       <div className="max-w-3xl mx-auto px-4 py-6">
         <ErrorMessage message={error} />
-        <Link to="/community" className="inline-block mt-4 text-primary font-medium hover:underline">
-          ← Back to Community
+        <Link to="/community" className="inline-block mt-4 text-gray-600 hover:text-gray-900 p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Back to Community">
+          <ArrowLeft size={20} />
         </Link>
       </div>
     );
@@ -183,8 +203,8 @@ const PostDetail = () => {
     return (
       <div className="max-w-3xl mx-auto px-4 py-6">
         <ErrorMessage message="Post not found." />
-        <Link to="/community" className="inline-block mt-4 text-primary font-medium hover:underline">
-          ← Back to Community
+        <Link to="/community" className="inline-block mt-4 text-gray-600 hover:text-gray-900 p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Back to Community">
+          <ArrowLeft size={20} />
         </Link>
       </div>
     );
@@ -197,10 +217,26 @@ const PostDetail = () => {
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       <Link
         to="/community"
-        className="inline-flex items-center gap-1 text-primary font-medium hover:underline mb-6"
+        className="inline-block text-gray-600 hover:text-gray-900 p-2 hover:bg-gray-100 rounded-lg transition-colors mb-6"
+        title="Back to Community"
       >
-        ← Back to Community
+        <ArrowLeft size={20} />
       </Link>
+
+      {postImage && !editing && (
+        <div className="mb-6 rounded-xl overflow-hidden border-2 border-gray-200 shadow-lg">
+          <img
+            src={getPostImageUrl(postImage)}
+            alt="Post banner"
+            className="w-full h-72 sm:h-96 object-cover"
+            onError={(e) => {
+              console.error(`❌ Image failed to load from URL:`, getPostImageUrl(postImage));
+              e.target.style.display = 'none';
+            }}
+            onLoad={() => console.log(`✅ Image loaded successfully from:`, getPostImageUrl(postImage))}
+          />
+        </div>
+      )}
 
       <Card className="relative">
         {post.category && !editing && (
@@ -256,15 +292,54 @@ const PostDetail = () => {
               </div>
             )}
             <p className="text-gray-700 whitespace-pre-wrap leading-relaxed mb-4">{post.content}</p>
-            {postImage && (
-              <div className="mb-4 rounded-lg overflow-hidden border border-gray-200">
-                <img
-                  src={getPostImageUrl(postImage)}
-                  alt="Post attachment"
-                  className="w-full max-h-[400px] object-cover"
-                />
+            {post.poll?.question && Array.isArray(post.poll?.options) && post.poll.options.length > 0 && (
+              <div className="mb-6 rounded-2xl border-2 border-blue-300 bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-50 p-5 shadow-md">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-2xl">🗳️</span>
+                  <div>
+                    <h3 className="text-lg font-bold text-blue-900">{post.poll.question}</h3>
+                    <p className="text-xs text-blue-600">{post.poll.totalVotes || 0} total vote{post.poll.totalVotes === 1 ? '' : 's'}</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {post.poll.options.map((opt, idx) => {
+                    const isSelected = post.poll.selectedOptionIndex === idx;
+                    const label = typeof opt === 'string' ? opt : opt?.text;
+                    const voteCount = typeof opt === 'object' ? (opt.voteCount || 0) : 0;
+                    const percentage = typeof opt === 'object' ? (opt.percentage || 0) : 0;
+                    return (
+                      <button
+                        key={`poll-option-${idx}`}
+                        type="button"
+                        onClick={() => handlePollVote(idx)}
+                        className={`w-full text-left rounded-xl border-2 px-4 py-3 transition-all transform hover:scale-102 ${
+                          isSelected
+                            ? 'border-blue-500 bg-white shadow-lg ring-2 ring-blue-200'
+                            : 'border-blue-200 bg-white hover:border-blue-300 hover:shadow-md'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-3 mb-2">
+                          <span className={`text-sm font-semibold ${
+                            isSelected ? 'text-blue-900' : 'text-blue-800'
+                          }`}>
+                            {isSelected && '✓ '}{label}
+                          </span>
+                          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700">{percentage}%</span>
+                        </div>
+                        <div className="w-full bg-blue-200 rounded-full h-2 overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-300"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                        <p className="mt-1.5 text-xs text-blue-600 font-medium">{voteCount} vote{voteCount === 1 ? '' : 's'}</p>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
+
           </>
         ) : (
           <form onSubmit={handleSaveEdit} className="space-y-4">
@@ -291,27 +366,54 @@ const PostDetail = () => {
         )}
 
         {!editing && (
-          <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-gray-100">
+          <div className="flex items-center justify-between gap-3 pt-4 border-t border-gray-100">
             <button
               type="button"
               onClick={handleLike}
-              className={`flex items-center gap-1 text-sm font-medium ${liked ? 'text-red-600' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors ${liked ? 'text-red-600 bg-red-50' : 'text-gray-600 hover:bg-gray-100'}`}
+              title="Like this post"
             >
-              <span>{liked ? '♥' : '♡'}</span> {post.likeCount || 0}
+              <Heart size={18} fill={liked ? 'currentColor' : 'none'} />
+              <span className="text-sm font-medium">{post.likeCount || 0}</span>
             </button>
-            <button type="button" onClick={handleShare} className="text-sm text-gray-500 hover:text-gray-700">
-              ↗ Share ({post.shareCount || 0})
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              className={`text-sm font-medium ${saved ? 'text-secondary' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-              {saved ? '✓ Saved' : 'Bookmark'}
-            </button>
+            <div className="flex items-center gap-2 ml-auto">
+              <button
+                type="button"
+                onClick={handleShare}
+                className="text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors"
+                title="Share this post"
+              >
+                <Share2 size={18} />
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                className={`p-2 rounded-lg transition-colors ${
+                  saved ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:bg-gray-100'
+                }`}
+                title={saved ? 'Remove from bookmarks' : 'Bookmark this post'}
+              >
+                <Bookmark size={18} fill={saved ? 'currentColor' : 'none'} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setReportOpen(true)}
+                className="text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors"
+                title="Report this post"
+              >
+                <Flag size={18} />
+              </button>
+            </div>
           </div>
         )}
       </Card>
+
+      <ReportModal
+        isOpen={reportOpen}
+        onClose={() => setReportOpen(false)}
+        onSubmit={handleReport}
+        postId={id}
+      />
 
       <section className="mt-8">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Comments ({comments.length})</h2>

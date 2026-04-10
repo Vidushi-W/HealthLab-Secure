@@ -15,9 +15,61 @@ function parseCsvLike(value) {
     .filter(Boolean);
 }
 
-// List posts with optional sort (latest|popular|most_commented) and search q
-async function getPosts(query = {}) {
-  const { sort = "latest", q, tag, tags, followingTags, author } = query;
+function normalizePoll(poll) {
+  if (!poll || typeof poll !== "object") return null;
+  const question = String(poll.question || "").trim();
+  if (!question) return null;
+
+  const options = (Array.isArray(poll.options) ? poll.options : [])
+    .map((opt) => (typeof opt === "string" ? opt : opt && opt.text))
+    .map((text) => String(text || "").trim())
+    .filter(Boolean)
+    .slice(0, 6);
+
+  if (options.length < 2) return null;
+
+  return {
+    question: question.slice(0, 200),
+    options: options.map((text) => ({ text, voters: [] })),
+  };
+}
+
+function formatPollForUser(poll, userId = null) {
+  if (!poll || !Array.isArray(poll.options) || poll.options.length === 0) return null;
+
+  const myId = userId != null ? String(userId) : null;
+  const options = poll.options.map((option) => {
+    const text = typeof option === "string" ? option : option && option.text;
+    const voters = Array.isArray(option && option.voters) ? option.voters : [];
+    return {
+      text: String(text || "").trim(),
+      voteCount: voters.length,
+      votedByMe: myId ? voters.some((id) => String(id) === myId) : false,
+    };
+  });
+
+  const totalVotes = options.reduce((sum, option) => sum + option.voteCount, 0);
+  const selectedOptionIndex = options.findIndex((option) => option.votedByMe);
+
+  return {
+    question: String(poll.question || "").trim(),
+    options: options.map((option) => ({
+      text: option.text,
+      voteCount: option.voteCount,
+      percentage: totalVotes > 0 ? Math.round((option.voteCount / totalVotes) * 100) : 0,
+    })),
+    totalVotes,
+    selectedOptionIndex: selectedOptionIndex >= 0 ? selectedOptionIndex : null,
+  };
+}
+
+// List posts with optional sort (latest|popular|most_commented) and search q, with pagination support
+async function getPosts(query = {}, userId = null) {
+  const { sort = "latest", q, tag, tags, followingTags, author, page = 1, limit = 10 } = query;
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const limitNum = Math.max(1, parseInt(limit, 10) || 10);
+  const skip = (pageNum - 1) * limitNum;
+  
   const match = {};
   if (q && String(q).trim()) {
     const term = String(q).trim();
@@ -129,6 +181,7 @@ async function getPosts(query = {}) {
         tags: 1,
         aiTags: 1,
         image: 1,
+        poll: 1,
         category: 1,
         likes: 1,
         downvotes: 1,
@@ -146,7 +199,33 @@ async function getPosts(query = {}) {
       },
     },
   ];
-  return Post.aggregate(pipeline);
+  
+  // Get total count before pagination
+  const countPipeline = pipeline.slice(0, pipeline.length - 1); // Remove $project stage
+  countPipeline.push({ $count: "total" });
+  const countResult = await Post.aggregate(countPipeline);
+  const total = countResult.length > 0 ? countResult[0].total : 0;
+  const totalPages = Math.ceil(total / limitNum);
+  
+  // Add pagination stages
+  const paginatedPipeline = [...pipeline, { $skip: skip }, { $limit: limitNum }];
+  const posts = await Post.aggregate(paginatedPipeline);
+  
+  return {
+    posts: posts.map((p) => ({
+      ...p,
+      image: p.image || null,
+      poll: formatPollForUser(p.poll, userId),
+    })),
+    pagination: {
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages,
+      hasNextPage: pageNum < totalPages,
+      hasPrevPage: pageNum > 1,
+    },
+  };
 }
 
 // Posts saved by user; includes likeCount, commentCount
@@ -207,6 +286,8 @@ async function getSavedPosts(userId) {
   const posts = await Post.find({ savedBy: userId }).populate("author", "name email").sort({ createdAt: -1 }).lean();
   return posts.map((p) => ({
     ...p,
+    image: p.image || null,
+    poll: formatPollForUser(p.poll, userId),
     upvoteCount: (p.likes && p.likes.length) || 0,
     downvoteCount: (p.downvotes && p.downvotes.length) || 0,
     score: ((p.likes && p.likes.length) || 0) - ((p.downvotes && p.downvotes.length) || 0),
@@ -217,12 +298,14 @@ async function getSavedPosts(userId) {
 }
 
 // Single post with author and comments populated; likeCount, commentCount
-async function getPostById(postId) {
+async function getPostById(postId, userId = null) {
   const post = await Post.findById(postId).populate("author", "name email").populate("comments.author", "name").lean();
   if (!post) return null;
   const visibleComments = (post.comments || []).filter((c) => c.status !== "hidden");
   return {
     ...post,
+    image: post.image || null,
+    poll: formatPollForUser(post.poll, userId),
     upvoteCount: (post.likes && post.likes.length) || 0,
     downvoteCount: (post.downvotes && post.downvotes.length) || 0,
     score: ((post.likes && post.likes.length) || 0) - ((post.downvotes && post.downvotes.length) || 0),
@@ -234,7 +317,7 @@ async function getPostById(postId) {
 
 // Create post; optional AI tags from title/content; returns post and ai object
 async function createPost(userId, data) {
-  const { title, content, tags, image } = data;
+  const { title, content, tags, image, poll } = data;
   const tagArray = Array.isArray(tags)
     ? tags
     : typeof tags === "string"
@@ -244,11 +327,13 @@ async function createPost(userId, data) {
   try {
     ai = await generateSmartTags({ title, content });
   } catch (_) {}
+  const normalizedPoll = normalizePoll(poll);
   const post = await Post.create({
     title: title || "",
     content: content || "",
     tags: tagArray,
-    image: image || null,
+    image: image && String(image).trim() ? String(image).trim() : null,
+    poll: normalizedPoll,
     category: (ai && ai.category) || null,
     aiTags: Array.isArray(ai && ai.aiTags) ? ai.aiTags : [],
     author: userId,
@@ -257,6 +342,8 @@ async function createPost(userId, data) {
   return {
     post: {
       ...populated,
+      image: populated.image || null,
+      poll: formatPollForUser(populated.poll, userId),
       upvoteCount: 0,
       downvoteCount: 0,
       score: 0,
@@ -339,6 +426,46 @@ async function voteToggle(postId, userId, vote = "up") {
   };
 }
 
+async function votePoll(postId, userId, optionIndex) {
+  const post = await Post.findById(postId);
+  if (!post) return null;
+  if (!post.poll || !Array.isArray(post.poll.options) || post.poll.options.length < 2) {
+    return { noPoll: true };
+  }
+
+  const nextOptionIndex = Number(optionIndex);
+  if (!Number.isInteger(nextOptionIndex) || nextOptionIndex < 0 || nextOptionIndex >= post.poll.options.length) {
+    return { invalidOption: true };
+  }
+
+  const uid = String(userId);
+  let existingOptionIndex = null;
+
+  post.poll.options = post.poll.options.map((option, idx) => {
+    const text = typeof option === "string" ? option : option && option.text;
+    const currentVoters = Array.isArray(option.voters) ? [...option.voters] : [];
+    const hasUser = currentVoters.some((id) => String(id) === uid);
+    if (hasUser) {
+      existingOptionIndex = idx;
+    }
+    return {
+      text: String(text || "").trim(),
+      voters: currentVoters.filter((id) => String(id) !== uid),
+    };
+  });
+
+  const finalIndex = existingOptionIndex === nextOptionIndex ? existingOptionIndex : nextOptionIndex;
+  if (finalIndex !== null && finalIndex >= 0) {
+    const existing = Array.isArray(post.poll.options[finalIndex].voters)
+      ? post.poll.options[finalIndex].voters
+      : [];
+    post.poll.options[finalIndex].voters = [...existing, userId];
+  }
+
+  await post.save();
+  return { poll: formatPollForUser(post.poll, userId) };
+}
+
 // Increment shareCount; returns { shareCount } or null
 async function sharePost(postId) {
   const post = await Post.findByIdAndUpdate(postId, { $inc: { shareCount: 1 } }, { new: true });
@@ -408,4 +535,5 @@ module.exports = {
   updateComment,
   deleteComment,
   voteToggle,
+  votePoll,
 };

@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Heart, MessageSquare, Share2, Bookmark } from 'lucide-react';
 import {
   getPosts,
   getPostSuggestions,
   createPost,
-  getPostImageUrl,
   likeToggle,
+  votePoll,
   sharePost,
   savePost,
   unsavePost,
@@ -39,6 +40,9 @@ const Community = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [formData, setFormData] = useState({ title: '', content: '', tags: '' });
   const [postImageFile, setPostImageFile] = useState(null);
+  const [pollEnabled, setPollEnabled] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState('');
+  const [pollOptions, setPollOptions] = useState(['', '']);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('feed');
   const [likedPostIds, setLikedPostIds] = useState(new Set());
@@ -48,6 +52,13 @@ const Community = () => {
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState('');
   const [voteStateByPost, setVoteStateByPost] = useState({});
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPrevPage, setHasPrevPage] = useState(false);
+  const [pageSize] = useState(10);
+  const [pageWindowStart, setPageWindowStart] = useState(1);
   const suggestionHideTimerRef = useRef(null);
 
   const token = localStorage.getItem('token');
@@ -69,12 +80,18 @@ const Community = () => {
       return;
     }
     if (activeTab === 'feed') {
-      fetchFeed();
+      setPage(1);
+      setPageWindowStart(1);
+      fetchFeed({ newPage: 1 });
     }
   }, [token, sort, activeTab, activeTag, activeAuthor, followedTopics]);
 
   useEffect(() => {
-    if (token && activeTab === 'saved') fetchSaved();
+    if (token && activeTab === 'saved') {
+      setPage(1);
+      setPageWindowStart(1);
+      fetchSaved();
+    }
   }, [token, activeTab]);
 
   useEffect(() => {
@@ -105,8 +122,9 @@ const Community = () => {
       const appliedSearch = overrides.search ?? search;
       const appliedTag = overrides.tag ?? activeTag;
       const appliedAuthor = overrides.author ?? activeAuthor;
+      const appliedPage = overrides.newPage ?? page;
 
-      const params = { sort: appliedSort };
+      const params = { sort: appliedSort, page: appliedPage, limit: pageSize };
       if (String(appliedSearch || '').trim()) params.q = String(appliedSearch).trim();
       if (appliedTag) params.tag = appliedTag;
       if (appliedAuthor) params.author = appliedAuthor;
@@ -116,6 +134,16 @@ const Community = () => {
       const { data } = await getPosts(params);
       const list = data.posts || [];
       setPosts(list);
+      
+      // Handle pagination metadata
+      if (data.pagination) {
+        setTotal(data.pagination.total || 0);
+        setTotalPages(data.pagination.totalPages || 0);
+        setHasNextPage(data.pagination.hasNextPage || false);
+        setHasPrevPage(data.pagination.hasPrevPage || false);
+        setPage(appliedPage);
+      }
+      
       const liked = new Set();
       const voteState = {};
       list.forEach((p) => {
@@ -168,6 +196,18 @@ const Community = () => {
       setError('Title and content are required');
       return;
     }
+    if (pollEnabled) {
+      const question = pollQuestion.trim();
+      const options = pollOptions.map((opt) => opt.trim()).filter(Boolean);
+      if (!question) {
+        setError('Poll question is required when poll is enabled');
+        return;
+      }
+      if (options.length < 2) {
+        setError('Add at least 2 poll options');
+        return;
+      }
+    }
     try {
       setSubmitting(true);
       const payload = {
@@ -175,13 +215,30 @@ const Community = () => {
         content: formData.content.trim(),
         tags: formData.tags ? formData.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
       };
-      if (postImageFile) payload.imageFile = postImageFile;
-      await createPost(payload);
+      if (pollEnabled) {
+        payload.poll = {
+          question: pollQuestion.trim(),
+          options: pollOptions.map((opt) => opt.trim()).filter(Boolean),
+        };
+      }
+      if (postImageFile) {
+        console.log(`🖼️ Image file selected for post:`, postImageFile.name, `(${(postImageFile.size/1024).toFixed(1)}KB)`);
+        payload.imageFile = postImageFile;
+      } else {
+        console.log(`🖼️ No image file selected`);
+      }
+      console.log(`📤 Creating post with payload:`, { hasTitle: !!payload.title, hasContent: !!payload.content, hasPoll: !!payload.poll, hasImage: !!payload.imageFile});
+      const result = await createPost(payload);
+      console.log(`✅ Post created successfully. Response image field:`, result?.data?.post?.image || 'undefined');
       setFormData({ title: '', content: '', tags: '' });
       setPostImageFile(null);
+      setPollEnabled(false);
+      setPollQuestion('');
+      setPollOptions(['', '']);
       setCreateOpen(false);
       fetchFeed();
     } catch (err) {
+      console.error(`❌ Failed to create post:`, err.response?.data || err.message);
       setError(err.response?.data?.message || 'Failed to create post');
     } finally {
       setSubmitting(false);
@@ -238,6 +295,15 @@ const Community = () => {
     }
   };
 
+  const handlePollVote = async (postId, optionIndex) => {
+    try {
+      const { data } = await votePoll(postId, optionIndex);
+      const nextPoll = data?.poll;
+      if (!nextPoll) return;
+      setPosts((prev) => prev.map((p) => (p._id === postId ? { ...p, poll: nextPoll } : p)));
+    } catch (_) {}
+  };
+
   const handleSave = async (postId, isSaved) => {
     try {
       if (isSaved) await unsavePost(postId);
@@ -268,13 +334,19 @@ const Community = () => {
       setActiveTag(suggestion.value);
       setActiveAuthor('');
       setSearch('');
+      setPage(1);
+      setPageWindowStart(1);
     } else if (suggestion.type === 'user') {
       setActiveAuthor(suggestion.value);
       setActiveTag('');
       setSearch('');
+      setPage(1);
+      setPageWindowStart(1);
     } else {
       setSearch(suggestion.value);
-      fetchFeed({ search: suggestion.value });
+      setPage(1);
+      setPageWindowStart(1);
+      fetchFeed({ search: suggestion.value, newPage: 1 });
     }
     setShowSuggestions(false);
   };
@@ -334,13 +406,26 @@ const Community = () => {
   if (!token) return null;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      <header className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Community</h1>
-        <p className="mt-1 text-gray-600">Discuss, share, and connect with researchers and participants.</p>
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <header className="mb-6 sm:mb-8 rounded-2xl border border-slate-200 bg-gradient-to-r from-cyan-50 via-white to-emerald-50 p-5 sm:p-6 shadow-sm">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Community</h1>
+            <p className="mt-1 text-gray-600">Discuss, share, and connect with researchers and participants.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center rounded-full bg-white/80 border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700">
+              {total > 0 ? `${posts.length} on page ${page}` : '0'} posts
+            </span>
+            <span className="inline-flex items-center rounded-full bg-white/80 border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700">
+              {savedIds.size} saved
+            </span>
+          </div>
+        </div>
       </header>
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      <div className="sticky top-4 z-20 mb-6 rounded-2xl border border-slate-200 bg-white/90 backdrop-blur p-3 sm:p-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5">
             <button
@@ -388,10 +473,10 @@ const Community = () => {
                     if (suggestionHideTimerRef.current) clearTimeout(suggestionHideTimerRef.current);
                     suggestionHideTimerRef.current = setTimeout(() => setShowSuggestions(false), 150);
                   }}
-                  onKeyDown={(e) => e.key === 'Enter' && fetchFeed()}
+                  onKeyDown={(e) => e.key === 'Enter' && fetchFeed({ newPage: 1 })}
                   className="block w-full rounded-l-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
-                <Button type="button" size="sm" onClick={fetchFeed} className="rounded-l-none">
+                <Button type="button" size="sm" onClick={() => fetchFeed({ newPage: 1 })} className="rounded-l-none shadow-none">
                   Search
                 </Button>
                 {showSuggestions && searchSuggestions.length > 0 && (
@@ -425,10 +510,11 @@ const Community = () => {
         </div>
         <Button
           onClick={() => setCreateOpen(!createOpen)}
-          className="shrink-0 px-5 py-3 text-base font-semibold shadow-lg shadow-primary/20 bg-primary hover:bg-primary-hover"
+          className="shrink-0 px-5 py-3 text-base font-semibold shadow-lg shadow-primary/20 bg-primary hover:bg-primary-hover rounded-xl"
         >
           {createOpen ? 'Cancel' : '+ New Post'}
         </Button>
+      </div>
       </div>
 
       <div className="mb-5 rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-emerald-50 px-4 py-3 shadow-sm">
@@ -498,6 +584,75 @@ const Community = () => {
             onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
             placeholder="health, research"
           />
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
+            <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-800">
+              <input
+                type="checkbox"
+                checked={pollEnabled}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setPollEnabled(checked);
+                  if (!checked) {
+                    setPollQuestion('');
+                    setPollOptions(['', '']);
+                  }
+                }}
+                className="rounded border-slate-300"
+              />
+              Add poll
+            </label>
+            {pollEnabled && (
+              <div className="space-y-3">
+                <Input
+                  label="Poll question"
+                  value={pollQuestion}
+                  onChange={(e) => setPollQuestion(e.target.value)}
+                  placeholder="Ask the community something"
+                  maxLength={200}
+                  required
+                />
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">Poll options</label>
+                  {pollOptions.map((option, index) => (
+                    <div key={`poll-option-${index}`} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={option}
+                        onChange={(e) => {
+                          const next = [...pollOptions];
+                          next[index] = e.target.value;
+                          setPollOptions(next);
+                        }}
+                        placeholder={`Option ${index + 1}`}
+                        className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent"
+                      />
+                      {pollOptions.length > 2 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => setPollOptions((prev) => prev.filter((_, i) => i !== index))}
+                        >
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <div className="flex justify-between items-center">
+                    <p className="text-xs text-slate-500">Add at least 2 options, up to 6.</p>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={pollOptions.length >= 6}
+                      onClick={() => setPollOptions((prev) => (prev.length >= 6 ? prev : [...prev, '']))}
+                    >
+                      + Add option
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={() => setCreateOpen(false)}>
               Cancel
@@ -534,7 +689,7 @@ const Community = () => {
             />
           ) : (
             posts.map((post) => (
-              <Card key={post._id} className="relative">
+              <Card key={post._id} className="relative border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all duration-200">
                 {post.category && (
                   <span className="absolute -top-2.5 left-4 px-3 py-1 rounded-full bg-emerald-600 text-white text-xs font-semibold uppercase tracking-wide shadow">
                     {post.category}
@@ -568,18 +723,53 @@ const Community = () => {
                     {highlightText(post.title, search)}
                   </Link>
                 </h3>
-                {post.image && (
-                  <div className="mb-3 rounded-lg overflow-hidden border border-gray-200">
-                    <img
-                      src={getPostImageUrl(post.image)}
-                      alt=""
-                      className="w-full max-h-64 object-cover"
-                    />
-                  </div>
-                )}
                 <p className="text-slate-500 text-sm leading-relaxed mb-3">
                   {highlightText(post.content.length > 220 ? post.content.slice(0, 220) + '...' : post.content, search)}
                 </p>
+                {post.poll?.question && Array.isArray(post.poll?.options) && post.poll.options.length > 0 && (
+                  <div className="mb-3 rounded-xl border-2 border-blue-300 bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-50 p-3 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <span className="text-lg">🗳️</span>
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-blue-900">{post.poll.question}</p>
+                        <p className="text-xs text-blue-600">{post.poll.totalVotes || 0} vote{post.poll.totalVotes === 1 ? '' : 's'}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {post.poll.options.map((opt, idx) => {
+                        const isSelected = post.poll.selectedOptionIndex === idx;
+                        const label = typeof opt === 'string' ? opt : opt?.text;
+                        const voteCount = typeof opt === 'object' ? (opt.voteCount || 0) : 0;
+                        const percentage = typeof opt === 'object' ? (opt.percentage || 0) : 0;
+                        return (
+                          <button
+                            key={`poll-opt-${post._id}-${idx}`}
+                            type="button"
+                            onClick={() => handlePollVote(post._id, idx)}
+                            className={`w-full text-left rounded-lg border-2 px-3 py-2 transition-all ${
+                              isSelected
+                                ? 'border-blue-500 bg-white shadow-md ring-1 ring-blue-200'
+                                : 'border-blue-200 bg-white hover:border-blue-300'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <span className="text-xs font-semibold text-blue-900">
+                                {isSelected && '✓ '}{label}
+                              </span>
+                              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{percentage}%</span>
+                            </div>
+                            <div className="w-full bg-blue-200 rounded-full h-1.5 overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-300"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 {((post.aiTags && post.aiTags.length > 0) || (post.tags && post.tags.length > 0)) && (
                   <div className="flex flex-wrap gap-2 mb-3">
                     {post.aiTags?.map((t) => (
@@ -617,68 +807,97 @@ const Community = () => {
                     </p>
                   </Link>
                 )}
-                <div className="flex flex-wrap items-center gap-4 pt-3 border-t border-gray-100">
-                  <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
+                <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-100 mt-1">
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => handleLike(post._id, 'up')}
-                      className={`px-2 py-1 rounded-md text-sm font-semibold transition-colors ${
-                        voteStateByPost[post._id] === 'up' ? 'bg-emerald-100 text-emerald-700' : 'text-slate-600 hover:bg-white'
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors border ${
+                        isLiked(post) ? 'text-red-600 bg-red-50' : 'text-gray-600 hover:bg-gray-100'
                       }`}
-                      title="Upvote"
+                      title="Like this post"
                     >
-                      ▲
+                      <Heart size={16} fill={isLiked(post) ? 'currentColor' : 'none'} />
+                      <span className="text-xs font-medium">{post.upvoteCount || post.likeCount || 0}</span>
                     </button>
-                    <span className="min-w-8 text-center text-sm font-semibold text-slate-800">{post.score ?? ((post.upvoteCount || post.likeCount || 0) - (post.downvoteCount || 0))}</span>
+                    <Link
+                      to={`/community/${post._id}`}
+                      className="flex items-center gap-1.5 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors border border-transparent hover:border-slate-200"
+                      title="View comments"
+                    >
+                      <MessageSquare size={16} />
+                      <span className="text-xs font-medium">{post.commentCount || 0}</span>
+                    </Link>
+                  </div>
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => handleLike(post._id, 'down')}
-                      className={`px-2 py-1 rounded-md text-sm font-semibold transition-colors ${
-                        voteStateByPost[post._id] === 'down' ? 'bg-rose-100 text-rose-700' : 'text-slate-600 hover:bg-white'
-                      }`}
-                      title="Downvote"
+                      onClick={() => handleShare(post._id)}
+                      className="text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors"
+                      title="Share this post"
                     >
-                      ▼
+                      <Share2 size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSave(post._id, savedIds.has(post._id))}
+                      className={`p-2 rounded-lg transition-colors ${
+                        savedIds.has(post._id) ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                      title={savedIds.has(post._id) ? 'Remove from bookmarks' : 'Bookmark this post'}
+                    >
+                      <Bookmark size={16} fill={savedIds.has(post._id) ? 'currentColor' : 'none'} />
                     </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleLike(post._id, 'up')}
-                    className={`flex items-center gap-1 text-sm font-medium transition-colors ${
-                      isLiked(post) ? 'text-red-600' : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    <span>{isLiked(post) ? '♥' : '♡'}</span> {post.upvoteCount || post.likeCount || 0}
-                  </button>
-                  <Link
-                    to={`/community/${post._id}`}
-                    className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
-                  >
-                    💬 {post.commentCount || 0}
-                  </Link>
-                  <Link
-                    to={`/community/${post._id}?reply=1#comment-box`}
-                    className="text-sm text-primary font-semibold hover:underline"
-                  >
-                    Reply
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => handleShare(post._id)}
-                    className="text-sm text-gray-500 hover:text-gray-700"
-                  >
-                    ↗ Share
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSave(post._id, savedIds.has(post._id))}
-                    className={`text-sm font-medium ${savedIds.has(post._id) ? 'text-secondary' : 'text-gray-500 hover:text-gray-700'}`}
-                  >
-                    {savedIds.has(post._id) ? '✓ Saved' : 'Bookmark'}
-                  </button>
                 </div>
               </Card>
             ))
+          )}
+        </div>
+      )}
+
+      {total >= 10 && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 mt-8 px-4 py-6 rounded-2xl border border-slate-200 bg-slate-50">
+          {totalPages > 3 && (
+            <button
+              onClick={() => setPageWindowStart(Math.max(1, pageWindowStart - 3))}
+              disabled={pageWindowStart === 1 || loading}
+              className="btn btn-sm btn-ghost disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Previous pages"
+            >
+              ←
+            </button>
+          )}
+          
+          <div className="flex gap-2">
+            {Array.from({ length: Math.min(3, totalPages - pageWindowStart + 1) }, (_, i) => pageWindowStart + i).map((pageNum) => (
+              <button
+                key={`page-${pageNum}`}
+                onClick={() => {
+                  setPage(pageNum);
+                  fetchFeed({ newPage: pageNum });
+                }}
+                disabled={loading}
+                className={`btn btn-sm w-12 h-12 rounded-lg border-2 transition-all ${
+                  pageNum === page 
+                    ? 'btn-active bg-primary text-white border-primary' 
+                    : 'bg-white text-slate-700 border-slate-300 hover:border-slate-400'
+                }`}
+              >
+                {pageNum}
+              </button>
+            ))}
+          </div>
+          
+          {totalPages > 3 && pageWindowStart + 2 < totalPages && (
+            <button
+              onClick={() => setPageWindowStart(Math.min(totalPages - 2, pageWindowStart + 3))}
+              disabled={pageWindowStart + 2 >= totalPages || loading}
+              className="btn btn-sm btn-ghost disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Next pages"
+            >
+              →
+            </button>
           )}
         </div>
       )}

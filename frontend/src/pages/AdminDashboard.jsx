@@ -10,14 +10,16 @@ import {
   EmptyState,
   TableRowSkeleton,
 } from '../components/ui';
-import { Users, UserCheck, UserX, Clock, Search, Download, Calendar, Filter, FileSpreadsheet, PieChart as PieChartIcon, LayoutDashboard, Database, Activity } from 'lucide-react';
+import { Users, UserCheck, Clock, Search, Download, Calendar, Filter, FileSpreadsheet, PieChart as PieChartIcon, LayoutDashboard, Database, Activity, Check, X, Ban, Flag } from 'lucide-react';
 import StatCard from '../components/admin/StatCard';
 import { TrendChart, DistributionChart, QualificationChart } from '../components/admin/DashboardCharts';
+import AdminReports from './AdminReports';
 
 const TAB_OVERVIEW = 'overview';
 const TAB_RESEARCHERS = 'researchers';
 const TAB_ALL_USERS = 'users';
 const TAB_EXPERIMENTS = 'experiments';
+const TAB_REPORTS = 'reports';
 
 const toObjectCounts = (value) => {
   if (!value) return {};
@@ -99,6 +101,34 @@ const normalizeOverviewAnalytics = (raw) => {
   };
 };
 
+const getBackendOrigin = () => {
+  try {
+    return new URL(api?.defaults?.baseURL || '').origin;
+  } catch (err) {
+    return window.location.origin;
+  }
+};
+
+const getAffiliationProofUrl = (rawPath) => {
+  if (!rawPath) return '';
+  const value = String(rawPath).trim();
+  if (!value) return '';
+  if (/^https?:\/\//i.test(value)) return value;
+
+  let normalized = value.replace(/\\/g, '/').replace(/^\/+/, '');
+
+  if (!normalized.startsWith('uploads/')) {
+    if (normalized.startsWith('affiliation-proofs/')) {
+      normalized = `uploads/${normalized}`;
+    } else {
+      const fileName = normalized.split('/').pop();
+      normalized = fileName ? `uploads/affiliation-proofs/${fileName}` : 'uploads/affiliation-proofs';
+    }
+  }
+
+  return `${getBackendOrigin()}/${normalized}`;
+};
+
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState(TAB_OVERVIEW);
   const [researchers, setResearchers] = useState([]);
@@ -138,8 +168,16 @@ const AdminDashboard = () => {
     try {
       setAnalyticsLoading(true);
       const days = dateRange === 'all' ? 365 : parseInt(dateRange);
-      const response = await api.get(`/admin/analytics?days=${days}`);
-      setAnalytics(normalizeOverviewAnalytics(response.data));
+      const [analyticsResponse, usersResponse, experimentsResponse] = await Promise.all([
+        api.get(`/admin/analytics?days=${days}`),
+        api.get('/admin/users'),
+        api.get('/experiments'),
+      ]);
+      const users = Array.isArray(usersResponse.data) ? usersResponse.data : [];
+      const experimentList = Array.isArray(experimentsResponse.data) ? experimentsResponse.data : [];
+      setAnalytics(normalizeOverviewAnalytics(analyticsResponse.data));
+      setAllUsers(users);
+      setExperiments(enrichExperimentsWithResearchers(experimentList, users));
       setError(null);
     } catch (err) {
       console.error('Error fetching analytics:', err);
@@ -180,11 +218,41 @@ const AdminDashboard = () => {
     }
   };
 
+  const enrichExperimentsWithResearchers = (experimentList, users) => {
+    const userNameById = users.reduce((acc, user) => {
+      if (user?._id) acc[String(user._id)] = user.name || user.fullName || '';
+      return acc;
+    }, {});
+
+    return experimentList.map((exp) => {
+      const ownerRef = exp?.ownerId;
+      const ownerId = ownerRef && typeof ownerRef === 'object'
+        ? ownerRef._id
+        : (exp?.ownerId || exp?.createdBy || null);
+
+      const ownerName = ownerRef && typeof ownerRef === 'object'
+        ? (ownerRef.name || ownerRef.fullName || '')
+        : (ownerId ? userNameById[String(ownerId)] : '');
+
+      return {
+        ...exp,
+        researcherId: ownerId ? String(ownerId) : '',
+        researcherName: ownerName || 'Unknown researcher',
+      };
+    });
+  };
+
   const fetchExperiments = async () => {
     try {
       setExperimentsLoading(true);
-      const response = await api.get('/experiments');
-      setExperiments(Array.isArray(response.data) ? response.data : []);
+      const [experimentsResponse, usersResponse] = await Promise.all([
+        api.get('/experiments'),
+        api.get('/admin/users'),
+      ]);
+
+      const experimentList = Array.isArray(experimentsResponse.data) ? experimentsResponse.data : [];
+      const users = Array.isArray(usersResponse.data) ? usersResponse.data : [];
+      setExperiments(enrichExperimentsWithResearchers(experimentList, users));
       setError(null);
     } catch (err) {
       console.error('Error fetching experiments:', err);
@@ -341,6 +409,28 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleExportResearchersPdf = async () => {
+    try {
+      const response = await api.get('/admin/researchers/export/pdf', {
+        responseType: 'blob',
+        params: activeTab === TAB_RESEARCHERS && researcherStatusFilter ? { status: researcherStatusFilter } : undefined,
+      });
+
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `researchers-report-${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error exporting researchers PDF:', err);
+      alert(err.response?.data?.message || 'Failed to export researchers PDF.');
+    }
+  };
+
   const filteredResearchers = researchers.filter(r => {
     const researcherCode = (r.researcherId || '').toLowerCase();
     const name = (r.fullName || r.user?.name || '').toLowerCase();
@@ -364,71 +454,118 @@ const AdminDashboard = () => {
     return 'pending';
   };
 
+  const getUserCode = (user, index) => {
+    if ((user?.role || '').toLowerCase() === 'admin') return '-';
+    return `TT${String(index + 1).padStart(3, '0')}`;
+  };
+
+  const getExpertiseTags = (user) => {
+    if (Array.isArray(user?.expertise) && user.expertise.length > 0) {
+      return user.expertise.slice(0, 3);
+    }
+    if ((user?.role || '').toLowerCase() === 'admin') return ['developer'];
+    if ((user?.role || '').toLowerCase() === 'researcher') return ['research'];
+    return ['community'];
+  };
+
+  const getUserRep = (user) => Number(user?.reputation ?? user?.rep ?? 0) || 0;
+
+  const getResearcherTypeTag = (researcher) => {
+    const type = String(researcher?.researcherType || '').trim();
+    if (!type) return 'general';
+    return type.toLowerCase().includes('organization') ? 'affiliated' : type.toLowerCase();
+  };
+
+  const topResearcher = Object.values(
+    experiments.reduce((acc, exp) => {
+      const researcherName = exp?.researcherName || 'Unknown researcher';
+      const researcherId = exp?.researcherId || researcherName;
+      if (!acc[researcherId]) {
+        acc[researcherId] = { id: researcherId, name: researcherName, studyCount: 0 };
+      }
+      acc[researcherId].studyCount += 1;
+      return acc;
+    }, {})
+  ).sort((a, b) => {
+    if (b.studyCount !== a.studyCount) return b.studyCount - a.studyCount;
+    return a.name.localeCompare(b.name);
+  })[0] || null;
+
+  const totalRep = allUsers.reduce((sum, user) => sum + getUserRep(user), 0);
+  const averageRep = allUsers.length ? Math.round(totalRep / allUsers.length) : 0;
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      <header className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-        <p className="mt-1 text-gray-600">
-          Manage researchers (approve/reject), view all users, delete experiments if needed, and export reports.
-        </p>
+      <header className="mb-6 rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-50 via-white to-cyan-50 p-5 sm:p-6 shadow-sm">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Admin Dashboard</h1>
+            <p className="mt-1 text-gray-600">
+              Manage researchers, users, experiments, and report operations with one control center.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex rounded-full bg-white border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700">
+              {allUsers.length} users
+            </span>
+            <span className="inline-flex rounded-full bg-white border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700">
+              {experiments.length} experiments
+            </span>
+          </div>
+        </div>
       </header>
 
-      <div className="flex flex-wrap gap-2 mb-6 p-1 bg-slate-100 rounded-xl w-fit">
+      <div className="sticky top-4 z-20 mb-6 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur p-2 shadow-sm">
+        <div className="flex flex-wrap gap-2">
         {[
           [TAB_OVERVIEW, 'Overview', LayoutDashboard],
           [TAB_RESEARCHERS, 'Researchers', Users],
           [TAB_ALL_USERS, 'All Users', UserCheck],
           [TAB_EXPERIMENTS, 'Experiments', Database],
+          [TAB_REPORTS, 'Reports', Flag],
         ].map(([tab, label, Icon]) => (
           <button
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200 ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-200 ${
               activeTab === tab
-                ? 'bg-white text-indigo-600 shadow-sm border border-slate-200'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-indigo-50 text-indigo-700 shadow-sm border border-indigo-100'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-slate-50'
             }`}
           >
             <Icon size={18} />
             {label}
           </button>
         ))}
+        </div>
       </div>
 
       {error && <ErrorMessage message={error} onDismiss={() => setError(null)} className="mb-4" />}
 
       {activeTab === TAB_OVERVIEW && (
-        <div className="space-y-8 px-2 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900">Platform Overview</h2>
-              <p className="text-sm text-slate-500 mt-1">Key metrics and platform trends</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <Button variant="outline" size="sm" onClick={handleExportOverviewPdf} className="flex items-center gap-2">
-                <Download size={16} /> Export PDF
-              </Button>
-              <div className="flex items-center gap-3 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
-                {[
-                  { label: '7D', value: '7' },
-                  { label: '30D', value: '30' },
-                  { label: '90D', value: '90' },
-                  { label: 'All', value: 'all' },
-                ].map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setDateRange(opt.value)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                      dateRange === opt.value
-                        ? 'bg-indigo-600 text-white shadow-md'
-                        : 'text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
+        <div className="space-y-5 px-1 sm:px-2 py-2 sm:py-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Overview</h2>
+            <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+              {[
+                { label: '7D', value: '7' },
+                { label: '30D', value: '30' },
+                { label: '90D', value: '90' },
+                { label: 'All', value: 'all' },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setDateRange(opt.value)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                    dateRange === opt.value
+                      ? 'bg-[#8ecae6] text-[#023047] shadow-md'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -440,40 +577,92 @@ const AdminDashboard = () => {
             </div>
           ) : analytics ? (
             <>
-              {/* Summary Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard 
-                  title="Total Users" 
-                  value={analytics.summary?.totalUsers || 0} 
-                  icon={Users} 
-                  trend={(analytics.summary?.growthRate || 0) >= 0 ? 'up' : 'down'} 
-                  trendValue={Math.abs(analytics.summary?.growthRate || 0)}
-                  description="Total registered in system"
-                />
-                <StatCard 
-                  title="Pending" 
-                  value={analytics.summary?.pendingResearchers || 0} 
-                  icon={Clock} 
-                  description="Researchers awaiting review"
-                />
-                <StatCard 
-                  title="Approved" 
-                  value={analytics.summary?.approvedResearchers || 0} 
-                  icon={UserCheck} 
-                  description="Verified medical experts"
-                />
-                <StatCard 
-                  title="Growth" 
-                  value={analytics.summary?.newUsersThisWeek || 0} 
-                  icon={Activity} 
-                  trend={(analytics.summary?.newUsersThisWeek || 0) > 0 ? 'up' : undefined}
-                  trendValue={analytics.summary?.growthRate || 0}
-                  description={`Last ${dateRange === 'all' ? '30' : dateRange} days`}
-                />
+              <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-[#eef5f4] via-[#f8fafc] to-[#f9f6ed] p-3 sm:p-4">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                  <div className="lg:col-span-2 rounded-2xl border border-slate-200 bg-white/85 backdrop-blur-sm p-4 sm:p-5">
+                    <span className="inline-flex rounded-full bg-slate-200 text-slate-700 text-[10px] font-bold tracking-widest uppercase px-2.5 py-1">
+                      Admin Command Center
+                    </span>
+                    <h3 className="mt-3 text-2xl sm:text-3xl font-black tracking-tight text-slate-900 leading-tight">
+                      Admin data summaries.
+                    </h3>
+                    <p className="mt-2 text-slate-600 text-sm sm:text-base max-w-3xl">
+                      Track platform health, compare trust levels, inspect contribution patterns, and export clean reports whenever you need.
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Button
+                        variant="primary"
+                        onClick={handleExportOverviewPdf}
+                        className="bg-[#8ecae6] hover:bg-[#7bbbd8] text-[#023047] border-[#8ecae6] px-3 py-1.5 text-sm"
+                      >
+                        <Download size={16} /> Download Summary PDF
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={handleExportResearchersPdf}
+                        className="bg-[#8ecae6] hover:bg-[#7bbbd8] text-[#023047] border-[#8ecae6] px-3 py-1.5 text-sm"
+                      >
+                        <Users size={16} /> Download Users PDF
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => setActiveTab(TAB_ALL_USERS)}
+                        className="bg-[#8ecae6] hover:bg-[#7bbbd8] text-[#023047] border-[#8ecae6] px-3 py-1.5 text-sm"
+                      >
+                        <UserCheck size={16} /> Open User Manager
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="rounded-2xl border border-slate-200 bg-white/90 p-4">
+                      <p className="text-[10px] font-bold tracking-widest uppercase text-slate-500">Live Signal</p>
+                      <p className="mt-2 text-2xl font-black text-slate-900">{analytics.summary?.totalUsers || 0} profiles loaded</p>
+                      <p className="mt-1.5 text-xs text-slate-600">
+                        {analytics.summary?.approvedResearchers || 0} approved and {analytics.summary?.rejectedResearchers || 0} blocked accounts are reflected in this snapshot.
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-[#023047] bg-[#023047] p-4 text-white">
+                      <p className="text-[10px] font-bold tracking-widest uppercase text-[#cfe8f7]">Top Focus</p>
+                      <p className="mt-2 text-xl font-bold">{topResearcher?.name || 'No researcher yet'}</p>
+                      <p className="mt-1.5 text-xs text-[#d8ecf8]">
+                        Researcher with most studies: {topResearcher?.studyCount ?? 0} experiments.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Charts Section */}
-              <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3 text-sm text-indigo-900">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2">
+                  <p className="text-[10px] font-semibold tracking-wide uppercase text-slate-500">Total Users</p>
+                  <p className="mt-0.5 text-xl font-semibold text-[#023047] leading-none">{analytics.summary?.totalUsers || 0}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2">
+                  <p className="text-[10px] font-semibold tracking-wide uppercase text-slate-500">Administrators</p>
+                  <p className="mt-0.5 text-xl font-semibold text-slate-900 leading-none">{analytics.userRoles?.admin || 0}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2">
+                  <p className="text-[10px] font-semibold tracking-wide uppercase text-slate-500">Active Members</p>
+                  <p className="mt-0.5 text-xl font-semibold text-slate-900 leading-none">
+                    {Math.max((analytics.summary?.totalUsers || 0) - (analytics.userRoles?.admin || 0), 0)}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2">
+                  <p className="text-[10px] font-semibold tracking-wide uppercase text-slate-500">Banned Members</p>
+                  <p className="mt-0.5 text-xl font-semibold text-slate-900 leading-none">{analytics.summary?.rejectedResearchers || 0}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2">
+                  <p className="text-[10px] font-semibold tracking-wide uppercase text-slate-500">Avg. Reputation</p>
+                  <p className="mt-0.5 text-xl font-semibold text-slate-900 leading-none">{averageRep}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2">
+                  <p className="text-[10px] font-semibold tracking-wide uppercase text-slate-500">Weekly Growth</p>
+                  <p className="mt-0.5 text-xl font-semibold text-slate-900 leading-none">{analytics.summary?.newUsersThisWeek || 0}</p>
+                </div>
+              </div>
+
+              <div className="bg-[#e8f5fb] border border-[#8ecae6] rounded-2xl px-4 py-3 text-sm text-[#023047]">
                 Analyzed {analytics.summary?.totalUsers || 0} users and {analytics.summary?.totalResearchers || 0} researchers across {analytics.registrationTrend?.length || 0} days of trend data.
               </div>
 
@@ -555,40 +744,64 @@ const AdminDashboard = () => {
               </div>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleExportCsv} className="flex items-center gap-2">
-                <FileSpreadsheet size={16} /> Export CSV
+              <Button variant="outline" size="sm" onClick={handleExportResearchersPdf} className="flex items-center gap-2">
+                <Download size={16} /> Export PDF
               </Button>
+            </div>
+          </div>
+          <div className="mb-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+              <p className="text-[11px] font-semibold tracking-wide uppercase text-slate-500">Total</p>
+              <p className="text-3xl font-bold text-slate-800 leading-tight mt-1">{filteredResearchers.length}</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+              <p className="text-[11px] font-semibold tracking-wide uppercase text-slate-500">Pending</p>
+              <p className="text-3xl font-bold text-slate-800 leading-tight mt-1">
+                {filteredResearchers.filter((r) => (r.status || 'pending').toLowerCase() === 'pending').length}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+              <p className="text-[11px] font-semibold tracking-wide uppercase text-slate-500">Approved</p>
+              <p className="text-3xl font-bold text-slate-800 leading-tight mt-1">
+                {filteredResearchers.filter((r) => (r.status || '').toLowerCase() === 'approved').length}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+              <p className="text-[11px] font-semibold tracking-wide uppercase text-slate-500">Rejected</p>
+              <p className="text-3xl font-bold text-slate-800 leading-tight mt-1">
+                {filteredResearchers.filter((r) => (r.status || '').toLowerCase() === 'rejected').length}
+              </p>
             </div>
           </div>
           <Card padding={false} className="overflow-hidden border border-slate-200 bg-[#F8FAFC] shadow-sm rounded-2xl">
             <div className="overflow-x-auto">
-              <table className="min-w-full border-separate border-spacing-0">
+              <table className="min-w-full border-separate border-spacing-x-0 border-spacing-y-2 px-2">
                 <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[110px] border-b border-slate-100">
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider min-w-[95px] border-b border-slate-100">
                       ID
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[200px] border-b border-slate-100">
-                      Name
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider min-w-[230px] border-b border-slate-100">
+                      Researcher
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
-                      Email
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
                       Qualification
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider max-w-[200px] border-b border-slate-100">
-                      Purpose
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                      Type
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
                       Status
                     </th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
-                      Actions
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                      Joined
+                    </th>
+                    <th className="px-4 py-4 text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                      Action
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-slate-100">
+                <tbody className="bg-[#F8FAFC]">
                   {researchersLoading ? (
                     Array.from({ length: 5 }).map((_, i) => (
                       <TableRowSkeleton key={i} cols={7} />
@@ -601,56 +814,67 @@ const AdminDashboard = () => {
                         <tr
                           key={r._id}
                           onClick={() => setDetailModalResearcher(r)}
-                          className="hover:bg-white/80 cursor-pointer transition-colors"
+                          className="hover:bg-slate-50/70 cursor-pointer transition-colors"
                         >
-                          <td className="px-6 py-4 text-sm font-semibold text-slate-700">
-                            {s === 'approved' ? (r.researcherId || '—') : '—'}
+                          <td className="px-4 py-4 text-sm font-semibold text-slate-700">
+                            <span className="inline-flex items-center justify-center min-w-[62px] px-2.5 py-1 rounded-lg bg-sky-50 text-sky-700 text-xs font-semibold">
+                              {s === 'approved' ? (r.researcherId || '—') : '—'}
+                            </span>
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-900">
-                            <div className="flex items-center gap-2">
-                              <span>{r.fullName || (r.user && r.user.name) || '—'}</span>
+                          <td className="px-4 py-4 text-sm text-gray-900">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-slate-800">{r.fullName || (r.user && r.user.name) || '—'}</span>
                               {r.isFlagged && <Badge status="rejected">Flagged</Badge>}
                             </div>
+                            <p className="text-slate-500 text-sm mt-1">{r.user?.email || '—'}</p>
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-600">
-                            {r.user?.email || '—'}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-600">
+                          <td className="px-4 py-4 text-sm text-gray-600">
                             {r.highestAcademicQualification || '—'}
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-600 max-w-[200px] truncate" title={r.purpose}>
-                            {r.purpose ? (r.purpose.length > 60 ? r.purpose.slice(0, 60) + '…' : r.purpose) : '—'}
+                          <td className="px-4 py-4 text-sm text-gray-600">
+                            <span className="inline-flex px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">
+                              {getResearcherTypeTag(r)}
+                            </span>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-4 py-4">
                             <Badge status={getStatusVariant(r.status)}>{r.status || 'pending'}</Badge>
                           </td>
-                          <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex flex-wrap justify-end gap-1">
+                          <td className="px-4 py-4 text-sm text-slate-600">
+                            {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—'}
+                          </td>
+                          <td className="px-4 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex flex-wrap justify-end gap-2">
                               {isPending && (
                                 <>
                                   <Button
                                     size="sm"
                                     variant="success"
+                                    className="px-2 py-1 text-xs gap-1 rounded-md"
                                     onClick={() => setReviewModal({ type: 'approve', researcher: r })}
+                                    title="Approve researcher"
                                   >
+                                    <Check size={13} />
                                     Approve
                                   </Button>
                                   <Button
                                     size="sm"
                                     variant="danger"
+                                    className="px-2 py-1 text-xs rounded-md bg-red-700 hover:bg-red-800"
                                     onClick={() => setReviewModal({ type: 'reject', researcher: r })}
+                                    title="Reject researcher"
                                   >
-                                    Reject
+                                    <X size={13} />
                                   </Button>
                                 </>
                               )}
                               <Button
                                 size="sm"
                                 variant="danger"
+                                className="px-2 py-1 text-xs rounded-md bg-red-700 hover:bg-red-800"
                                 onClick={() => setDeleteResearcherModal(r)}
-                                title="Remove researcher; user becomes ordinary user"
+                                title="Ban researcher"
                               >
-                                Delete
+                                <Ban size={13} />
                               </Button>
                             </div>
                           </td>
@@ -709,59 +933,94 @@ const AdminDashboard = () => {
               <FileSpreadsheet size={16} /> Export CSV
             </Button>
           </div>
+          <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+              <p className="text-[11px] font-semibold tracking-wide uppercase text-slate-500">Total Users</p>
+              <p className="text-3xl font-bold text-slate-800 leading-tight mt-1">{filteredUsers.length}</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+              <p className="text-[11px] font-semibold tracking-wide uppercase text-slate-500">Administrators</p>
+              <p className="text-3xl font-bold text-slate-800 leading-tight mt-1">
+                {filteredUsers.filter((u) => (u.role || '').toLowerCase() === 'admin').length}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+              <p className="text-[11px] font-semibold tracking-wide uppercase text-slate-500">Highest Rep</p>
+              <p className="text-3xl font-bold text-slate-800 leading-tight mt-1">
+                {filteredUsers.reduce((max, u) => Math.max(max, getUserRep(u)), 0)}
+              </p>
+            </div>
+          </div>
           <Card padding={false} className="overflow-hidden border border-slate-200 bg-[#F8FAFC] shadow-sm rounded-2xl">
             <div className="overflow-x-auto">
               <table className="min-w-full border-separate border-spacing-0">
                 <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Name</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Email</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Role</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Researcher Status</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Registered</th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Actions</th>
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">ID</th>
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">User</th>
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Expertise</th>
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Role</th>
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Joined</th>
+                    <th className="px-4 py-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Reputation</th>
+                    <th className="px-4 py-4 text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Action</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-100">
                   {usersLoading ? (
                     Array.from({ length: 5 }).map((_, i) => (
-                      <TableRowSkeleton key={i} cols={6} />
+                      <TableRowSkeleton key={i} cols={7} />
                     ))
                   ) : filteredUsers.length > 0 ? (
-                    filteredUsers.map((user) => {
+                    filteredUsers.map((user, index) => {
                       const role = (user.role || '').toLowerCase();
                       const isAdmin = role === 'admin';
                       const resStatus = (user.researcherStatus || '').toLowerCase();
                       const isResearcherPending = !isAdmin && role === 'researcher' && (resStatus === 'pending' || resStatus === '');
+                      const tags = getExpertiseTags(user);
                       return (
-                        <tr key={user._id} className={`${isAdmin ? 'bg-amber-50/40' : 'hover:bg-white/80'} transition-colors`}>
-                          <td className="px-6 py-4 text-sm text-gray-900">{user.name}</td>
-                          <td className="px-6 py-4 text-sm text-gray-600">{user.email}</td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-2">
-                              <Badge role={role}>{user.role || '—'}</Badge>
-                              {isAdmin && <span className="text-[11px] font-semibold text-amber-700">Pinned</span>}
+                        <tr key={user._id} className={`${isAdmin ? 'shadow-[0_2px_8px_rgba(120,53,15,0.12)]' : 'shadow-sm hover:shadow-md'} transition-all`}>
+                          <td className={`px-4 py-4 border-y border-l border-slate-200 first:rounded-l-xl ${isAdmin ? 'bg-amber-50/60' : 'bg-white'}`}>
+                            <span className="inline-flex items-center justify-center min-w-[62px] px-2.5 py-1 rounded-lg bg-sky-50 text-sky-700 text-xs font-semibold">
+                              {getUserCode(user, index)}
+                            </span>
+                          </td>
+                          <td className={`px-4 py-4 text-sm text-gray-900 border-y border-slate-200 ${isAdmin ? 'bg-amber-50/60' : 'bg-white'}`}>
+                            <p className="font-semibold text-slate-800 leading-tight">{user.name || 'Unknown User'}</p>
+                            <p className="text-slate-500 text-sm mt-1">{user.email || '—'}</p>
+                          </td>
+                          <td className={`px-4 py-4 border-y border-slate-200 ${isAdmin ? 'bg-amber-50/60' : 'bg-white'}`}>
+                            <div className="flex flex-wrap gap-1.5">
+                              {tags.map((tag) => (
+                                <span
+                                  key={`${user._id}-${tag}`}
+                                  className="inline-flex px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-medium"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
                             </div>
                           </td>
-                          <td className="px-6 py-4">
-                            {user.researcherStatus ? (
-                              <Badge status={getStatusVariant(user.researcherStatus)}>{user.researcherStatus}</Badge>
-                            ) : (
-                              '—'
-                            )}
+                          <td className={`px-4 py-4 border-y border-slate-200 ${isAdmin ? 'bg-amber-50/60' : 'bg-white'}`}>
+                            <div className="flex items-center gap-2">
+                              <Badge role={role}>{user.role || '—'}</Badge>
+                              {isAdmin && <span className="text-[11px] font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">Pinned</span>}
+                            </div>
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-600">
+                          <td className={`px-4 py-4 text-sm text-slate-600 border-y border-slate-200 ${isAdmin ? 'bg-amber-50/60' : 'bg-white'}`}>
                             {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—'}
                           </td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex justify-end items-center gap-1 flex-wrap">
+                          <td className={`px-4 py-4 text-sm font-semibold text-slate-800 border-y border-slate-200 ${isAdmin ? 'bg-amber-50/60' : 'bg-white'}`}>{getUserRep(user)}</td>
+                          <td className={`px-4 py-4 text-right border-y border-r border-slate-200 last:rounded-r-xl ${isAdmin ? 'bg-amber-50/60' : 'bg-white'}`}>
+                            <div className="flex justify-end items-center gap-2 flex-wrap">
                               {isAdmin ? (
                                 <span className="text-xs text-gray-500">Protected account</span>
                               ) : null}
                               {isResearcherPending && (
                                 <>
                                   <Button size="sm" variant="success" onClick={() => handleApproveUser(user._id)}>Approve</Button>
-                                  <Button size="sm" variant="danger" onClick={() => handleRejectUser(user._id)}>Reject</Button>
+                                  <Button size="sm" variant="danger" className="px-2 py-1 text-xs rounded-md bg-red-700 hover:bg-red-800" onClick={() => handleRejectUser(user._id)} title="Reject user">
+                                    <X size={13} />
+                                  </Button>
                                 </>
                               )}
                               {isAdmin ? null : String(user._id) === String(currentUserId) ? (
@@ -770,10 +1029,11 @@ const AdminDashboard = () => {
                                 <Button
                                   size="sm"
                                   variant="danger"
+                                  className="px-2 py-1 text-xs rounded-md bg-red-700 hover:bg-red-800"
                                   onClick={() => setDeleteUserModal(user)}
-                                  title="Permanently delete this user"
+                                  title="Ban user"
                                 >
-                                  Delete
+                                  <Ban size={13} />
                                 </Button>
                               )}
                             </div>
@@ -783,7 +1043,7 @@ const AdminDashboard = () => {
                     })
                   ) : (
                     <tr>
-                      <td colSpan={6} className="px-4 py-12">
+                      <td colSpan={7} className="px-4 py-12">
                         <EmptyState title="No users found" description="Try changing the role filter." />
                       </td>
                     </tr>
@@ -806,6 +1066,7 @@ const AdminDashboard = () => {
                 <thead className="bg-slate-100/80">
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Title</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Researcher</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Created</th>
                     <th className="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Actions</th>
                   </tr>
@@ -813,12 +1074,13 @@ const AdminDashboard = () => {
                 <tbody className="bg-[#F8FAFC] divide-y divide-slate-200">
                   {experimentsLoading ? (
                     Array.from({ length: 3 }).map((_, i) => (
-                      <TableRowSkeleton key={i} cols={3} />
+                      <TableRowSkeleton key={i} cols={4} />
                     ))
                   ) : experiments.length > 0 ? (
                     experiments.map((exp) => (
                       <tr key={exp._id} className="hover:bg-white/80 transition-colors">
                         <td className="px-6 py-4 text-sm text-gray-900">{exp.title || exp.name || 'Untitled'}</td>
+                        <td className="px-6 py-4 text-sm text-gray-700">{exp.researcherName || 'Unknown researcher'}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">
                           {exp.createdAt ? new Date(exp.createdAt).toLocaleDateString() : '—'}
                         </td>
@@ -835,7 +1097,7 @@ const AdminDashboard = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={3} className="px-4 py-12">
+                      <td colSpan={4} className="px-4 py-12">
                         <EmptyState title="No experiments found" />
                       </td>
                     </tr>
@@ -845,6 +1107,10 @@ const AdminDashboard = () => {
             </div>
           </Card>
         </>
+      )}
+
+      {activeTab === TAB_REPORTS && (
+        <AdminReports />
       )}
 
       {/* Researcher detail modal */}
@@ -900,7 +1166,7 @@ const AdminDashboard = () => {
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Affiliation Proof</p>
                 <a 
-                  href={detailModalResearcher.affiliationProof} 
+                  href={getAffiliationProofUrl(detailModalResearcher.affiliationProof)} 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="text-sm text-indigo-600 hover:text-indigo-800 mt-0.5 hover:underline block truncate"
