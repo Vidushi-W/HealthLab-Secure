@@ -77,6 +77,8 @@ frontend/.vite/
 
 # Backend
 backend/uploads/
+backend/uploads/post-images/
+backend/uploads/affiliation-proofs/
 backend/db-structure.json
 backend/output.txt
 backend/experiments_list.txt
@@ -118,6 +120,10 @@ admin-overview-report-*.pdf
 # Process/runtime artifacts
 *.pid
 *.pid.lock
+*.stackdump
+
+# Local tooling artifacts
+.history/
 
 # Optional: uncomment if you use these
 # .vercel

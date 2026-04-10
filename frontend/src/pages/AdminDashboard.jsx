@@ -10,14 +10,16 @@ import {
   EmptyState,
   TableRowSkeleton,
 } from '../components/ui';
-import { Users, UserCheck, Clock, Search, Download, Calendar, Filter, FileSpreadsheet, PieChart as PieChartIcon, LayoutDashboard, Database, Activity, Check, X, Ban } from 'lucide-react';
+import { Users, UserCheck, Clock, Search, Download, Calendar, Filter, FileSpreadsheet, PieChart as PieChartIcon, LayoutDashboard, Database, Activity, Check, X, Ban, Flag } from 'lucide-react';
 import StatCard from '../components/admin/StatCard';
 import { TrendChart, DistributionChart, QualificationChart } from '../components/admin/DashboardCharts';
+import AdminReports from './AdminReports';
 
 const TAB_OVERVIEW = 'overview';
 const TAB_RESEARCHERS = 'researchers';
 const TAB_ALL_USERS = 'users';
 const TAB_EXPERIMENTS = 'experiments';
+const TAB_REPORTS = 'reports';
 
 const toObjectCounts = (value) => {
   if (!value) return {};
@@ -494,34 +496,49 @@ const AdminDashboard = () => {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      <header className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-        <p className="mt-1 text-gray-600">
-          Manage researchers (approve/reject), view all users, delete experiments if needed, and export reports.
-        </p>
+      <header className="mb-6 rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-50 via-white to-cyan-50 p-5 sm:p-6 shadow-sm">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Admin Dashboard</h1>
+            <p className="mt-1 text-gray-600">
+              Manage researchers, users, experiments, and report operations with one control center.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex rounded-full bg-white border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700">
+              {allUsers.length} users
+            </span>
+            <span className="inline-flex rounded-full bg-white border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700">
+              {experiments.length} experiments
+            </span>
+          </div>
+        </div>
       </header>
 
-      <div className="flex flex-wrap gap-2 mb-6 p-1 bg-slate-100 rounded-xl w-fit">
+      <div className="sticky top-4 z-20 mb-6 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur p-2 shadow-sm">
+        <div className="flex flex-wrap gap-2">
         {[
           [TAB_OVERVIEW, 'Overview', LayoutDashboard],
           [TAB_RESEARCHERS, 'Researchers', Users],
           [TAB_ALL_USERS, 'All Users', UserCheck],
           [TAB_EXPERIMENTS, 'Experiments', Database],
+          [TAB_REPORTS, 'Reports', Flag],
         ].map(([tab, label, Icon]) => (
           <button
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200 ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-200 ${
               activeTab === tab
-                ? 'bg-white text-indigo-600 shadow-sm border border-slate-200'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-indigo-50 text-indigo-700 shadow-sm border border-indigo-100'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-slate-50'
             }`}
           >
             <Icon size={18} />
             {label}
           </button>
         ))}
+        </div>
       </div>
 
       {error && <ErrorMessage message={error} onDismiss={() => setError(null)} className="mb-4" />}
@@ -1090,6 +1107,10 @@ const AdminDashboard = () => {
             </div>
           </Card>
         </>
+      )}
+
+      {activeTab === TAB_REPORTS && (
+        <AdminReports />
       )}
 
       {/* Researcher detail modal */}

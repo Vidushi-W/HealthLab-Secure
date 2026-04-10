@@ -30,6 +30,12 @@ const {
   disburseRequest,
 } = require("../controllers/adminController");
 const { getWallet } = require("../controllers/walletController");
+const {
+  getAllReports,
+  getPostReportDetails,
+  banUserForReport,
+  deleteReportedPost,
+} = require("../modules/community/controllers/reportController");
 
 const adminGuard = [protect, authorize("admin")];
 
@@ -62,5 +68,11 @@ router.delete("/experiments/:id", adminGuard, deleteExperimentRules(), validate,
 router.get("/fund-requests", adminGuard, getAllRequests);
 router.patch("/fund-requests/:id/status", adminGuard, updateStatus);
 router.get("/experiments/:experimentId/wallet", adminGuard, getWallet);
+
+// Post reports: list all, get details, ban user, delete post
+router.get("/reports", adminGuard, getAllReports);
+router.get("/reports/:postId", adminGuard, getPostReportDetails);
+router.post("/reports/:postId/ban-user", adminGuard, banUserForReport);
+router.delete("/reports/:postId", adminGuard, deleteReportedPost);
 
 module.exports = router;
