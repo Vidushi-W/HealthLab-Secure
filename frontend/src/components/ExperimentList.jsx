@@ -110,54 +110,116 @@ const ExperimentList = () => {
         }
     };
 
-    if (loading) return <div className="loading">Loading experiments...</div>;
-    if (error) return <div className="error">{error}</div>;
+    if (loading) {
+        return (
+            <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <div className="h-5 w-48 animate-pulse rounded bg-slate-200" />
+                    <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                            <div key={i} className="h-44 animate-pulse rounded-2xl bg-slate-100" />
+                        ))}
+                    </div>
+                    <p className="mt-4 text-sm text-slate-500">Loading experiments...</p>
+                </div>
+            </div>
+        );
+    }
+    if (error) {
+        return (
+            <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                    {error}
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="experiment-list">
-            <h1>Available Experiments</h1>
+        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+            <div className="mb-8">
+                <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
+                    Available Experiments
+                </h1>
+                <p className="mt-2 max-w-2xl text-sm text-slate-600 sm:text-base">
+                    Explore experiments across disciplines and join a study when you’re ready.
+                </p>
+            </div>
             {message.text && (
-                <div className={`alert alert-${message.type}`} style={{ textAlign: 'left', padding: '1.5rem' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: message.explanation ? '0.5rem' : '0' }}>{message.text}</div>
+                <div
+                    className={`mb-6 rounded-2xl border px-5 py-4 text-left shadow-sm ${
+                        message.type === 'success'
+                            ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                            : 'border-rose-200 bg-rose-50 text-rose-900'
+                    }`}
+                >
+                    <div className={`text-sm font-bold ${message.explanation ? 'mb-2' : ''}`}>{message.text}</div>
                     {message.reason && (
-                        <div style={{ fontSize: '0.9rem', color: '#721c24', marginBottom: '0.5rem' }}>
-                            <strong>Justification:</strong> {message.reason}
+                        <div className="mb-2 text-sm">
+                            <span className="font-semibold">Justification:</span> {message.reason}
                         </div>
                     )}
                     {message.explanation && (
-                        <div style={{ fontSize: '0.85rem', color: '#555', borderTop: '1px solid rgba(0,0,0,0.1)', paddingTop: '0.5rem', marginTop: '0.5rem' }}>
+                        <div className="mt-2 border-t border-black/10 pt-2 text-sm text-slate-700">
                             {message.explanation}
                         </div>
                     )}
                 </div>
             )}
             {experiments.length === 0 ? (
-                <p>No experiments available at the moment.</p>
+                <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-600 shadow-sm">
+                    No experiments available at the moment.
+                </div>
             ) : (
-                <div className="experiments-grid">
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {experiments.map((experiment) => (
-                        <div key={experiment._id} className="experiment-card">
-                            <SmartBadge score={experiment.matchScore} reason={experiment.matchReason} />
-                            <h2>{experiment.title}</h2>
-                            <p className="description">{experiment.description}</p>
-                            <div className="status-badge" data-status={experiment.status}>
+                        <div
+                            key={experiment._id}
+                            className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-card transition hover:-translate-y-0.5 hover:shadow-cardHover"
+                        >
+                            <div className="mb-3">
+                                <SmartBadge score={experiment.matchScore} reason={experiment.matchReason} />
+                            </div>
+                            <div
+                                className={`absolute right-4 top-4 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold capitalize ring-1 ${
+                                    experiment.status === 'active'
+                                        ? 'bg-emerald-100 text-emerald-800 ring-emerald-200'
+                                        : experiment.status === 'draft'
+                                          ? 'bg-amber-100 text-amber-800 ring-amber-200'
+                                          : 'bg-rose-100 text-rose-800 ring-rose-200'
+                                }`}
+                            >
                                 {experiment.status}
                             </div>
-                            <div className="experiment-details">
-                                <span>Participants: {experiment.currentParticipantCount || 0} / {experiment.participantLimit === 0 ? 'Unlimited' : experiment.participantLimit}</span>
+
+                            <h2 className="text-lg font-bold leading-snug text-slate-900">{experiment.title}</h2>
+                            <p className="mt-2 max-h-[4.5rem] overflow-hidden text-ellipsis text-sm leading-relaxed text-slate-600">
+                                {experiment.description}
+                            </p>
+
+                            <div className="mt-5 border-t border-slate-100 pt-4 text-sm text-slate-600">
+                                <span className="font-medium text-slate-800">Participants:</span>{' '}
+                                {experiment.currentParticipantCount || 0} /{' '}
+                                {experiment.participantLimit === 0 ? 'Unlimited' : experiment.participantLimit}
                             </div>
 
                             {!localStorage.getItem('token') ? (
-                                <button className="join-btn btn-secondary" onClick={() => window.location.href = '/login'}>
+                                <button
+                                    className="mt-4 w-full rounded-xl bg-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:bg-slate-300"
+                                    onClick={() => window.location.href = '/login'}
+                                >
                                     Login to Join
                                 </button>
                             ) : experiment.enrolled ? (
-                                <button className="join-btn enrolled" disabled>
+                                <button
+                                    className="mt-4 w-full cursor-not-allowed rounded-xl bg-emerald-100 px-4 py-2.5 text-sm font-semibold text-emerald-800"
+                                    disabled
+                                >
                                     Enrolled
                                 </button>
                             ) : (
                                 <button
-                                    className="join-btn"
+                                    className="mt-4 w-full rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
                                     onClick={() => handlePreviewJoin(experiment._id)}
                                     disabled={previewingId === experiment._id || joiningId === experiment._id}
                                 >
@@ -171,115 +233,108 @@ const ExperimentList = () => {
 
             {/* CLINICAL INSIGHT MODAL (Year 3 Clinical-Grade Feature) */}
             {showModal && analysis && (
-                <div className="modal-overlay" style={{
-                    position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-                    backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center',
-                    alignItems: 'center', zIndex: 1000, backdropFilter: 'blur(4px)'
-                }}>
-                    <div className="modal-content" style={{
-                        backgroundColor: 'white', padding: '2.5rem', borderRadius: '15px',
-                        maxWidth: '600px', width: '90%', maxHeight: '90vh', overflowY: 'auto',
-                        boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
-                        position: 'relative', border: '1px solid var(--primary-light)'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '2px solid #f0f7ff', paddingBottom: '1rem' }}>
-                            <div style={{ fontSize: '2rem', marginRight: '1rem' }}>🧠</div>
-                            <h2 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '1.5rem' }}>Personalized Clinical Insight</h2>
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+                        <div className="flex items-center gap-3 border-b border-slate-200 px-6 py-4">
+                            <div className="text-2xl" aria-hidden>🧠</div>
+                            <h2 className="text-lg font-extrabold text-blue-700 sm:text-xl">Personalized Clinical Insight</h2>
                         </div>
 
-                        <p style={{ fontSize: '1.1rem', lineHeight: '1.6', color: '#444', marginBottom: '2rem', fontStyle: 'italic' }}>
-                            "{analysis.text}"
-                        </p>
+                        <div className="max-h-[80vh] overflow-y-auto px-6 py-5">
+                            <p className="mb-6 text-sm leading-relaxed text-slate-700 sm:text-base">
+                                <span className="italic">“{analysis.text}”</span>
+                            </p>
 
-                        <div style={{ backgroundColor: '#f8f9fa', padding: '1rem', borderRadius: '8px', marginBottom: '2rem', fontSize: '0.9rem', color: '#666' }}>
-                            <strong>Note:</strong> This analysis is generated based on your medical profile (Weight, BMI, and Diseases) using our Clinical NLP engine.
-                        </div>
+                            <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                                <span className="font-semibold">Note:</span> This analysis is generated based on your medical profile (Weight, BMI, and Diseases) using our Clinical NLP engine.
+                            </div>
 
                         {/* WGER SAFETY INTEGRATION (Year 3 System Integrity Feature) */}
-                        <div style={{ marginBottom: '2rem' }}>
+                        <div className="mb-6">
                             {!safetyGuidelines ? (
                                 <button
-                                    className="btn"
+                                    className="inline-flex items-center gap-2 rounded-xl border border-blue-600 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 disabled:opacity-60"
                                     onClick={() => handleFetchSafety(analysis.experimentId)}
                                     disabled={loadingSafety}
-                                    style={{
-                                        backgroundColor: '#e7f3ff', color: '#007bff', border: '1px solid #007bff',
-                                        fontSize: '0.85rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem'
-                                    }}
                                 >
                                     {loadingSafety ? 'Fetching Clinical Guidelines...' : '🛡️ View Activity Safety Guidelines'}
                                 </button>
                             ) : (
-                                <div style={{
-                                    border: '1px solid #cce5ff', backgroundColor: '#f0f7ff',
-                                    padding: '1rem', borderRadius: '8px', fontSize: '0.9rem'
-                                }}>
-                                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#004085', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <span>📋 Activity Protocol</span>
+                                <div className="rounded-2xl border border-blue-200 bg-blue-50/60 p-4 text-sm">
+                                    <h4 className="mb-2 flex items-center gap-2 font-bold text-blue-900">
+                                        <span aria-hidden>📋</span> Activity Protocol
                                     </h4>
                                     {safetyGuidelines.guidelines.map((g, idx) => (
-                                        <div key={idx} style={{
-                                            marginBottom: idx < safetyGuidelines.guidelines.length - 1 ? '0.75rem' : 0,
-                                            padding: '0.5rem',
-                                            borderRadius: '6px',
-                                            backgroundColor: expandedIndex === idx ? '#fff' : 'transparent',
-                                            border: expandedIndex === idx ? '1px solid #dee2e6' : 'none'
-                                        }}>
+                                        <div
+                                            key={idx}
+                                            className={`mb-3 rounded-xl p-3 ${expandedIndex === idx ? 'border border-slate-200 bg-white' : 'bg-transparent'}`}
+                                        >
                                             <div
-                                                style={{ fontWeight: 'bold', cursor: 'pointer', display: 'flex', justifyContent: 'space-between' }}
+                                                className="flex cursor-pointer items-center justify-between gap-3 font-semibold text-slate-900"
                                                 onClick={() => setExpandedIndex(expandedIndex === idx ? null : idx)}
                                             >
                                                 <span>{g.name}</span>
-                                                <span style={{ fontSize: '0.7rem', color: '#007bff' }}>{expandedIndex === idx ? '▲ Collapse' : '▼ View Advanced Protocol'}</span>
+                                                <span className="text-xs font-semibold text-blue-700">
+                                                    {expandedIndex === idx ? '▲ Collapse' : '▼ View Advanced Protocol'}
+                                                </span>
                                             </div>
-                                            <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem', color: '#666' }}>
-                                                <span><strong>Target:</strong> {g.muscleGroup}</span>
-                                                <span><strong>Intensity:</strong> {g.intensity}</span>
+                                            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+                                                <span>
+                                                    <span className="font-semibold">Target:</span> {g.muscleGroup}
+                                                </span>
+                                                <span>
+                                                    <span className="font-semibold">Intensity:</span> {g.intensity}
+                                                </span>
                                             </div>
-                                            <div style={{ color: '#856404', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-                                                <strong>⚠️ Safety:</strong> {g.safetyWarning}
+                                            <div className="mt-1 text-xs text-amber-800">
+                                                <span className="font-semibold">⚠️ Safety:</span> {g.safetyWarning}
                                             </div>
 
                                             {/* Advanced Protocol Drill-Down */}
                                             {expandedIndex === idx && g.advancedProtocol && (
-                                                <div style={{
-                                                    marginTop: '0.75rem', padding: '0.75rem', borderTop: '1px dashed #dee2e6',
-                                                    fontSize: '0.8rem', color: '#444', animation: 'fadeIn 0.3s'
-                                                }}>
-                                                    <p style={{ margin: '0 0 0.5rem 0' }}><strong>Engaged Muscles:</strong> {g.advancedProtocol.muscles.join(", ") || "N/A"}</p>
-                                                    <p style={{ margin: '0 0 0.5rem 0' }}><strong>Equipment:</strong> {g.advancedProtocol.equipment.join(", ")}</p>
-                                                    <p style={{ margin: '0', fontStyle: 'italic', color: '#555' }}><strong>Instructions:</strong> {g.advancedProtocol.description}</p>
+                                                <div className="mt-3 border-t border-dashed border-slate-200 pt-3 text-xs text-slate-700">
+                                                    <p className="mb-2">
+                                                        <span className="font-semibold">Engaged Muscles:</span>{' '}
+                                                        {g.advancedProtocol.muscles.join(', ') || 'N/A'}
+                                                    </p>
+                                                    <p className="mb-2">
+                                                        <span className="font-semibold">Equipment:</span>{' '}
+                                                        {g.advancedProtocol.equipment.join(', ')}
+                                                    </p>
+                                                    <p className="italic text-slate-600">
+                                                        <span className="not-italic font-semibold text-slate-700">Instructions:</span>{' '}
+                                                        {g.advancedProtocol.description}
+                                                    </p>
                                                 </div>
                                             )}
                                         </div>
                                     ))}
-                                    <div style={{ fontSize: '0.7rem', color: '#999', marginTop: '0.5rem', textAlign: 'right' }}>
+                                    <div className="mt-2 text-right text-xs text-slate-500">
                                         Source: {safetyGuidelines.source}
                                     </div>
                                 </div>
                             )}
                         </div>
 
-                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                        <div className="flex flex-wrap justify-end gap-3">
                             <button
-                                className="btn btn-secondary"
+                                className="rounded-xl bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-300"
                                 onClick={() => {
                                     setShowModal(false);
                                     setSafetyGuidelines(null);
                                     setExpandedIndex(null);
                                 }}
-                                style={{ padding: '0.75rem 1.5rem' }}
                             >
                                 Back
                             </button>
                             <button
-                                className="btn btn-primary"
+                                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
                                 onClick={() => handleJoin(analysis.experimentId)}
                                 disabled={joiningId === analysis.experimentId}
-                                style={{ padding: '0.75rem 2rem', fontWeight: 'bold' }}
                             >
                                 {joiningId === analysis.experimentId ? 'Enrolling...' : 'Confirm Enrollment'}
                             </button>
+                        </div>
                         </div>
                     </div>
                 </div>
