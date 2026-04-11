@@ -43,7 +43,8 @@ const ExperimentList = () => {
                     response = await api.get('/experiments');
                 }
 
-                setExperiments(response.data);
+                const publishedExperiments = response.data.filter(exp => exp.status !== 'draft');
+                setExperiments(publishedExperiments);
                 setLoading(false);
             } catch (err) {
                 console.error('Error fetching experiments:', err);
@@ -188,17 +189,6 @@ const ExperimentList = () => {
                             )}
                             <div className="mb-3 flex justify-between items-start">
                                 <SmartBadge score={experiment.matchScore} reason={experiment.matchReason} />
-                                <div
-                                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold capitalize ring-1 ${
-                                        experiment.status === 'active'
-                                            ? 'bg-emerald-100 text-emerald-800 ring-emerald-200'
-                                            : experiment.status === 'draft'
-                                              ? 'bg-amber-100 text-amber-800 ring-amber-200'
-                                              : 'bg-rose-100 text-rose-800 ring-rose-200'
-                                    }`}
-                                >
-                                    {experiment.status}
-                                </div>
                             </div>
 
                             <h2 className="text-lg font-bold leading-snug text-slate-900">{experiment.title}</h2>
