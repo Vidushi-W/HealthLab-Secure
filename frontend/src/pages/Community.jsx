@@ -474,7 +474,7 @@ const Community = () => {
                     suggestionHideTimerRef.current = setTimeout(() => setShowSuggestions(false), 150);
                   }}
                   onKeyDown={(e) => e.key === 'Enter' && fetchFeed({ newPage: 1 })}
-                  className="block w-full rounded-l-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="block w-full rounded-l-lg border border-gray-300 bg-white px-3 py-2 text-sm placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
                 <Button type="button" size="sm" onClick={() => fetchFeed({ newPage: 1 })} className="rounded-l-none shadow-none">
                   Search
@@ -587,7 +587,7 @@ const Community = () => {
             placeholder="health, research"
             className="bg-white"
           />
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
+          <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-3">
             <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-800">
               <input
                 type="checkbox"
@@ -600,7 +600,8 @@ const Community = () => {
                     setPollOptions(['', '']);
                   }
                 }}
-                className="rounded border-slate-300"
+                className="h-4 w-4 rounded border border-slate-300 !bg-white accent-[#023047]"
+                style={{ backgroundColor: '#ffffff' }}
               />
               Add poll
             </label>
@@ -647,6 +648,7 @@ const Community = () => {
                       type="button"
                       variant="secondary"
                       size="sm"
+                      className="bg-white"
                       disabled={pollOptions.length >= 6}
                       onClick={() => setPollOptions((prev) => (prev.length >= 6 ? prev : [...prev, '']))}
                     >
@@ -949,7 +951,7 @@ const Community = () => {
             )}
           </div>
           {chatError && <p className="px-4 text-sm text-red-600">{chatError}</p>}
-          <form onSubmit={handleSendChat} className="flex gap-2 p-3 border-t border-gray-200">
+          <form onSubmit={handleSendChat} className="flex gap-2 p-3 border-t border-gray-200 bg-white">
             <input
               type="text"
               value={chatInput}
@@ -957,7 +959,7 @@ const Community = () => {
               placeholder="Type a message..."
               disabled={chatLoading}
               maxLength={4000}
-              className="flex-1 min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="flex-1 min-w-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-white"
             />
             <Button type="submit" disabled={chatLoading || !chatInput.trim()} size="md">
               Send
