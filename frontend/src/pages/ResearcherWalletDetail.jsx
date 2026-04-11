@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../api/api';
 import { getExperimentWallet, getMyFundRequests } from '../api/funds';
-import html2pdf from 'html2pdf.js';
+import { jsPDF } from 'jspdf';
 import './ResearcherWallet.css';
 
 const ResearcherWalletDetail = () => {
@@ -57,15 +57,24 @@ const ResearcherWalletDetail = () => {
                 return;
             }
 
-            const opt = {
-                margin: [10, 10],
-                filename: `Funding_Report_${experimentId}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, logging: true },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
+            const doc = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4',
+            });
 
-            html2pdf().set(opt).from(element).save();
+            doc.html(element, {
+                margin: [10, 10, 10, 10],
+                autoPaging: 'text',
+                html2canvas: {
+                    scale: 0.6,
+                    useCORS: true,
+                    logging: false,
+                },
+                callback: (pdf) => {
+                    pdf.save(`Funding_Report_${experimentId}.pdf`);
+                },
+            });
         } catch (err) {
             console.error('PDF generation error:', err);
             alert('Failed to generate PDF. Please check the console for details.');
