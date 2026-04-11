@@ -1,6 +1,9 @@
 // Community service: post CRUD, likes, share, save, comments; no HTTP
 const Post = require("../model/Post");
+const User = require("../../../models/User");
 const { generateSmartTags } = require("./aiTaggingService");
+
+const DEFAULT_ADMIN_EMAIL = "admin@healthlab.com";
 
 // Escape special regex characters so search term is matched literally (e.g. "C++", "health (study)")
 function escapeRegex(str) {
@@ -61,6 +64,20 @@ function formatPollForUser(poll, userId = null) {
     totalVotes,
     selectedOptionIndex: selectedOptionIndex >= 0 ? selectedOptionIndex : null,
   };
+}
+
+async function resolvePublishingAuthorId(fallbackUserId) {
+  const admin = await User.findOne({
+    role: { $in: ["admin", "ADMIN"] },
+    email: DEFAULT_ADMIN_EMAIL,
+  }).select("_id");
+
+  if (admin && admin._id) {
+    return admin._id;
+  }
+
+  const anyAdmin = await User.findOne({ role: { $in: ["admin", "ADMIN"] } }).select("_id");
+  return (anyAdmin && anyAdmin._id) || fallbackUserId;
 }
 
 // List posts with optional sort (latest|popular|most_commented) and search q, with pagination support
@@ -318,6 +335,7 @@ async function getPostById(postId, userId = null) {
 // Create post; optional AI tags from title/content; returns post and ai object
 async function createPost(userId, data) {
   const { title, content, tags, image, poll } = data;
+  const publishingAuthorId = await resolvePublishingAuthorId(userId);
   const tagArray = Array.isArray(tags)
     ? tags
     : typeof tags === "string"
@@ -336,14 +354,14 @@ async function createPost(userId, data) {
     poll: normalizedPoll,
     category: (ai && ai.category) || null,
     aiTags: Array.isArray(ai && ai.aiTags) ? ai.aiTags : [],
-    author: userId,
+    author: publishingAuthorId,
   });
   const populated = await Post.findById(post._id).populate("author", "name email").lean();
   return {
     post: {
       ...populated,
       image: populated.image || null,
-      poll: formatPollForUser(populated.poll, userId),
+      poll: formatPollForUser(populated.poll, publishingAuthorId),
       upvoteCount: 0,
       downvoteCount: 0,
       score: 0,

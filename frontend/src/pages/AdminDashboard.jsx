@@ -916,7 +916,7 @@ const AdminDashboard = () => {
                   placeholder="Search users..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 min-w-[240px]"
+                  className="pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 min-w-[240px]"
                 />
               </div>
               <div className="flex items-center gap-3">
