@@ -7,6 +7,7 @@ const asyncHandler = require("../utils/asyncHandler");
 const { parseBool } = require("../validators/authValidators");
 const { JWT_SECRET, JWT_EXPIRES_IN } = require("../config/constants");
 const authService = require('../services/authService');
+const { isStrongPassword, STRONG_PASSWORD_MESSAGE } = require("../utils/passwordPolicy");
 
 /**
  * Register a PARTICIPANT (used for participation/enrollment flow)
@@ -35,6 +36,13 @@ const registerParticipant = asyncHandler(async (req, res) => {
     return res.status(409).json({
       success: false,
       message: "Email already registered",
+    });
+  }
+
+  if (!isStrongPassword(password)) {
+    return res.status(400).json({
+      success: false,
+      message: STRONG_PASSWORD_MESSAGE,
     });
   }
 
@@ -101,6 +109,13 @@ const registerResearcher = asyncHandler(async (req, res) => {
     return res.status(409).json({
       success: false,
       message: "Email already registered",
+    });
+  }
+
+  if (!isStrongPassword(password)) {
+    return res.status(400).json({
+      success: false,
+      message: STRONG_PASSWORD_MESSAGE,
     });
   }
 

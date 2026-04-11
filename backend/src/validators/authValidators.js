@@ -1,12 +1,21 @@
 const { body, validationResult } = require("express-validator");
 const { RESEARCHER_TYPES } = require("../models/Researcher");
+const { isStrongPassword, STRONG_PASSWORD_MESSAGE } = require("../utils/passwordPolicy");
+
+const registerParticipantRules = () => [
+  body("name").trim().notEmpty().withMessage("Full name is required"),
+  body("email").trim().isEmail().normalizeEmail().withMessage("Valid email is required"),
+  body("password")
+    .custom((value) => isStrongPassword(value))
+    .withMessage(STRONG_PASSWORD_MESSAGE),
+];
 
 const registerResearcherRules = () => [
   body("name").trim().notEmpty().withMessage("Full name is required"),
   body("email").trim().isEmail().normalizeEmail().withMessage("Valid email is required"),
   body("password")
-    .isLength({ min: 6 })
-    .withMessage("Password must be at least 6 characters"),
+    .custom((value) => isStrongPassword(value))
+    .withMessage(STRONG_PASSWORD_MESSAGE),
   body("fullName").trim().notEmpty().withMessage("Full name is required"),
   body("nic").trim().notEmpty().withMessage("NIC is required"),
   body("gender").trim().notEmpty().withMessage("Gender is required"),
@@ -84,6 +93,7 @@ function parseBool(val) {
 }
 
 module.exports = {
+  registerParticipantRules,
   registerResearcherRules,
   loginRules,
   validate,

@@ -9,6 +9,7 @@ const {
 } = require("../controllers/authController");
 
 const {
+  registerParticipantRules,
   registerResearcherRules,
   loginRules,
   validate,
@@ -21,7 +22,12 @@ const { protect } = require("../middleware/authMiddleware");
 /**
  * Participant registration (simple)
  */
-router.post("/register-participant", authController.registerParticipant);
+router.post(
+  "/register-participant",
+  registerParticipantRules ? registerParticipantRules() : [],
+  validate || ((req, res, next) => next()),
+  authController.registerParticipant
+);
 
 /**
  * Researcher registration (with upload + validation)
