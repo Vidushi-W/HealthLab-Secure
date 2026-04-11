@@ -107,6 +107,9 @@ backend/inspect*.js
 backend/fix*.js
 backend/list*.js
 backend/verify*.js
+backend/scripts/list-users.js
+backend/scripts/test-login.js
+backend/scripts/setup-test-accounts.js
 backend/*.log
 backend/*.txt
 backend/db-structure.json

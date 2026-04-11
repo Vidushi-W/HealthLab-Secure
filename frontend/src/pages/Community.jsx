@@ -554,6 +554,7 @@ const Community = () => {
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
             placeholder="Post title"
+            className="bg-white"
             required
           />
           <Textarea
@@ -562,6 +563,7 @@ const Community = () => {
             value={formData.content}
             onChange={(e) => setFormData({ ...formData, content: e.target.value })}
             placeholder="What would you like to share?"
+            className="bg-white"
             required
           />
           <div>
@@ -583,6 +585,7 @@ const Community = () => {
             value={formData.tags}
             onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
             placeholder="health, research"
+            className="bg-white"
           />
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
             <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-800">
@@ -609,6 +612,7 @@ const Community = () => {
                   onChange={(e) => setPollQuestion(e.target.value)}
                   placeholder="Ask the community something"
                   maxLength={200}
+                  className="bg-white"
                   required
                 />
                 <div className="space-y-2">
@@ -624,7 +628,7 @@ const Community = () => {
                           setPollOptions(next);
                         }}
                         placeholder={`Option ${index + 1}`}
-                        className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent"
+                        className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent"
                       />
                       {pollOptions.length > 2 && (
                         <Button
