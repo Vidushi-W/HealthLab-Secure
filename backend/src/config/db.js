@@ -13,7 +13,8 @@ const connectDB = async () => {
 
   if (!uri) throw new Error("MONGODB_URI or MONGO_URI missing");
 
-  console.log(`⏳ MongoDB: Connecting to ${uri}...`);
+  console.log(`🔌 Mongoose: Input URI from env: ${uri.replace(/:([^:@]+)@/, ":****@")}`);
+  console.log(`⏳ MongoDB: Connecting to ${uri.replace(/:([^:@]+)@/, ":****@")}...`);
 
   try {
     // Build URI with dbName: replace existing path or append if missing
@@ -36,7 +37,7 @@ const connectDB = async () => {
       // Replace the existing path with the desired dbName
       finalUri = `${baseUri.slice(0, firstSlashAfterProtocol + 1)}${dbName}${queryPart}`;
     }
-    console.log(`🔌 Mongoose: Connecting to ${finalUri.replace(/:([^:@]+)@/, ":****@")}...`);
+    console.log(`🔌 Mongoose: Final connection string: ${finalUri.replace(/:([^:@]+)@/, ":****@")}`);
 
     const options = {
       serverSelectionTimeoutMS: 30000,
