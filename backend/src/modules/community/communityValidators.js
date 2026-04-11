@@ -8,8 +8,44 @@ const postIdRules = () => [param("id").isMongoId().withMessage("Invalid post ID"
 const createPostRules = () => [
   body("title").trim().notEmpty().withMessage("Title is required"),
   body("content").trim().notEmpty().withMessage("Content is required"),
-  body("tags").optional().isArray().withMessage("tags must be an array"),
-  body("tags.*").optional().isString().withMessage("tags must be an array of strings"),
+  body("tags").optional(),
+  body("poll")
+    .optional()
+    .custom((value) => {
+      let poll = value;
+      if (typeof poll === "string") {
+        try {
+          poll = JSON.parse(poll);
+        } catch (_) {
+          throw new Error("poll must be valid JSON");
+        }
+      }
+      if (!poll || typeof poll !== "object") {
+        throw new Error("poll must be an object");
+      }
+      const question = String(poll.question || "").trim();
+      if (!question) {
+        throw new Error("poll.question is required");
+      }
+      if (question.length > 200) {
+        throw new Error("poll.question must be 200 characters or fewer");
+      }
+      const options = Array.isArray(poll.options) ? poll.options : [];
+      if (options.length < 2) {
+        throw new Error("poll.options must include at least 2 options");
+      }
+      if (options.length > 6) {
+        throw new Error("poll.options must include at most 6 options");
+      }
+      const normalized = options
+        .map((opt) => (typeof opt === "string" ? opt : opt && opt.text))
+        .map((opt) => String(opt || "").trim())
+        .filter(Boolean);
+      if (normalized.length < 2) {
+        throw new Error("poll.options must include at least 2 non-empty options");
+      }
+      return true;
+    }),
 ];
 
 // Update post: id in params; title, content, tags optional
@@ -39,6 +75,13 @@ const updateCommentRules = () => [
   body("content").trim().notEmpty().withMessage("Comment content is required"),
 ];
 
+const pollVoteRules = () => [
+  param("id").isMongoId().withMessage("Invalid post ID"),
+  body("optionIndex")
+    .isInt({ min: 0 })
+    .withMessage("optionIndex must be a non-negative integer"),
+];
+
 // Run validation; 400 with joined message on error
 function validate(req, res, next) {
   const errors = validationResult(req);
@@ -54,5 +97,6 @@ module.exports = {
   commentIdRules,
   addCommentRules,
   updateCommentRules,
+  pollVoteRules,
   validate,
 };

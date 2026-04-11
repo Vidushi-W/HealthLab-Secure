@@ -13,7 +13,8 @@ const connectDB = async () => {
 
   if (!uri) throw new Error("MONGODB_URI or MONGO_URI missing");
 
-  console.log(`⏳ MongoDB: Connecting to ${uri}...`);
+  console.log(`🔌 Mongoose: Input URI from env: ${uri.replace(/:([^:@]+)@/, ":****@")}`);
+  console.log(`⏳ MongoDB: Connecting to ${uri.replace(/:([^:@]+)@/, ":****@")}...`);
 
   try {
     // Build URI with dbName: replace existing path or append if missing
@@ -36,10 +37,27 @@ const connectDB = async () => {
       // Replace the existing path with the desired dbName
       finalUri = `${baseUri.slice(0, firstSlashAfterProtocol + 1)}${dbName}${queryPart}`;
     }
-    console.log(`🔌 Mongoose: Connecting to ${finalUri.replace(/:([^:@]+)@/, ":****@")}...`);
-    await mongoose.connect(finalUri, {
-      serverSelectionTimeoutMS: 15000,
-    });
+    console.log(`🔌 Mongoose: Final connection string: ${finalUri.replace(/:([^:@]+)@/, ":****@")}`);
+
+    const options = {
+      serverSelectionTimeoutMS: 30000,
+      socketTimeoutMS: 45000,
+      family: 4, // Force IPv4 if needed
+    };
+
+    let retries = 5;
+    while (retries > 0) {
+      try {
+        await mongoose.connect(finalUri, options);
+        break;
+      } catch (err) {
+        retries -= 1;
+        console.error(`❌ MongoDB Connection Attempt Failed. Retries left: ${retries}`);
+        if (retries === 0) throw err;
+        await new Promise(res => setTimeout(res, 3000));
+      }
+    }
+
     dbInstance = mongoose.connection.useDb(dbName, { useCache: true });
     console.log(`✅ MongoDB: Connected to ${dbName} (single database)`);
     return dbInstance;

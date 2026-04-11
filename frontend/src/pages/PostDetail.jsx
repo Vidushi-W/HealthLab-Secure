@@ -1,18 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import '../pages/Community.css';
+import { Heart, Share2, Bookmark, ArrowLeft, Flag } from 'lucide-react';
 import {
   getPostById,
+  getPostImageUrl,
   getSavedPosts,
   addComment,
   likeToggle,
+  votePoll,
   sharePost,
   savePost,
   unsavePost,
   deleteComment,
   updatePost,
   deletePost as deletePostApi,
+  reportPost,
 } from '../api/posts';
+import ReportModal from '../components/ReportModal';
+import {
+  Button,
+  Card,
+  Input,
+  Textarea,
+  EmptyState,
+  ErrorMessage,
+  Skeleton,
+} from '../components/ui';
 
 const PostDetail = () => {
   const { id } = useParams();
@@ -26,6 +39,7 @@ const PostDetail = () => {
   const [saved, setSaved] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ title: '', content: '', tags: [] });
+  const [reportOpen, setReportOpen] = useState(false);
 
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -42,6 +56,7 @@ const PostDetail = () => {
     getPostById(id)
       .then(({ data }) => {
         const p = data.post ?? data;
+        console.log(`📖 Post fetched. Image field:`, p.image, 'URL would be:', p.image ? getPostImageUrl(p.image) : 'N/A');
         setPost(p);
         setLiked(p?.likes?.some((l) => String(l && (l._id || l)) === String(user._id)) || false);
         return getSavedPosts();
@@ -98,6 +113,11 @@ const PostDetail = () => {
     } catch (_) {}
   };
 
+  const handleReport = async (data) => {
+    await reportPost(id, data);
+    alert('Post reported successfully. Thank you for helping us maintain a safe community.');
+  };
+
   const handleDeleteComment = async (commentId) => {
     if (!window.confirm('Delete this comment?')) return;
     try {
@@ -106,7 +126,17 @@ const PostDetail = () => {
     } catch (_) {}
   };
 
+  const handlePollVote = async (optionIndex) => {
+    try {
+      const { data } = await votePoll(id, optionIndex);
+      const nextPoll = data?.poll;
+      if (!nextPoll) return;
+      setPost((p) => (p ? { ...p, poll: nextPoll } : p));
+    } catch (_) {}
+  };
+
   const isAuthor = post && user._id && (String((post.author && (post.author._id || post.author))) === String(user._id));
+  const isAdmin = (user.role || '').toLowerCase() === 'admin';
 
   const handleStartEdit = () => {
     setEditForm({
@@ -146,142 +176,288 @@ const PostDetail = () => {
   };
 
   if (!token) return null;
-  if (loading) return <div className="community-loading">Loading...</div>;
-  if (error && !post) return <div className="community-error">{error}</div>;
-  if (!post) return <div className="community-error">Post not found.</div>;
+  if (loading) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-6">
+        <Skeleton className="h-5 w-40 mb-6" />
+        <Card>
+          <Skeleton className="h-6 w-3/4 mb-4" />
+          <Skeleton className="h-4 w-full mb-2" />
+          <Skeleton className="h-4 w-full mb-2" />
+          <Skeleton className="h-4 w-2/3" />
+        </Card>
+      </div>
+    );
+  }
+  if (error && !post) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-6">
+        <ErrorMessage message={error} />
+        <Link to="/community" className="inline-block mt-4 text-gray-600 hover:text-gray-900 p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Back to Community">
+          <ArrowLeft size={20} />
+        </Link>
+      </div>
+    );
+  }
+  if (!post) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-6">
+        <ErrorMessage message="Post not found." />
+        <Link to="/community" className="inline-block mt-4 text-gray-600 hover:text-gray-900 p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Back to Community">
+          <ArrowLeft size={20} />
+        </Link>
+      </div>
+    );
+  }
 
   const comments = (post.comments || []).filter((c) => c.status !== 'hidden');
-  const isAdmin = (user.role || '').toLowerCase() === 'admin';
+  const postImage = post.image || post.imageUrl;
 
   return (
-    <div className="post-detail-page">
-      <Link to="/community" className="post-detail-back">
-        ← Back to Community
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <Link
+        to="/community"
+        className="inline-block text-gray-600 hover:text-gray-900 p-2 hover:bg-gray-100 rounded-lg transition-colors mb-6"
+        title="Back to Community"
+      >
+        <ArrowLeft size={20} />
       </Link>
 
-      <article className="post-detail-card">
+      {postImage && !editing && (
+        <div className="mb-6 rounded-xl overflow-hidden border-2 border-gray-200 shadow-lg">
+          <img
+            src={getPostImageUrl(postImage)}
+            alt="Post banner"
+            className="w-full h-72 sm:h-96 object-cover"
+            onError={(e) => {
+              console.error(`❌ Image failed to load from URL:`, getPostImageUrl(postImage));
+              e.target.style.display = 'none';
+            }}
+            onLoad={() => console.log(`✅ Image loaded successfully from:`, getPostImageUrl(postImage))}
+          />
+        </div>
+      )}
+
+      <Card className="relative">
         {post.category && !editing && (
-          <div className="post-detail-category-wrap">
-            <span className="post-detail-category" title="AI category">{post.category}</span>
-          </div>
+          <span className="absolute -top-2.5 left-5 px-3 py-1 rounded-full bg-emerald-600 text-white text-xs font-semibold uppercase tracking-wide shadow">
+            {post.category}
+          </span>
         )}
-        <div className="post-card-header">
-          <span className="post-author">
+        <div className="flex flex-wrap items-start justify-between gap-2 mb-4">
+          <span className="text-sm text-gray-500">
             {post.author?.name || 'Unknown'} · {(post.author?.role || '').toLowerCase()}
           </span>
-          <span className="post-date">{new Date(post.createdAt).toLocaleString()}</span>
+          <span className="text-xs text-gray-400">{new Date(post.createdAt).toLocaleString()}</span>
           {isAuthor && (
-            <div className="post-author-actions">
+            <div className="flex gap-2 ml-auto">
               {!editing ? (
                 <>
-                  <button type="button" className="btn btn-edit" onClick={handleStartEdit}>Edit</button>
-                  <button type="button" className="btn btn-danger-sm" onClick={handleDeletePost}>Delete</button>
+                  <Button size="sm" variant="secondary" onClick={handleStartEdit}>
+                    Edit
+                  </Button>
+                  <Button size="sm" variant="danger" onClick={handleDeletePost}>
+                    Delete
+                  </Button>
                 </>
               ) : (
-                <button type="button" className="btn" onClick={() => setEditing(false)}>Cancel</button>
+                <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+                  Cancel
+                </Button>
               )}
             </div>
           )}
         </div>
+
         {!editing ? (
           <>
-            <h1 className="post-detail-title">{post.title}</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-3">{post.title}</h1>
             {(post.aiTags && post.aiTags.length > 0) && (
-              <div className="post-detail-ai-meta">
-                <span className="post-ai-label">AI tags:</span>
+              <div className="flex flex-wrap gap-2 mb-2">
+                <span className="text-xs text-gray-500 mr-1">AI tags:</span>
                 {post.aiTags.map((t) => (
-                  <span key={t} className="post-tag post-tag-ai">{t}</span>
+                  <span key={t} className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-medium">
+                    {t}
+                  </span>
                 ))}
               </div>
             )}
             {post.tags && post.tags.length > 0 && (
-              <div className="post-tags">
+              <div className="flex flex-wrap gap-2 mb-3">
                 {post.tags.map((t) => (
-                  <span key={t} className="post-tag">{t}</span>
+                  <span key={t} className="px-2 py-0.5 rounded-full bg-primary-light text-primary text-xs font-medium">
+                    {t}
+                  </span>
                 ))}
               </div>
             )}
-            <p className="post-detail-content">{post.content}</p>
+            <p className="text-gray-700 whitespace-pre-wrap leading-relaxed mb-4">{post.content}</p>
+            {post.poll?.question && Array.isArray(post.poll?.options) && post.poll.options.length > 0 && (
+              <div className="mb-6 rounded-2xl border-2 border-blue-300 bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-50 p-5 shadow-md">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-2xl">🗳️</span>
+                  <div>
+                    <h3 className="text-lg font-bold text-blue-900">{post.poll.question}</h3>
+                    <p className="text-xs text-blue-600">{post.poll.totalVotes || 0} total vote{post.poll.totalVotes === 1 ? '' : 's'}</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {post.poll.options.map((opt, idx) => {
+                    const isSelected = post.poll.selectedOptionIndex === idx;
+                    const label = typeof opt === 'string' ? opt : opt?.text;
+                    const voteCount = typeof opt === 'object' ? (opt.voteCount || 0) : 0;
+                    const percentage = typeof opt === 'object' ? (opt.percentage || 0) : 0;
+                    return (
+                      <button
+                        key={`poll-option-${idx}`}
+                        type="button"
+                        onClick={() => handlePollVote(idx)}
+                        className={`w-full text-left rounded-xl border-2 px-4 py-3 transition-all transform hover:scale-102 ${
+                          isSelected
+                            ? 'border-blue-500 bg-white shadow-lg ring-2 ring-blue-200'
+                            : 'border-blue-200 bg-white hover:border-blue-300 hover:shadow-md'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-3 mb-2">
+                          <span className={`text-sm font-semibold ${
+                            isSelected ? 'text-blue-900' : 'text-blue-800'
+                          }`}>
+                            {isSelected && '✓ '}{label}
+                          </span>
+                          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700">{percentage}%</span>
+                        </div>
+                        <div className="w-full bg-blue-200 rounded-full h-2 overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-300"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                        <p className="mt-1.5 text-xs text-blue-600 font-medium">{voteCount} vote{voteCount === 1 ? '' : 's'}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
           </>
         ) : (
-          <form onSubmit={handleSaveEdit} className="post-edit-form">
-            <input
-              type="text"
-              className="form-input"
+          <form onSubmit={handleSaveEdit} className="space-y-4">
+            <Input
+              label="Title"
               value={editForm.title}
               onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
-              placeholder="Title"
               required
             />
-            <textarea
-              className="form-input"
+            <Textarea
+              label="Content"
               rows={6}
               value={editForm.content}
               onChange={(e) => setEditForm((f) => ({ ...f, content: e.target.value }))}
-              placeholder="Content"
               required
             />
-            <input
-              type="text"
-              className="form-input"
+            <Input
+              label="Tags (comma-separated)"
               value={editForm.tags}
               onChange={(e) => setEditForm((f) => ({ ...f, tags: e.target.value }))}
-              placeholder="Tags (comma-separated)"
             />
-            <button type="submit" className="btn btn-primary">Save changes</button>
+            <Button type="submit">Save changes</Button>
           </form>
         )}
+
         {!editing && (
-          <div className="post-actions">
-            <button type="button" className={`post-action ${liked ? 'liked' : ''}`} onClick={handleLike}>
-              ♥ {post.likeCount || 0}
+          <div className="flex items-center justify-between gap-3 pt-4 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={handleLike}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors ${liked ? 'text-red-600 bg-red-50' : 'text-gray-600 hover:bg-gray-100'}`}
+              title="Like this post"
+            >
+              <Heart size={18} fill={liked ? 'currentColor' : 'none'} />
+              <span className="text-sm font-medium">{post.likeCount || 0}</span>
             </button>
-            <button type="button" className="post-action" onClick={handleShare}>
-              ↗ Share ({post.shareCount || 0})
-            </button>
-            <button type="button" className={`post-action ${saved ? 'saved' : ''}`} onClick={handleSave}>
-              {saved ? '✓ Saved' : 'Save'}
-            </button>
+            <div className="flex items-center gap-2 ml-auto">
+              <button
+                type="button"
+                onClick={handleShare}
+                className="text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors"
+                title="Share this post"
+              >
+                <Share2 size={18} />
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                className={`p-2 rounded-lg transition-colors ${
+                  saved ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:bg-gray-100'
+                }`}
+                title={saved ? 'Remove from bookmarks' : 'Bookmark this post'}
+              >
+                <Bookmark size={18} fill={saved ? 'currentColor' : 'none'} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setReportOpen(true)}
+                className="text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors"
+                title="Report this post"
+              >
+                <Flag size={18} />
+              </button>
+            </div>
           </div>
         )}
-      </article>
+      </Card>
 
-      <section className="post-detail-comments">
-        <h3>Comments ({comments.length})</h3>
-        <form onSubmit={handleAddComment} className="comment-form">
-          <textarea
-            className="form-input"
-            rows={3}
-            value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
-            placeholder="Write a comment..."
-          />
-          <button type="submit" className="btn btn-primary" disabled={submitting}>
-            {submitting ? 'Posting...' : 'Post comment'}
-          </button>
-        </form>
-        <div className="comment-list">
+      <ReportModal
+        isOpen={reportOpen}
+        onClose={() => setReportOpen(false)}
+        onSubmit={handleReport}
+        postId={id}
+      />
+
+      <section className="mt-8">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Comments ({comments.length})</h2>
+        {error && <ErrorMessage message={error} onDismiss={() => setError('')} className="mb-4" />}
+        <Card className="mb-6" id="comment-box">
+          <form onSubmit={handleAddComment} className="space-y-3">
+            <Textarea
+              placeholder="Write a comment..."
+              rows={3}
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+            />
+            <Button type="submit" disabled={submitting}>
+              {submitting ? 'Posting...' : 'Post comment'}
+            </Button>
+          </form>
+        </Card>
+        <div className="space-y-3">
           {comments.length === 0 ? (
-            <p className="text-secondary">No comments yet.</p>
+            <EmptyState
+              icon="💬"
+              title="No comments yet"
+              description="Be the first to share your thoughts."
+            />
           ) : (
             comments.map((c) => (
-              <div key={c._id} className="comment-item">
-                <div className="comment-header">
-                  <strong>{c.author?.name || 'Unknown'}</strong>
-                  <span className="comment-date">{new Date(c.createdAt).toLocaleString()}</span>
-                  {(c.author && (c.author._id || c.author) === user._id) || isAdmin ? (
-                    <button
-                      type="button"
-                      className="comment-delete"
-                      onClick={() => handleDeleteComment(c._id)}
-                      title="Delete comment"
-                    >
-                      Delete
-                    </button>
-                  ) : null}
+              <Card key={c._id} padding className="flex flex-col gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <strong className="text-gray-900">{c.author?.name || 'Unknown'}</strong>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">{new Date(c.createdAt).toLocaleString()}</span>
+                    {((c.author && (c.author._id || c.author) === user._id) || isAdmin) && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteComment(c._id)}
+                        className="text-xs font-medium text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <p className="comment-content">{c.content}</p>
-              </div>
+                <p className="text-gray-700 text-sm leading-relaxed">{c.content}</p>
+              </Card>
             ))
           )}
         </div>

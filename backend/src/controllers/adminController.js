@@ -24,6 +24,7 @@ const getPendingResearchers = asyncHandler(async (req, res) => {
 // Researchers: list all, optional query status filter
 const getResearchers = asyncHandler(async (req, res) => {
   const { status } = req.query;
+  await adminService.ensureApprovedResearcherIds();
   const filter = status ? { status } : {};
   const researchers = await Researcher.find(filter)
     .populate("user", POPULATE.user)
@@ -103,6 +104,7 @@ const deleteResearcher = asyncHandler(async (req, res) => {
 // Users: list all with optional role filter, include researcherStatus when applicable
 const getUsers = asyncHandler(async (req, res) => {
   const { role } = req.query;
+  await adminService.ensureApprovedResearcherIds();
   const list = await adminService.getUsersWithResearcherStatus(role || null);
   return res.status(HTTP_STATUS.OK).json(list);
 });
@@ -122,7 +124,14 @@ const approveUser = asyncHandler(async (req, res) => {
     return errorResponse(res, HTTP_STATUS.NOT_FOUND, "User not found");
   }
 
-  await Researcher.findOneAndUpdate({ user: id }, { status: "approved" });
+  const researcher = await adminService.findResearcherByUserId(id);
+  if (researcher && (researcher.status === RESEARCHER_STATUS.PENDING || !researcher.status)) {
+    await adminService.updateResearcherReview(
+      researcher._id,
+      { status: RESEARCHER_STATUS.APPROVED, reviewNotes: researcher.reviewNotes || "" },
+      req.user._id
+    );
+  }
 
   return res.status(HTTP_STATUS.OK).json(user);
 });
@@ -136,12 +145,47 @@ const rejectUser = asyncHandler(async (req, res) => {
     return errorResponse(res, HTTP_STATUS.NOT_FOUND, "User not found");
   }
 
-  await Researcher.findOneAndUpdate({ user: id }, { status: "rejected" });
+  const researcher = await adminService.findResearcherByUserId(id);
+  if (researcher && (researcher.status === RESEARCHER_STATUS.PENDING || !researcher.status)) {
+    await adminService.updateResearcherReview(
+      researcher._id,
+      { status: RESEARCHER_STATUS.REJECTED, reviewNotes: researcher.reviewNotes || "" },
+      req.user._id
+    );
+  }
 
   return res.status(HTTP_STATUS.OK).json(user);
 });
 
-// Experiments: delete and optionally reject creator / reassign to participant
+// Delete user (admin only)
+const deleteUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  // Prevent admin from deleting own account
+  if (String(req.user._id) === String(id)) {
+    return errorResponse(
+      res,
+      HTTP_STATUS.BAD_REQUEST,
+      "You cannot delete your own account"
+    );
+  }
+
+  const user = await User.findById(id);
+  if (!user) {
+    return errorResponse(res, HTTP_STATUS.NOT_FOUND, "User not found");
+  }
+
+  // Remove linked researcher record
+  await Researcher.findOneAndDelete({ user: id });
+
+  // TODO: handle experiments (reassign or delete if needed)
+  // Experiments: delete and optionally reject creator / reassign to participant
+
+  // Delete user
+  await User.findByIdAndDelete(id);
+
+  return successResponse(res, HTTP_STATUS.OK, null, "User deleted");
+});
 const deleteExperiment = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const body = req.body || {};
@@ -192,11 +236,20 @@ const updateStatus = asyncHandler(async (req, res) => {
 
 // Analytics: dashboard data
 const getAnalytics = asyncHandler(async (req, res) => {
-  const data = await analyticsService.getAnalytics();
+  const days = parseInt(req.query.days) || 30;
+  const data = await analyticsService.getDashboardStats(days);
   return res.status(HTTP_STATUS.OK).json(data);
 });
 
-// Reports: fund reports with query params
+const exportOverviewPdf = asyncHandler(async (req, res) => {
+  const parsedDays = Number.parseInt(req.query.days, 10);
+  const days = Number.isFinite(parsedDays) && parsedDays > 0 ? parsedDays : 30;
+
+  const data = await analyticsService.getDashboardStats(days);
+
+  // Reports: fund reports with query params
+  pdfExportService.pipeOverviewReportToResponse(data, res, days);
+});
 const getReports = asyncHandler(async (req, res) => {
   const data = await analyticsService.getReports(req.query);
   return res.status(HTTP_STATUS.OK).json(data);
@@ -218,8 +271,10 @@ module.exports = {
   getUnapprovedResearchers,
   approveUser,
   rejectUser,
+  deleteUser,
   deleteExperiment,
   exportResearchersPdf,
+  exportOverviewPdf,
   getAnalytics,
   getAllRequests,
   updateStatus,
