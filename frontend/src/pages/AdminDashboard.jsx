@@ -168,11 +168,17 @@ const AdminDashboard = () => {
     try {
       setAnalyticsLoading(true);
       const days = dateRange === 'all' ? 365 : parseInt(dateRange);
+      const token = localStorage.getItem('token');
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      console.log(`[fetchAnalytics] Starting fetch. Token: ${token ? 'YES' : 'NO'}, User: ${user.email}, Days: ${days}`);
+      
       const [analyticsResponse, usersResponse, experimentsResponse] = await Promise.all([
         api.get(`/admin/analytics?days=${days}`),
         api.get('/admin/users'),
         api.get('/experiments'),
       ]);
+      
+      console.log(`[fetchAnalytics] All requests successful`);
       const users = Array.isArray(usersResponse.data) ? usersResponse.data : [];
       const experimentList = Array.isArray(experimentsResponse.data) ? experimentsResponse.data : [];
       setAnalytics(normalizeOverviewAnalytics(analyticsResponse.data));
@@ -181,6 +187,7 @@ const AdminDashboard = () => {
       setError(null);
     } catch (err) {
       console.error('Error fetching analytics:', err);
+      console.error('Error details:', err.response?.status, err.response?.data, err.message);
       setError('Failed to fetch analytics statistics.');
       setAnalytics(null);
     } finally {
@@ -723,7 +730,7 @@ const AdminDashboard = () => {
                   placeholder="Search researchers..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 min-w-[240px]"
+                  className="pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 min-w-[240px]"
                 />
               </div>
               <div className="flex items-center gap-3">
