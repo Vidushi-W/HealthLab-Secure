@@ -7,6 +7,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true, select: false },
   role: { type: String, default: "participant" },
   isApproved: { type: Boolean, default: false },
+  banned: { type: Boolean, default: false },
   age: Number,
   gender: String,
   location: String,

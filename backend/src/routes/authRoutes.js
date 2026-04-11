@@ -48,4 +48,9 @@ router.get("/profile", protect, (req, res) => {
 });
 router.put("/profile", protect, authController.updateProfile);
 
+/**
+ * Flag a researcher
+ */
+router.post("/researchers/:id/flag", protect, authController.flagResearcher);
+
 module.exports = router;

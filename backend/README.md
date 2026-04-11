@@ -14,6 +14,7 @@ REST API for the HealthLab platform: authentication, researcher management, expe
 4. [Run](#run)
 5. [API Endpoint Documentation](#api-endpoint-documentation)
 6. [Sample Workflows](#sample-workflows)
+7. [Deployment (Admin + Community)](#deployment-admin--community)
 
 ---
 
@@ -514,6 +515,304 @@ curl -X PATCH "http://localhost:5000/api/admin/fund-requests/<REQUEST_ID>/status
 ```
 
 ---
+
+  ## Deployment (Admin + Community)
+
+### Backend Deployment Checklist
+
+1. **Environment Setup**
+   - Set `NODE_ENV=production` in `.env`
+   - Use MongoDB Atlas or production MongoDB instance
+   - Generate secure JWT_SECRET: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+   - Set `JWT_EXPIRES_IN=7d` (or desired expiry)
+
+2. **Install Dependencies & Build** (if applicable)
+   ```bash
+   npm install --production
+   npm run build  # if build script exists
+   ```
+
+3. **Database Verification**
+   - Ensure MongoDB Atlas IP whitelist includes your server
+   - Run health check: `curl http://localhost:5000/health`
+
+4. **Start Server**
+   ```bash
+   NODE_ENV=production npm start
+   ```
+   Or use process manager (PM2):
+   ```bash
+   pm2 start src/server.js --name "healthlab-backend" --env NODE_ENV=production
+   ```
+
+5. **HTTPS Setup**
+   - Configure reverse proxy (Nginx, Apache) for SSL/TLS
+   - Example Nginx config:
+   ```nginx
+   server {
+     listen 443 ssl http2;
+     server_name api.healthlab.com;
+     
+     ssl_certificate /path/to/cert.pem;
+     ssl_certificate_key /path/to/key.pem;
+     
+     location / {
+       proxy_pass http://localhost:5000;
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+     }
+   }
+   ```
+
+6. **Monitoring & Logging**
+   - Check logs: `pm2 logs healthlab-backend`
+   - Set up error tracking (Sentry, DataDog) for production errors
+   - Monitor disk space, CPU, memory
+
+### Frontend Deployment Checklist
+
+1. **Build for Production**
+   ```bash
+   cd frontend
+   npm install --legacy-peer-deps
+   npm run build
+   ```
+   Output: `dist/` folder
+
+2. **Configure API Endpoint**
+   Update `.env.production` or frontend config:
+   ```
+   VITE_API_BASE_URL=https://api.healthlab.com
+   ```
+   Reference in `frontend/src/api/api.js`:
+   ```javascript
+   const api = axios.create({
+     baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
+   });
+   ```
+
+3. **Deploy Static Files**
+   Option A — Static host (Vercel, Netlify):
+   - Push repo and auto-deploy
+   
+   Option B — Web server (Nginx, Apache):
+   ```bash
+   # Copy dist/ to server
+   scp -r dist/* user@server:/var/www/healthlab-frontend/
+   ```
+
+4. **Nginx Configuration** (for static files + SPA routing)
+   ```nginx
+   server {
+     listen 443 ssl http2;
+     server_name healthlab.com;
+     
+     ssl_certificate /path/to/cert.pem;
+     ssl_certificate_key /path/to/key.pem;
+     
+     root /var/www/healthlab-frontend;
+     
+     # SPA routing: redirect 404s to index.html
+     location / {
+       try_files $uri $uri/ /index.html;
+     }
+     
+     # Proxy API calls to backend
+     location /api/ {
+       proxy_pass https://api.healthlab.com;
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+     }
+     
+     # Cache static assets
+     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff)$ {
+       expires 365d;
+       add_header Cache-Control "public, immutable";
+     }
+   }
+   ```
+
+5. **Security Headers**
+   Add to Nginx (or server):
+   ```nginx
+   add_header X-Frame-Options "SAMEORIGIN";
+   add_header X-Content-Type-Options "nosniff";
+   add_header X-XSS-Protection "1; mode=block";
+   add_header Referrer-Policy "strict-origin-when-cross-origin";
+   add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';";
+   ```
+
+---
+
+## Sample Workflows
+
+### Researcher Approval Workflow (Admin)
+
+1. **Researcher registers** → Backend creates user + researcher doc with `status: "pending"`
+2. **Admin sees pending researchers** → `GET /api/admin/researchers/pending`
+3. **Admin approves** → `PUT /api/admin/researchers/:id/approve` with optional review notes
+4. **Researcher can now create experiments**
+
+### Community Post with Poll
+
+1. **User creates post** → `POST /api/posts` with:
+   ```json
+   {
+     "title": "What's your favorite health metric?",
+     "content": "Let's discuss what metrics matter most.",
+     "tags": ["health", "feedback"],
+     "poll": {
+       "question": "Which metric do you track?",
+       "options": ["Steps", "Sleep", "Heart Rate", "Calories"]
+     }
+   }
+   ```
+2. **Other users vote** → `PUT /api/posts/:id/like?vote=up` (like) or poll vote
+3. **Comments added** → `POST /api/posts/:id/comments`
+4. **Post is liked/shared/saved** → Various endpoints increment counters
+
+### Fund Request Approval
+
+1. **Researcher creates fund request** → `POST /api/fund-requests` with `experimentId`, `requestedAmount`, `reason`
+2. **Admin reviews** → `GET /api/admin/fund-requests`
+3. **Admin approves** → `PATCH /api/admin/fund-requests/:id/status` with `status: "APPROVED"`, `approvedAmount`, notes
+4. **Funds credited to experiment wallet**
+
+---
+
+## Error Handling & Status Codes
+
+| Code | Scenario | Example |
+|------|----------|---------|
+| 200  | Success (GET, PUT, DELETE, POST with no new resource) | Post updated |
+| 201  | Resource created (POST with new resource) | Post created |
+| 400  | Validation error (invalid input, missing required field) | `{ "success": false, "message": "Title required" }` |
+| 401  | Unauthenticated (missing/invalid token) | No Bearer token provided |
+| 403  | Unauthorized (authenticated but insufficient permissions) | Non-author trying to edit post |
+| 404  | Not found (resource doesn't exist) | Post ID not found |
+| 500  | Server error (unexpected exception) | Database connection failed |
+
+---
+
+## Community Feature Highlights
+
+### Posts with Polls
+- Create posts with optional polls
+- Single vote per user per poll
+- Real-time vote percentages and counts
+- Comments on posts
+- Like/save/share tracking
+
+### Search & Discovery
+- Full-text search in post titles, content, tags
+- Tag-based filtering
+- Author filtering
+- Smart tag suggestions (AI-generated)
+- "Following" topic recommendations
+
+### Content Management
+- Author-only edit/delete
+- Markdown-style formatting (title + content)
+- Image uploads for posts
+- Tag management (user + AI)
+- Pagination with 10 posts/page
+
+### Admin Controls
+- View all posts
+- Report post system
+- User role management
+- Delete non-compliant posts
+- Analytics on community engagement
+
+---
+
+## Testing
+
+### Run Unit Tests
+```bash
+npm run test
+```
+
+### Run Integration Tests
+```bash
+npm run test:integration
+```
+
+### Performance Testing
+```bash
+npm run test:performance
+```
+
+Tests verify:
+- CRUD operations (create, read, update, delete)
+- Permission checks (author-only, admin-only)
+- Pagination logic (limit, skip, page math)
+- Error handling (validation, auth, not found)
+- API response formats
+- Data persistence
+  ### Backend Deployment (Admin + Community APIs)
+
+  **Recommended platform:** Render (Web Service) or Railway (Node.js service)
+
+  #### Backend setup steps
+
+  1. Create a new Web Service and connect your GitHub repository.
+  2. Set root directory to `backend`.
+  3. Configure build/start:
+    - Build command: `npm install`
+    - Start command: `npm start`
+  4. Add environment variables (see list below).
+  5. Deploy and verify:
+    - `GET /health`
+    - Admin routes (example): `GET /api/admin/analytics`
+    - Community routes (example): `GET /api/posts`, `POST /api/posts/:id/report`
+
+  ### Frontend Deployment (Admin + Community UI)
+
+  **Recommended platform:** Vercel or Netlify (Vite static hosting)
+
+  #### Frontend setup steps
+
+  1. Create a new project and connect the same repository.
+  2. Set root directory to `frontend`.
+  3. Configure build/output:
+    - Build command: `npm run build`
+    - Output directory: `dist`
+  4. Add frontend environment variables (see list below).
+  5. Deploy and verify:
+    - Admin dashboard page loads and fetches analytics/reports.
+    - Community feed loads, post CRUD works, report modal submits.
+
+  ### Environment Variables Used (No Secrets Exposed)
+
+  #### Backend (`backend/.env`)
+
+  - `PORT` (example: `5000`)
+  - `MONGODB_URI` or `MONGO_URI` (MongoDB connection string)
+  - `JWT_SECRET` (long random secret)
+  - `JWT_EXPIRES_IN` (example: `7d`)
+  - `GROQ_API_KEY` (for community assistant)
+  - `GROQ_MODEL` (optional model override)
+  - `HF_TOKEN` (for AI smart tagging)
+  - `HF_MODEL` (optional model override)
+  - `HF_ENDPOINT` (optional endpoint override)
+  - `HF_TIMEOUT_MS` (optional timeout tuning)
+  - `HF_TAG_SCORE_THRESHOLD` (optional tagging threshold)
+
+  #### Frontend (`frontend/.env`)
+
+  - No required frontend environment variables are currently used for Admin/Community.
+  - Current API base URL is configured directly in frontend code at `frontend/src/api/api.js`.
+  - (Recommended future improvement) move API base URL to `VITE_API_BASE_URL`.
+
+  > Security note:
+  > - Never commit `.env` files.
+  > - Store all secrets in deployment platform environment settings.
+  > - Keep only `.env.example` in Git if needed.
+
+  ---
 
 ## License & Classification
 

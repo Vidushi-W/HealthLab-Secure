@@ -5,6 +5,20 @@ const auditService = require('./auditService');
 const mongoose = require('mongoose');
 
 // Helper to check for active requests
+const calculateAiPrediction = (request) => {
+    if (!request.raisedAmount || request.raisedAmount <= 0) return null;
+    if (request.raisedAmount >= request.targetAmount) return 0;
+
+    const createdAt = new Date(request.createdAt || request.submittedAt || Date.now());
+    const daysSinceCreation = Math.max(0.5, (Date.now() - createdAt) / (1000 * 60 * 60 * 24));
+
+    const dailyRate = request.raisedAmount / daysSinceCreation;
+    const remainingAmount = request.targetAmount - request.raisedAmount;
+
+    const estimatedDays = Math.ceil(remainingAmount / dailyRate);
+    return estimatedDays;
+};
+
 const hasActiveRequest = async (experimentId) => {
     const activeStatuses = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED'];
 
@@ -82,14 +96,32 @@ const createRequest = async (user, data) => {
 };
 
 const getMyRequests = async (userId) => {
-    return await FundRequest.find({ researcherId: userId }).sort({ createdAt: -1 });
+    const requests = await FundRequest.find({ researcherId: userId })
+        .sort({ createdAt: -1 })
+        .populate('experimentId', 'title');
+
+    return requests.map(req => {
+        const doc = req.toObject ? req.toObject() : req;
+        return {
+            ...doc,
+            aiPredictionDays: calculateAiPrediction(req)
+        };
+    });
 };
 
 const getOpenRequests = async () => {
-    return await FundRequest.find({ status: 'OPEN_FOR_FUNDING', isOpenForFunding: true })
+    const requests = await FundRequest.find({ status: 'OPEN_FOR_FUNDING', isOpenForFunding: true })
         .sort({ createdAt: -1 })
         .populate('researcherId', 'name')
         .populate('experimentId', 'title');
+
+    return requests.map(req => {
+        const doc = req.toObject ? req.toObject() : req;
+        return {
+            ...doc,
+            aiPredictionDays: calculateAiPrediction(req)
+        };
+    });
 };
 
 const getRequestById = async (requestId, user) => {

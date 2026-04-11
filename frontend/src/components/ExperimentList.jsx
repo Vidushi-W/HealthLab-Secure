@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import api from '../api/api';
 import SmartBadge from './common/SmartBadge';
 
-
 const ExperimentList = () => {
     const [experiments, setExperiments] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -111,61 +110,127 @@ const ExperimentList = () => {
         }
     };
 
-    if (loading) return <div className="p-8 text-center text-slate-500 text-lg">Loading experiments...</div>;
-    if (error) return <div className="p-8 text-center text-red-600 bg-red-50 border border-red-200 rounded-lg mx-auto max-w-lg mt-8">{error}</div>;
+    if (loading) {
+        return (
+            <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <div className="h-5 w-48 animate-pulse rounded bg-slate-200" />
+                    <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                            <div key={i} className="h-44 animate-pulse rounded-2xl bg-slate-100" />
+                        ))}
+                    </div>
+                    <p className="mt-4 text-sm text-slate-500">Loading experiments...</p>
+                </div>
+            </div>
+        );
+    }
+    if (error) {
+        return (
+            <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                    {error}
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="relative z-10 min-h-[calc(100vh-64px)] py-12 px-8 bg-slate-50 text-slate-700 font-sans mx-auto flex flex-col items-center">
-            <h1 className="text-slate-900 font-bold text-4xl tracking-tight mb-10 text-center relative max-w-[1150px] w-full after:content-[''] after:absolute after:-bottom-2 after:left-1/2 after:-translate-x-1/2 after:w-16 after:h-1 after:bg-blue-600 after:rounded-sm">Available Experiments</h1>
-            
+        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+            <div className="mb-8">
+                <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
+                    Available Experiments
+                </h1>
+                <p className="mt-2 max-w-2xl text-sm text-slate-600 sm:text-base">
+                    Explore experiments across disciplines and join a study when you’re ready.
+                </p>
+            </div>
             {message.text && (
-                <div className={`text-left p-6 mb-8 rounded-lg max-w-[1150px] w-full ${message.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
-                    <div className={`font-bold ${message.explanation ? 'mb-2' : 'mb-0'}`}>{message.text}</div>
+                <div
+                    className={`mb-6 rounded-2xl border px-5 py-4 text-left shadow-sm ${
+                        message.type === 'success'
+                            ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                            : 'border-rose-200 bg-rose-50 text-rose-900'
+                    }`}
+                >
+                    <div className={`text-sm font-bold ${message.explanation ? 'mb-2' : ''}`}>{message.text}</div>
                     {message.reason && (
-                        <div className="text-sm text-red-900 mb-2">
-                            <strong>Justification:</strong> {message.reason}
+                        <div className="mb-2 text-sm">
+                            <span className="font-semibold">Justification:</span> {message.reason}
                         </div>
                     )}
                     {message.explanation && (
-                        <div className="text-sm text-slate-600 border-t border-black/10 pt-2 mt-2">
+                        <div className="mt-2 border-t border-black/10 pt-2 text-sm text-slate-700">
                             {message.explanation}
                         </div>
                     )}
                 </div>
             )}
-            <div className="max-w-[1150px] w-full">
+            <div className="w-full">
             {experiments.length === 0 ? (
-                <p className="text-slate-600">No experiments available at the moment.</p>
+                <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-600 shadow-sm">
+                    No experiments available at the moment.
+                </div>
             ) : (
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-8">
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {experiments.map((experiment) => (
-                        <div key={experiment._id} className={`group relative flex flex-col p-8 bg-white rounded-xl shadow-sm transition-all duration-200 ${experiment.matchScore >= 80 ? 'shadow-[0_10px_25px_-5px_rgba(21,128,61,0.15),0_4px_10px_-3px_rgba(21,128,61,0.1)] -translate-y-0.5' : 'border border-slate-200 hover:border-slate-300 hover:-translate-y-0.5 hover:shadow-md'}`}>
+                        <div
+                            key={experiment._id}
+                            className={`group relative flex flex-col p-6 rounded-2xl bg-white shadow-card transition-all duration-200 ${experiment.matchScore >= 80 ? 'shadow-[0_10px_25px_-5px_rgba(21,128,61,0.15),0_4px_10px_-3px_rgba(21,128,61,0.1)] -translate-y-0.5' : 'border border-slate-200 hover:-translate-y-0.5 hover:shadow-cardHover'}`}
+                        >
                             {experiment.matchScore >= 80 && (
                                 <>
-                                    <div className="absolute inset-[-2px] bg-gradient-to-br from-green-700 to-green-500 rounded-[14px] -z-10" />
+                                    <div className="absolute inset-[-2px] bg-gradient-to-br from-green-700 to-green-500 rounded-2xl -z-10" />
                                     <div className="absolute -top-3 right-5 bg-gradient-to-r from-green-700 to-green-500 text-white text-[0.7rem] font-extrabold py-1 px-3 rounded-xl tracking-wider shadow-[0_4px_6px_rgba(21,128,61,0.3)] z-10">
                                         ✓ TOP AI MATCH
                                     </div>
                                 </>
                             )}
-                            <SmartBadge score={experiment.matchScore} reason={experiment.matchReason} />
-                            <h2 className="text-slate-900 font-semibold text-xl mb-2 mt-4">{experiment.title}</h2>
-                            <p className="text-slate-600 font-normal leading-relaxed mb-6 grow">{experiment.description}</p>
-                            <div className="text-slate-500 border-t border-slate-100 pt-4 mt-auto text-sm flex justify-between items-center">
-                                <span>Participants: {experiment.currentParticipantCount || 0} / {experiment.participantLimit === 0 ? 'Unlimited' : experiment.participantLimit}</span>
+                            <div className="mb-3 flex justify-between items-start">
+                                <SmartBadge score={experiment.matchScore} reason={experiment.matchReason} />
+                                <div
+                                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold capitalize ring-1 ${
+                                        experiment.status === 'active'
+                                            ? 'bg-emerald-100 text-emerald-800 ring-emerald-200'
+                                            : experiment.status === 'draft'
+                                              ? 'bg-amber-100 text-amber-800 ring-amber-200'
+                                              : 'bg-rose-100 text-rose-800 ring-rose-200'
+                                    }`}
+                                >
+                                    {experiment.status}
+                                </div>
+                            </div>
+
+                            <h2 className="text-lg font-bold leading-snug text-slate-900">{experiment.title}</h2>
+                            <p className="mt-2 text-sm leading-relaxed text-slate-600 mb-6 grow">
+                                {experiment.description}
+                            </p>
+
+                            <div className="mt-auto border-t border-slate-100 pt-4 text-sm text-slate-600 flex justify-between items-center">
+                                <div>
+                                    <span className="font-medium text-slate-800">Participants:</span>{' '}
+                                    {experiment.currentParticipantCount || 0} /{' '}
+                                    {experiment.participantLimit === 0 ? 'Unlimited' : experiment.participantLimit}
+                                </div>
                             </div>
 
                             {!localStorage.getItem('token') ? (
-                                <button className="w-full mt-6 py-3 px-6 rounded-lg font-medium text-[0.95rem] transition-colors bg-white text-blue-600 border border-blue-600 hover:bg-blue-50 cursor-pointer" onClick={() => window.location.href = '/login'}>
+                                <button
+                                    className="mt-4 w-full rounded-xl bg-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:bg-slate-300"
+                                    onClick={() => window.location.href = '/login'}
+                                >
                                     Login to Join
                                 </button>
                             ) : experiment.enrolled ? (
-                                <button className="w-full mt-6 py-3 px-6 rounded-lg font-semibold text-[0.95rem] bg-green-50 text-green-700 border border-green-200 shadow-none cursor-not-allowed" disabled>
-                                    ✓ Enrolled
+                                <button
+                                    className="mt-4 w-full cursor-not-allowed rounded-xl bg-emerald-100 px-4 py-2.5 text-sm font-semibold text-emerald-800"
+                                    disabled
+                                >
+                                    Enrolled
                                 </button>
                             ) : (
                                 <button
-                                    className="w-full mt-6 py-3 px-6 rounded-lg font-medium text-[0.95rem] transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-70 disabled:cursor-not-allowed"
+                                    className="mt-4 w-full rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
                                     onClick={() => handlePreviewJoin(experiment._id)}
                                     disabled={previewingId === experiment._id || joiningId === experiment._id}
                                 >
@@ -179,73 +244,92 @@ const ExperimentList = () => {
 
             {/* CLINICAL INSIGHT MODAL */}
             {showModal && analysis && (
-                <div className="fixed inset-0 w-full h-full bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-[1000]">
-                    <div className="bg-white border border-slate-200 text-slate-800 rounded-xl shadow-2xl p-10 max-w-[600px] w-[90%] max-h-[90vh] overflow-y-auto relative">
-                        <div className="flex items-center mb-6 border-b-2 border-blue-50 pb-4">
-                            <div className="text-3xl mr-4">🧠</div>
-                            <h2 className="m-0 text-blue-600 text-2xl font-bold">Personalized Clinical Insight</h2>
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl relative">
+                        <div className="flex items-center gap-3 border-b border-slate-200 px-6 py-4 bg-blue-50/50">
+                            <div className="text-2xl pt-1" aria-hidden>🧠</div>
+                            <h2 className="text-lg font-extrabold text-blue-700 sm:text-xl m-0">Personalized Clinical Insight</h2>
                         </div>
 
-                        <p className="text-lg leading-relaxed text-slate-600 mb-8 italic">
-                            "{analysis.text}"
-                        </p>
+                        <div className="max-h-[80vh] overflow-y-auto px-6 py-5">
+                            <p className="mb-6 text-sm leading-relaxed text-slate-700 sm:text-base">
+                                <span className="italic">"{analysis.text}"</span>
+                            </p>
 
-                        <div className="bg-slate-50 border border-slate-200 p-4 rounded-lg mb-8 text-sm text-slate-600">
-                            <strong>Note:</strong> This analysis is generated based on your medical profile (Weight, BMI, and Diseases) using our Clinical NLP engine.
-                        </div>
+                            <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                                <span className="font-semibold">Note:</span> This analysis is generated based on your medical profile (Weight, BMI, and Diseases) using our Clinical NLP engine.
+                            </div>
 
-                        {/* WGER SAFETY INTEGRATION */}
-                        <div className="mb-8">
+                        {/* WGER SAFETY INTEGRATION (Year 3 System Integrity Feature) */}
+                        <div className="mb-6">
                             {!safetyGuidelines ? (
                                 <button
-                                    className="bg-blue-50 text-blue-600 border border-blue-600 text-sm px-4 py-2 flex items-center gap-2 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors"
+                                    className="inline-flex items-center gap-2 rounded-xl border border-blue-600 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 disabled:opacity-60"
                                     onClick={() => handleFetchSafety(analysis.experimentId)}
                                     disabled={loadingSafety}
                                 >
                                     {loadingSafety ? 'Fetching Clinical Guidelines...' : '🛡️ View Activity Safety Guidelines'}
                                 </button>
                             ) : (
-                                <div className="border border-blue-200 bg-blue-50 p-4 rounded-lg text-sm">
-                                    <h4 className="m-0 mb-2 text-blue-900 flex items-center gap-2 font-bold">
-                                        <span>📋 Activity Protocol</span>
+                                <div className="rounded-2xl border border-blue-200 bg-blue-50/60 p-4 text-sm">
+                                    <h4 className="mb-2 flex items-center gap-2 font-bold text-blue-900">
+                                        <span aria-hidden>📋</span> Activity Protocol
                                     </h4>
                                     {safetyGuidelines.guidelines.map((g, idx) => (
-                                        <div key={idx} className={`p-2 rounded-md ${expandedIndex === idx ? 'bg-white border border-slate-200' : 'bg-transparent border-transparent'} ${idx < safetyGuidelines.guidelines.length - 1 ? 'mb-3' : ''}`}>
+                                        <div
+                                            key={idx}
+                                            className={`mb-3 rounded-xl p-3 ${expandedIndex === idx ? 'border border-slate-200 bg-white' : 'bg-transparent'}`}
+                                        >
                                             <div
-                                                className="font-bold cursor-pointer flex justify-between"
+                                                className="flex cursor-pointer items-center justify-between gap-3 font-semibold text-slate-900"
                                                 onClick={() => setExpandedIndex(expandedIndex === idx ? null : idx)}
                                             >
                                                 <span>{g.name}</span>
-                                                <span className="text-xs text-blue-600">{expandedIndex === idx ? '▲ Collapse' : '▼ View Advanced Protocol'}</span>
+                                                <span className="text-xs font-semibold text-blue-700">
+                                                    {expandedIndex === idx ? '▲ Collapse' : '▼ View Advanced Protocol'}
+                                                </span>
                                             </div>
-                                            <div className="flex gap-4 text-xs text-slate-500 mt-1">
-                                                <span><strong>Target:</strong> {g.muscleGroup}</span>
-                                                <span><strong>Intensity:</strong> {g.intensity}</span>
+                                            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+                                                <span>
+                                                    <span className="font-semibold">Target:</span> {g.muscleGroup}
+                                                </span>
+                                                <span>
+                                                    <span className="font-semibold">Intensity:</span> {g.intensity}
+                                                </span>
                                             </div>
-                                            <div className="text-amber-700 text-sm mt-1">
-                                                <strong>⚠️ Safety:</strong> {g.safetyWarning}
+                                            <div className="mt-1 text-xs text-amber-800">
+                                                <span className="font-semibold">⚠️ Safety:</span> {g.safetyWarning}
                                             </div>
 
                                             {/* Advanced Protocol Drill-Down */}
                                             {expandedIndex === idx && g.advancedProtocol && (
-                                                <div className="mt-3 p-3 border-t border-dashed border-slate-300 text-xs text-slate-700 animate-[fadeIn_0.3s]">
-                                                    <p className="m-0 mb-2"><strong>Engaged Muscles:</strong> {g.advancedProtocol.muscles.join(", ") || "N/A"}</p>
-                                                    <p className="m-0 mb-2"><strong>Equipment:</strong> {g.advancedProtocol.equipment.join(", ")}</p>
-                                                    <p className="m-0 font-italic text-slate-500"><strong>Instructions:</strong> {g.advancedProtocol.description}</p>
+                                                <div className="mt-3 border-t border-dashed border-slate-200 pt-3 text-xs text-slate-700">
+                                                    <p className="mb-2">
+                                                        <span className="font-semibold">Engaged Muscles:</span>{' '}
+                                                        {g.advancedProtocol.muscles.join(', ') || 'N/A'}
+                                                    </p>
+                                                    <p className="mb-2">
+                                                        <span className="font-semibold">Equipment:</span>{' '}
+                                                        {g.advancedProtocol.equipment.join(', ')}
+                                                    </p>
+                                                    <p className="italic text-slate-600">
+                                                        <span className="not-italic font-semibold text-slate-700">Instructions:</span>{' '}
+                                                        {g.advancedProtocol.description}
+                                                    </p>
                                                 </div>
                                             )}
                                         </div>
                                     ))}
-                                    <div className="text-xs text-slate-400 mt-2 text-right">
+                                    <div className="mt-2 text-right text-xs text-slate-500">
                                         Source: {safetyGuidelines.source}
                                     </div>
                                 </div>
                             )}
                         </div>
 
-                        <div className="flex gap-4 justify-end">
+                        <div className="flex flex-wrap justify-end gap-3">
                             <button
-                                className="bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 py-3 px-6 rounded-lg font-medium cursor-pointer"
+                                className="rounded-xl bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-300"
                                 onClick={() => {
                                     setShowModal(false);
                                     setSafetyGuidelines(null);
@@ -255,12 +339,13 @@ const ExperimentList = () => {
                                 Back
                             </button>
                             <button
-                                className="bg-blue-600 text-white hover:bg-blue-700 py-3 px-8 rounded-lg font-bold cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+                                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
                                 onClick={() => handleJoin(analysis.experimentId)}
                                 disabled={joiningId === analysis.experimentId}
                             >
                                 {joiningId === analysis.experimentId ? 'Enrolling...' : 'Confirm Enrollment'}
                             </button>
+                        </div>
                         </div>
                     </div>
                 </div>
