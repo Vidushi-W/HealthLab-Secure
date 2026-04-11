@@ -515,32 +515,32 @@ const Community = () => {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:gap-8">
-      <header className="relative overflow-hidden rounded-[2rem] border border-blue-200/40 bg-gradient-to-br from-[#173a74] via-[#29518f] to-[#3b6ab2] p-6 text-white shadow-[0_30px_80px_-48px_rgba(30,64,175,0.55)] xl:p-8">
+      <header className="relative mx-auto w-full max-w-5xl overflow-hidden rounded-[1.6rem] border border-blue-200/40 bg-gradient-to-br from-[#173a74] via-[#29518f] to-[#3b6ab2] p-5 text-white shadow-[0_30px_80px_-48px_rgba(30,64,175,0.55)] xl:p-6">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(191,219,254,0.24),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(147,197,253,0.14),transparent_28%)]" />
-        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <span className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-blue-50 shadow-sm backdrop-blur-sm">
               Community hub
             </span>
-            <h1 className="mt-4 max-w-3xl text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-[3.2rem] lg:leading-[1.02]">
+            <h1 className="mt-3 max-w-2xl text-2xl font-black tracking-tight text-white sm:text-3xl lg:text-[2.55rem] lg:leading-[1.04]">
               Connect around health studies, questions, and shared progress
             </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-blue-50/92 sm:text-base">
+            <p className="mt-3 max-w-xl text-sm leading-6 text-blue-50/92">
               Explore participant conversations, discover trending topics, and share research updates in a cleaner community space aligned with the rest of HealthLab.
             </p>
           </div>
-          <div className="grid min-w-[280px] grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-[1.35rem] border border-white/18 bg-white/12 px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.14)] backdrop-blur-sm">
+          <div className="grid min-w-[250px] grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="rounded-[1.15rem] border border-white/18 bg-white/12 px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.14)] backdrop-blur-sm">
               <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-50">Posts</p>
               <p className="mt-2 text-3xl font-black text-white">{total || posts.length}</p>
               <p className="mt-1 text-sm text-blue-50/82">Visible across the current feed</p>
             </div>
-            <div className="rounded-[1.35rem] border border-white/18 bg-white/12 px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.14)] backdrop-blur-sm">
+            <div className="rounded-[1.15rem] border border-white/18 bg-white/12 px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.14)] backdrop-blur-sm">
               <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-50">Saved</p>
               <p className="mt-2 text-3xl font-black text-white">{savedIds.size}</p>
               <p className="mt-1 text-sm text-blue-50/82">Quick-access discussions</p>
             </div>
-            <div className="rounded-[1.35rem] border border-white/18 bg-white/12 px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.14)] backdrop-blur-sm">
+            <div className="rounded-[1.15rem] border border-white/18 bg-white/12 px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.14)] backdrop-blur-sm">
               <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-50">Following</p>
               <p className="mt-2 text-3xl font-black text-white">{followedTopics.length}</p>
               <p className="mt-1 text-sm text-blue-50/82">Topics shaped by your activity</p>
@@ -697,7 +697,7 @@ const Community = () => {
               type="file"
               accept="image/jpeg,image/png,image/gif,image/webp"
               onChange={(e) => setPostImageFile(e.target.files?.[0] || null)}
-              className="block w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white hover:file:bg-primary-hover"
+              className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-blue-700"
             />
             {postImageFile && (
               <p className="mt-1 text-xs text-gray-500">
@@ -788,7 +788,7 @@ const Community = () => {
             <Button type="button" variant="secondary" onClick={() => setCreateOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit" disabled={submitting} className="!bg-blue-600 hover:!bg-blue-700 focus:!ring-blue-600">
               {submitting ? 'Posting...' : 'Post'}
             </Button>
           </div>
