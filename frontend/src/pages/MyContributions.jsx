@@ -37,14 +37,13 @@ const MyContributions = () => {
     const handleDevConfirm = async (orderId) => {
         try {
             await devConfirmPayment(orderId);
-            fetchContributions(); // Refresh the list
+            fetchContributions();
         } catch (err) {
             console.error('Failed to confirm payment:', err);
             alert('Failed to confirm payment. Check console for details.');
         }
     };
 
-    // Summary stats
     const totalContributed = contributions.reduce((sum, c) => sum + (c.paymentStatus === 'SUCCESS' ? c.amount : 0), 0);
     const totalPending = contributions.reduce((sum, c) => sum + (c.paymentStatus === 'PENDING' ? c.amount : 0), 0);
     const successCount = contributions.filter((c) => c.paymentStatus === 'SUCCESS').length;
@@ -80,7 +79,6 @@ const MyContributions = () => {
                         </div>
                     </div>
 
-                    {/* DEV INFO BLOCK */}
                     <div className="dev-notif-box">
                         <strong>🛠️ Developer Tip (Localhost Testing)</strong>
                         <p>
@@ -120,7 +118,7 @@ const MyContributions = () => {
                                             <span className={`payment-badge status-${c.paymentStatus}`}>
                                                 {c.paymentStatus}
                                             </span>
-                                            {c.paymentStatus === 'PENDING' && (
+                                            {c.paymentStatus === 'PENDING' && c.paymentReferenceId && (
                                                 <button
                                                     onClick={() => handleDevConfirm(c.paymentReferenceId)}
                                                     className="btn btn-verify"

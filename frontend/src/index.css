@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
     --primary-color: #2563eb;
     --primary-hover: #1e40af;
@@ -306,6 +310,12 @@ nav {
     max-width: 1200px;
     margin: 0 auto;
     width: 100%;
+}
+
+/* Full-bleed soft blue for researcher experiments & reviews routes */
+.main-content--researcher-soft {
+    max-width: none;
+    background-color: #e6f2ff;
 }
 
 /* Experiment List */

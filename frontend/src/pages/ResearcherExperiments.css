@@ -28,6 +28,11 @@
     background: rgba(15, 23, 42, 0.55);
 }
 
+/* Research Reviews (/researcher/reviews): lighter black overlay per design */
+.research-reviews-hero .researcher-experiments-hero-overlay {
+    background: rgba(0, 0, 0, 0.4);
+}
+
 .researcher-experiments-hero-inner {
     position: relative;
     z-index: 1;

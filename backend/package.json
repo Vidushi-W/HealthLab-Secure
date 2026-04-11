@@ -5,8 +5,11 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "jest",
-    "test:perf": "node tests/funding.perf.js"
+    "test": "jest --runInBand --config testing/jest.config.js",
+    "test:unit": "jest --runInBand --config testing/jest.config.js --testPathPatterns=testing/unit",
+    "test:integration": "jest --runInBand --config testing/jest.config.js --testPathPatterns=testing/integration",
+    "test:performance": "artillery run testing/performance/community-admin-load.yml --output testing/build/artillery-report.json",
+    "test:performance:report": "artillery report testing/build/artillery-report.json --output testing/build/artillery-report.html"
   },
   "keywords": [],
   "author": "",
@@ -30,5 +33,10 @@
     "nodemon": "^3.1.11",
     "jest": "^29.7.0",
     "supertest": "^7.0.0"
+    "artillery": "^2.0.22",
+    "jest": "^29.7.0",
+    "mongodb-memory-server": "^10.1.4",
+    "nodemon": "^3.1.11",
+    "supertest": "^7.1.1"
   }
 }

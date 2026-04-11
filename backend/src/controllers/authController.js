@@ -133,7 +133,7 @@ const registerResearcher = asyncHandler(async (req, res) => {
     researcherData.publicationSiteOrLink = publicationSiteOrLink;
   }
   if (req.file && req.file.filename) {
-    researcherData.affiliationProof = path.join("affiliation-proofs", req.file.filename);
+    researcherData.affiliationProof = path.posix.join("uploads", "affiliation-proofs", req.file.filename);
   }
 
   const researcher = await Researcher.create(researcherData);
@@ -270,6 +270,34 @@ const updateProfile = asyncHandler(async (req, res) => {
   }
 });
 
+/**
+ * Flag a researcher for violations (e.g. false info)
+ */
+const flagResearcher = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+
+  if (!reason || !reason.trim()) {
+    return res.status(400).json({ success: false, message: "Reason is required to flag a researcher." });
+  }
+
+  const researcher = await Researcher.findById(id);
+  if (!researcher) {
+    return res.status(404).json({ success: false, message: "Researcher not found." });
+  }
+
+  researcher.isFlagged = true;
+  researcher.flags.push({
+    reportedBy: req.user._id,
+    reason: reason.trim(),
+    createdAt: new Date(),
+  });
+
+  await researcher.save();
+
+  res.status(200).json({ success: true, message: "Researcher flagged successfully." });
+});
+
 module.exports = {
   registerParticipant,
   registerResearcher,
@@ -277,4 +305,5 @@ module.exports = {
   login,
   loginUser,
   updateProfile,
+  flagResearcher,
 };

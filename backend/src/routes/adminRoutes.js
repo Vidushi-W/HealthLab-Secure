@@ -19,8 +19,10 @@ const {
   getUnapprovedResearchers,
   approveUser,
   rejectUser,
+  deleteUser,
   deleteExperiment,
   exportResearchersPdf,
+  exportOverviewPdf,
   getAnalytics,
   getAllRequests,
   updateStatus,
@@ -28,11 +30,18 @@ const {
   disburseRequest,
 } = require("../controllers/adminController");
 const { getWallet } = require("../controllers/walletController");
+const {
+  getAllReports,
+  getPostReportDetails,
+  banUserForReport,
+  deleteReportedPost,
+} = require("../modules/community/controllers/reportController");
 
 const adminGuard = [protect, authorize("admin")];
 
 // Analytics and reports
 router.get("/analytics", adminGuard, getAnalytics);
+router.get("/analytics/export/pdf", adminGuard, exportOverviewPdf);
 router.get("/fund-analytics", adminGuard, getAnalytics);
 router.get("/fund-reports", adminGuard, getReports);
 
@@ -41,6 +50,7 @@ router.get("/users", adminGuard, getUsers);
 router.get("/users/unapproved", adminGuard, getUnapprovedResearchers);
 router.patch("/users/approve/:id", adminGuard, userActionRules(), validate, approveUser);
 router.patch("/users/reject/:id", adminGuard, userActionRules(), validate, rejectUser);
+router.delete("/users/:id", adminGuard, userActionRules(), validate, deleteUser);
 
 // Researchers: list pending, list (optional status filter), get one, approve/reject, delete, export PDF
 router.get("/researchers/pending", adminGuard, getPendingResearchers);
@@ -58,5 +68,11 @@ router.delete("/experiments/:id", adminGuard, deleteExperimentRules(), validate,
 router.get("/fund-requests", adminGuard, getAllRequests);
 router.patch("/fund-requests/:id/status", adminGuard, updateStatus);
 router.get("/experiments/:experimentId/wallet", adminGuard, getWallet);
+
+// Post reports: list all, get details, ban user, delete post
+router.get("/reports", adminGuard, getAllReports);
+router.get("/reports/:postId", adminGuard, getPostReportDetails);
+router.post("/reports/:postId/ban-user", adminGuard, banUserForReport);
+router.delete("/reports/:postId", adminGuard, deleteReportedPost);
 
 module.exports = router;
