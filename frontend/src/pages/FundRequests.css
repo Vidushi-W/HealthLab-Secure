@@ -9,7 +9,7 @@
     min-height: 200px;
     display: flex;
     align-items: center;
-    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #a855f7 100%);
+    background: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #60a5fa 100%);
 }
 
 .fund-requests-hero-overlay {
@@ -123,14 +123,45 @@
     letter-spacing: 0.04em;
 }
 
-.fund-badge.status-SUBMITTED { background: #dbeafe; color: #1e40af; }
-.fund-badge.status-UNDER_REVIEW { background: #fef3c7; color: #92400e; }
-.fund-badge.status-APPROVED { background: #d1fae5; color: #065f46; }
-.fund-badge.status-OPEN_FOR_FUNDING { background: #ede9fe; color: #5b21b6; }
-.fund-badge.status-FUNDED { background: #d1fae5; color: #065f46; }
-.fund-badge.status-REJECTED { background: #fee2e2; color: #991b1b; }
-.fund-badge.status-CLOSED { background: #f3f4f6; color: #374151; }
-.fund-badge.status-DRAFT { background: #f3f4f6; color: #6b7280; }
+.fund-badge.status-SUBMITTED {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.fund-badge.status-UNDER_REVIEW {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.fund-badge.status-APPROVED {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.fund-badge.status-OPEN_FOR_FUNDING {
+    background: #ede9fe;
+    color: #5b21b6;
+}
+
+.fund-badge.status-FUNDED {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.fund-badge.status-REJECTED {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.fund-badge.status-CLOSED {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.fund-badge.status-DRAFT {
+    background: #f3f4f6;
+    color: #6b7280;
+}
 
 /* Progress */
 .fund-progress-wrap {
@@ -150,7 +181,7 @@
 .fund-progress-bar-fill {
     height: 100%;
     border-radius: 4px;
-    background: linear-gradient(90deg, #4f46e5, #7c3aed);
+    background: linear-gradient(90deg, #1e40af, #2563eb);
     transition: width 0.5s ease;
 }
 
@@ -160,12 +191,59 @@
 }
 
 /* Table action buttons */
-.fund-table .btn-view { background: #ede9fe; color: #5b21b6; padding: 0.35rem 0.75rem; border-radius: 8px; font-size: 0.82rem; font-weight: 600; }
-.fund-table .btn-edit { background: #dbeafe; color: #1e40af; padding: 0.35rem 0.75rem; border-radius: 8px; font-size: 0.82rem; font-weight: 600; }
-.fund-table .btn-delete { background: #fee2e2; color: #991b1b; padding: 0.35rem 0.75rem; border-radius: 8px; font-size: 0.82rem; font-weight: 600; }
-.fund-table .btn-delete-confirm { background: #ef4444; color: #fff; padding: 0.35rem 0.75rem; border-radius: 8px; font-size: 0.82rem; font-weight: 600; }
-.fund-table .btn-cancel { background: #f3f4f6; color: #374151; padding: 0.35rem 0.75rem; border-radius: 8px; font-size: 0.82rem; font-weight: 600; }
-.confirm-text { font-size: 0.82rem; color: #ef4444; font-weight: 600; margin-right: 0.25rem; display: flex; align-items: center; }
+.fund-table .btn-view {
+    background: #ede9fe;
+    color: #5b21b6;
+    padding: 0.35rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.fund-table .btn-edit {
+    background: #dbeafe;
+    color: #1e40af;
+    padding: 0.35rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.fund-table .btn-delete {
+    background: #fee2e2;
+    color: #991b1b;
+    padding: 0.35rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.fund-table .btn-delete-confirm {
+    background: #ef4444;
+    color: #fff;
+    padding: 0.35rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.fund-table .btn-cancel {
+    background: #f3f4f6;
+    color: #374151;
+    padding: 0.35rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.confirm-text {
+    font-size: 0.82rem;
+    color: #ef4444;
+    font-weight: 600;
+    margin-right: 0.25rem;
+    display: flex;
+    align-items: center;
+}
 
 /* Modal */
 .fund-modal-overlay {
@@ -192,8 +270,15 @@
 }
 
 @keyframes fundModalIn {
-    from { opacity: 0; transform: scale(0.95) translateY(10px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
 }
 
 .fund-modal-header {

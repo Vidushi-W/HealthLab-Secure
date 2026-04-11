@@ -10,16 +10,30 @@ export const getPostById = (id) => api.get(`/posts/${id}`);
 export const createPost = (data) => {
   const imageFile = data && data.imageFile;
   if (imageFile instanceof File) {
+    console.log(`�️ [createPost] Image file detected: ${imageFile.name} (${(imageFile.size / 1024).toFixed(1)}KB, type: ${imageFile.type})`);
     const form = new FormData();
     form.append('title', data.title ?? '');
     form.append('content', data.content ?? '');
     if (data.tags != null) {
       form.append('tags', Array.isArray(data.tags) ? data.tags.join(',') : String(data.tags));
     }
+    if (data.poll != null) {
+      form.append('poll', JSON.stringify(data.poll));
+    }
     form.append('image', imageFile);
-    return api.post('/posts', form);
+    console.log(`📤 [createPost] Sending multipart POST to /posts with image file`);
+    return api.post('/posts', form, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }).then(res => {
+      console.log(`✅ [createPost] Post created. Image in response:`, res.data.post?.image || 'null/undefined');
+      return res;
+    }).catch(err => {
+      console.error(`❌ [createPost] Post creation failed:`, err.response?.status, err.response?.data || err.message);
+      throw err;
+    });
   }
   const { imageFile: _, ...json } = data || {};
+  console.log(`📝 [createPost] Sending POST to /posts with JSON (no image)`);
   return api.post('/posts', json);
 };
 
@@ -38,10 +52,17 @@ export const updateComment = (postId, commentId, content) => api.put(`/posts/${p
 export const deleteComment = (postId, commentId) => api.delete(`/posts/${postId}/comments/${commentId}`);
 
 export const likeToggle = (postId, payload = {}) => api.put(`/posts/${postId}/like`, payload);
+export const votePoll = (postId, optionIndex) => api.put(`/posts/${postId}/poll/vote`, { optionIndex });
 export const sharePost = (postId) => api.post(`/posts/${postId}/share`);
 export const savePost = (postId) => api.post(`/posts/${postId}/save`);
 export const unsavePost = (postId) => api.delete(`/posts/${postId}/save`);
-export const reportPost = (postId, reason) => api.post(`/posts/${postId}/report`, { reason });
+export const reportPost = (postId, data) => api.post(`/posts/${postId}/report`, data);
+
+// Admin report endpoints
+export const getAllReports = (filters = {}) => api.get('/admin/reports', { params: filters });
+export const getPostReportDetails = (postId) => api.get(`/admin/reports/${postId}`);
+export const banUserForReport = (postId) => api.post(`/admin/reports/${postId}/ban-user`);
+export const deleteReportedPost = (postId) => api.delete(`/admin/reports/${postId}`);
 
 /** Community AI chatbot: { message, history?: { role, content }[] } => { reply } */
 export const sendChatMessage = (payload) => api.post('/posts/chat', payload);

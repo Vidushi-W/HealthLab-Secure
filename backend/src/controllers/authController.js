@@ -133,7 +133,7 @@ const registerResearcher = asyncHandler(async (req, res) => {
     researcherData.publicationSiteOrLink = publicationSiteOrLink;
   }
   if (req.file && req.file.filename) {
-    researcherData.affiliationProof = path.join("affiliation-proofs", req.file.filename);
+    researcherData.affiliationProof = path.posix.join("uploads", "affiliation-proofs", req.file.filename);
   }
 
   const researcher = await Researcher.create(researcherData);
