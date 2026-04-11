@@ -1,19 +1,18 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Facebook, Linkedin, Twitter, Youtube, Mail, MapPin, Phone } from 'lucide-react';
 
 const quickLinks = [
-  { label: 'Lab feedback', href: '#' },
-  { label: 'Lab assessment', href: '#' },
-  { label: 'FAQ', href: '#' },
-  { label: 'Outreach portal', href: '#' },
+  { label: 'Dashboard', href: '/dashboard' },
+  { label: 'Experiments', href: '/experiments' },
+  { label: 'Research Reviews', href: '/researcher/reviews' },
+  { label: 'Reports', href: '/admin' },
 ];
 
 const aboutLinks = [
   { label: 'Home', href: '#top' },
   { label: 'About', href: '#about' },
-  { label: 'Labs', href: '/experiments', router: true },
+  { label: 'Features', href: '#labs' },
   { label: 'Contact', href: '#contact' },
 ];
 
@@ -24,7 +23,7 @@ const social = [
   { label: 'YouTube', href: 'https://youtube.com', icon: Youtube },
 ];
 
-const VirtualLabsFooter = () => (
+const HealthLabFooter = () => (
   <footer id="contact" className="scroll-mt-24 bg-slate-950 text-slate-300">
     <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
       <motion.div
@@ -34,9 +33,9 @@ const VirtualLabsFooter = () => (
         className="grid gap-10 md:grid-cols-2 lg:grid-cols-4"
       >
         <div>
-          <p className="text-lg font-bold text-white">Virtual Labs</p>
+          <p className="text-lg font-bold text-white">HealthLab</p>
           <p className="mt-2 text-sm text-slate-400">
-            An initiative of the Ministry of Education under NMEICT—remote access to quality lab learning.
+            HealthLab is a centralized research management platform designed to streamline experiment configuration, participant tracking, and research collaboration.
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
             {social.map(({ label, href, icon: Icon }) => (
@@ -68,19 +67,13 @@ const VirtualLabsFooter = () => (
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-white">About Virtual Labs</h3>
+          <h3 className="text-sm font-semibold tracking-wider text-white">About Health Lab</h3>
           <ul className="mt-4 space-y-2">
             {aboutLinks.map((l) => (
               <li key={l.label}>
-                {l.router ? (
-                  <Link to={l.href} className="text-sm transition hover:text-white">
-                    {l.label}
-                  </Link>
-                ) : (
-                  <a href={l.href} className="text-sm transition hover:text-white">
-                    {l.label}
-                  </a>
-                )}
+                <a href={l.href} className="text-sm transition hover:text-white">
+                  {l.label}
+                </a>
               </li>
             ))}
           </ul>
@@ -91,29 +84,27 @@ const VirtualLabsFooter = () => (
           <ul className="mt-4 space-y-3 text-sm">
             <li className="flex gap-2">
               <Mail className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
-              <a href="mailto:support@vlab.example" className="hover:text-white">
-                support@vlab.example
+              <a href="mailto:support@healthlab.com" className="hover:text-white">
+                support@healthlab.com
               </a>
             </li>
             <li className="flex gap-2">
               <Phone className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
-              <span>+91-11-0000-0000</span>
+              <span>+94 77 123 4567</span>
             </li>
             <li className="flex gap-2">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
-              <span>
-                Wireless Research Lab, IIT Delhi, Hauz Khas, New Delhi — 110016
-              </span>
+              <span>HealthLab Research Center, Colombo, Sri Lanka</span>
             </li>
           </ul>
         </div>
       </motion.div>
 
       <div className="mt-12 border-t border-slate-800 pt-8 text-center text-xs text-slate-500">
-        © {new Date().getFullYear()} Virtual Labs (demo UI). Replace contact details and links with production values.
+        &copy; {new Date().getFullYear()} HealthLab. All rights reserved.
       </div>
     </div>
   </footer>
 );
 
-export default VirtualLabsFooter;
+export default HealthLabFooter;

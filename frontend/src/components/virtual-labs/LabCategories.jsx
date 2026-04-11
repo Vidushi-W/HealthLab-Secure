@@ -11,12 +11,42 @@ import {
 } from 'lucide-react';
 
 const categories = [
-  { name: 'Computer Science', icon: Cpu, slug: 'computer-science' },
-  { name: 'Electronics', icon: Zap, slug: 'electronics' },
-  { name: 'Mechanical Engineering', icon: Cog, slug: 'mechanical' },
-  { name: 'Civil Engineering', icon: Building2, slug: 'civil' },
-  { name: 'Biotechnology', icon: Dna, slug: 'biotechnology' },
-  { name: 'Physical Sciences', icon: Atom, slug: 'physical-sciences' },
+  {
+    name: 'Fitness & Lifestyle',
+    icon: Cpu,
+    slug: 'fitness-lifestyle',
+    description: 'Join studies that explore exercise routines, activity levels, and daily lifestyle habits that support better health.',
+  },
+  {
+    name: 'Nutrition & Diet',
+    icon: Zap,
+    slug: 'nutrition-diet',
+    description: 'Share food habits and diet choices to support research on nutrition, energy, and healthy eating patterns.',
+  },
+  {
+    name: 'Mental Health',
+    icon: Cog,
+    slug: 'mental-health',
+    description: 'Contribute to studies focused on mood, stress, focus, and emotional well-being in everyday life.',
+  },
+  {
+    name: 'Chronic Conditions',
+    icon: Building2,
+    slug: 'chronic-conditions',
+    description: 'Help researchers understand long-term health conditions, symptoms, treatment routines, and daily care experiences.',
+  },
+  {
+    name: 'Sleep & Recovery',
+    icon: Dna,
+    slug: 'sleep-recovery',
+    description: 'Track sleep patterns and recovery habits to help improve rest quality and overall health.',
+  },
+  {
+    name: 'General Health Studies',
+    icon: Atom,
+    slug: 'general-health-studies',
+    description: 'Take part in diverse experiments covering broader health topics and community-driven research.',
+  },
 ];
 
 const LabCategories = () => (
@@ -29,12 +59,12 @@ const LabCategories = () => (
         transition={{ duration: 0.45 }}
         className="text-center"
       >
-        <p className="text-sm font-semibold uppercase tracking-wider text-emerald-700">Lab categories</p>
+        <p className="text-sm font-semibold uppercase tracking-wider text-emerald-700">EXPERIMENT CATEGORIES</p>
         <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-          Explore by discipline
+          Explore Health Research Areas
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-slate-600">
-          Choose a broad area to discover experiments aligned with your curriculum and interests.
+          Discover experiments across different health domains. Choose an area that matches your interests and contribute to meaningful research.
         </p>
       </motion.div>
 
@@ -58,10 +88,10 @@ const LabCategories = () => (
                 </div>
                 <h3 className="mt-4 text-lg font-semibold text-slate-900">{cat.name}</h3>
                 <p className="mt-2 flex-1 text-sm text-slate-600">
-                  Simulations, guided tasks, and learning resources for {cat.name.toLowerCase()}.
+                  {cat.description}
                 </p>
                 <span className="mt-4 text-sm font-semibold text-blue-600 group-hover:text-blue-700">
-                  Browse labs →
+                  Browse experiments →
                 </span>
               </Link>
             </motion.div>

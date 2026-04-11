@@ -5,24 +5,24 @@ import { Quote } from 'lucide-react';
 const testimonials = [
   {
     quote:
-      'Virtual labs help students prepare, practice, and revisit experiments at their own pace without being restricted by time or location.',
-    name: 'Dr Mohd Zubair Ansari',
-    role: 'Educator',
-    org: 'National Institute of Technology Srinagar',
+      'HealthLab helps researchers efficiently manage experiments, track participant data, and monitor progress in one centralized platform.',
+    name: 'Dr. Ayesha Perera',
+    role: 'Researcher',
+    org: 'Health Research Institute',
   },
   {
     quote:
-      'Simulations strengthen theory understanding and create a smoother bridge between concept learning and practical work.',
-    name: 'Dr. Khyati Chopra',
-    role: 'Faculty',
-    org: 'USAR, GGSIPU',
+      'The platform simplifies experiment configuration, eligibility management, and data tracking, making research workflows faster and more organized.',
+    name: 'Dr. Nimal Fernando',
+    role: 'Senior Researcher',
+    org: 'Biomedical Research Center',
   },
   {
     quote:
-      'The platform offers a close preview of real-lab workflows while reducing the effort and cost of repeated hands-on practice.',
-    name: 'Dr. Pankaj K. Goswami',
-    role: 'Professor',
-    org: 'Amity University Uttar Pradesh, Lucknow',
+      'HealthLab provides a reliable and structured environment for handling research reviews, experiment lifecycle management, and collaboration.',
+    name: 'Dr. Kavindi Silva',
+    role: 'Research Lead',
+    org: 'Clinical Research Unit',
   },
 ];
 
@@ -36,9 +36,9 @@ const TestimonialsSection = () => (
         transition={{ duration: 0.45 }}
         className="text-center"
       >
-        <p className="text-sm font-semibold uppercase tracking-wider text-blue-800">Testimonials</p>
+        <p className="text-sm font-semibold uppercase tracking-wider text-blue-800">USER FEEDBACK</p>
         <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-          What educators say
+          What researchers and users say about HealthLab
         </h2>
       </motion.div>
 
