@@ -5,11 +5,18 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "jest --runInBand --config testing/jest.config.js",
-    "test:unit": "jest --runInBand --config testing/jest.config.js --testPathPatterns=testing/unit",
-    "test:integration": "jest --runInBand --config testing/jest.config.js --testPathPatterns=testing/integration",
-    "test:performance": "artillery run testing/performance/community-admin-load.yml --output testing/build/artillery-report.json",
-    "test:performance:report": "artillery report testing/build/artillery-report.json --output testing/build/artillery-report.html"
+    "test": "jest --runInBand --config testing/jest.config.js testing/unit",
+    "test:unit": "jest --runInBand --config testing/jest.config.js testing/unit",
+    "test:integration": "jest --runInBand --config testing/jest.config.js testing/integration",
+    "test:performance": "artillery run testing/performance/healthlab-low-load.yml --output testing/build/healthlab-low-report.json",
+    "test:performance:low": "artillery run testing/performance/healthlab-low-load.yml --output testing/build/healthlab-low-report.json",
+    "test:performance:medium": "artillery run testing/performance/healthlab-medium-load.yml --output testing/build/healthlab-medium-report.json",
+    "test:performance:high": "artillery run testing/performance/healthlab-high-load.yml --output testing/build/healthlab-high-report.json",
+    "test:performance:researcher": "artillery run testing/performance/healthlab-researcher-read-load.yml --output testing/build/healthlab-researcher-report.json",
+    "test:performance:report:low": "artillery report testing/build/healthlab-low-report.json --output testing/build/healthlab-low-report.html",
+    "test:performance:report:medium": "artillery report testing/build/healthlab-medium-report.json --output testing/build/healthlab-medium-report.html",
+    "test:performance:report:high": "artillery report testing/build/healthlab-high-report.json --output testing/build/healthlab-high-report.html",
+    "test:performance:report:researcher": "artillery report testing/build/healthlab-researcher-report.json --output testing/build/healthlab-researcher-report.html"
   },
   "keywords": [],
   "author": "",

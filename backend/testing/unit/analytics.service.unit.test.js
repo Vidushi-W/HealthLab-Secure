@@ -33,7 +33,7 @@ describe('analyticsService unit', () => {
     User.countDocuments
       .mockResolvedValueOnce(3)
       .mockResolvedValueOnce(1)
-      .mockResolvedValueOnce(2);
+      .mockResolvedValueOnce(3);
 
     Researcher.countDocuments
       .mockResolvedValueOnce(2)
