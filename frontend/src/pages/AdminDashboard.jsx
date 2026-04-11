@@ -20,6 +20,7 @@ const TAB_RESEARCHERS = 'researchers';
 const TAB_ALL_USERS = 'users';
 const TAB_EXPERIMENTS = 'experiments';
 const TAB_REPORTS = 'reports';
+const TAB_FUND_REQUESTS = 'fund_requests';
 
 const toObjectCounts = (value) => {
   if (!value) return {};
@@ -148,6 +149,14 @@ const AdminDashboard = () => {
   const [reviewNotes, setReviewNotes] = useState('');
   const [detailReviewNotes, setDetailReviewNotes] = useState('');
 
+  // Fund Request states
+  const [fundRequests, setFundRequests] = useState([]);
+  const [fundRequestsLoading, setFundRequestsLoading] = useState(false);
+  const [fundRequestStatusFilter, setFundRequestStatusFilter] = useState('');
+  const [updateFundRequestModal, setUpdateFundRequestModal] = useState(null);
+  const [fundRequestDecisionNote, setFundRequestDecisionNote] = useState('');
+  const [approvedAmount, setApprovedAmount] = useState('');
+
   // New states for expanded functionality
   const [analytics, setAnalytics] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
@@ -162,7 +171,8 @@ const AdminDashboard = () => {
     if (activeTab === TAB_RESEARCHERS) fetchResearchers();
     if (activeTab === TAB_ALL_USERS) fetchAllUsers();
     if (activeTab === TAB_EXPERIMENTS) fetchExperiments();
-  }, [activeTab, researcherStatusFilter, roleFilter, dateRange]);
+    if (activeTab === TAB_FUND_REQUESTS) fetchFundRequests();
+  }, [activeTab, researcherStatusFilter, roleFilter, dateRange, fundRequestStatusFilter]);
 
   const fetchAnalytics = async () => {
     try {
@@ -171,13 +181,13 @@ const AdminDashboard = () => {
       const token = localStorage.getItem('token');
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       console.log(`[fetchAnalytics] Starting fetch. Token: ${token ? 'YES' : 'NO'}, User: ${user.email}, Days: ${days}`);
-      
+
       const [analyticsResponse, usersResponse, experimentsResponse] = await Promise.all([
         api.get(`/admin/analytics?days=${days}`),
         api.get('/admin/users'),
         api.get('/experiments'),
       ]);
-      
+
       console.log(`[fetchAnalytics] All requests successful`);
       const users = Array.isArray(usersResponse.data) ? usersResponse.data : [];
       const experimentList = Array.isArray(experimentsResponse.data) ? experimentsResponse.data : [];
@@ -269,6 +279,37 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchFundRequests = async () => {
+    try {
+      setFundRequestsLoading(true);
+      const params = fundRequestStatusFilter ? { status: fundRequestStatusFilter } : {};
+      const response = await api.get('/admin/fund-requests', { params });
+      setFundRequests(Array.isArray(response.data) ? response.data : []);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching fund requests:', err);
+      setError('Failed to fetch fund requests.');
+    } finally {
+      setFundRequestsLoading(false);
+    }
+  };
+
+  const handleUpdateFundRequestStatus = async (requestId, status, decisionNote, amount) => {
+    try {
+      await api.patch(`/admin/fund-requests/${requestId}/status`, {
+        status,
+        adminDecisionNote: decisionNote,
+        approvedAmount: amount ? Number(amount) : undefined,
+      });
+      setUpdateFundRequestModal(null);
+      setFundRequestDecisionNote('');
+      setApprovedAmount('');
+      fetchFundRequests();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update fund request status.');
+    }
+  };
+
   const handleApproveResearcher = async (researcherId, notes) => {
     try {
       await api.put(`/admin/researchers/${researcherId}/approve`, { reviewNotes: notes || '' });
@@ -355,7 +396,7 @@ const AdminDashboard = () => {
     const dataToExport = activeTab === TAB_RESEARCHERS ? filteredResearchers : allUsers;
     if (!dataToExport || dataToExport.length === 0) return;
 
-    const headers = activeTab === TAB_RESEARCHERS 
+    const headers = activeTab === TAB_RESEARCHERS
       ? ['ID', 'Name', 'Email', 'Qualification', 'Type', 'Status', 'Registered At']
       : ['Name', 'Email', 'Role', 'Status', 'Registered At'];
 
@@ -524,27 +565,27 @@ const AdminDashboard = () => {
 
       <div className="sticky top-4 z-20 mb-6 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur p-2 shadow-sm">
         <div className="flex flex-wrap gap-2">
-        {[
-          [TAB_OVERVIEW, 'Overview', LayoutDashboard],
-          [TAB_RESEARCHERS, 'Researchers', Users],
-          [TAB_ALL_USERS, 'All Users', UserCheck],
-          [TAB_EXPERIMENTS, 'Experiments', Database],
-          [TAB_REPORTS, 'Reports', Flag],
-        ].map(([tab, label, Icon]) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setActiveTab(tab)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-200 ${
-              activeTab === tab
-                ? 'bg-indigo-50 text-indigo-700 shadow-sm border border-indigo-100'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-slate-50'
-            }`}
-          >
-            <Icon size={18} />
-            {label}
-          </button>
-        ))}
+          {[
+            [TAB_OVERVIEW, 'Overview', LayoutDashboard],
+            [TAB_RESEARCHERS, 'Researchers', Users],
+            [TAB_ALL_USERS, 'All Users', UserCheck],
+            [TAB_EXPERIMENTS, 'Experiments', Database],
+            [TAB_REPORTS, 'Reports', Flag],
+            [TAB_FUND_REQUESTS, 'Fund Requests', Activity],
+          ].map(([tab, label, Icon]) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-200 ${activeTab === tab
+                  ? 'bg-indigo-50 text-indigo-700 shadow-sm border border-indigo-100'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-slate-50'
+                }`}
+            >
+              <Icon size={18} />
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -564,11 +605,10 @@ const AdminDashboard = () => {
                 <button
                   key={opt.value}
                   onClick={() => setDateRange(opt.value)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                    dateRange === opt.value
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${dateRange === opt.value
                       ? 'bg-[#8ecae6] text-[#023047] shadow-md'
                       : 'text-slate-600 hover:bg-slate-50'
-                  }`}
+                    }`}
                 >
                   {opt.label}
                 </button>
@@ -680,7 +720,7 @@ const AdminDashboard = () => {
                     <TrendChart data={analytics.registrationTrend} />
                   </div>
                 </div>
-                
+
                 <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm min-h-[350px]">
                   <h3 className="font-bold text-slate-800 mb-6">Researcher Status</h3>
                   <div className="h-72 w-full">
@@ -1116,9 +1156,157 @@ const AdminDashboard = () => {
         </>
       )}
 
+      {activeTab === TAB_FUND_REQUESTS && (
+        <>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-3">
+                <label htmlFor="fund-request-status-filter" className="text-sm font-medium text-gray-700">
+                  Status:
+                </label>
+                <select
+                  id="fund-request-status-filter"
+                  value={fundRequestStatusFilter}
+                  onChange={(e) => setFundRequestStatusFilter(e.target.value)}
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent min-w-[160px]"
+                >
+                  <option value="">All statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <Card padding={false} className="overflow-hidden border border-slate-200 bg-[#F8FAFC]">
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-separate border-spacing-0">
+                <thead className="bg-slate-100/80">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Experiment</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Researcher</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Amount (requested)</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Requested At</th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-[#F8FAFC] divide-y divide-slate-200">
+                  {fundRequestsLoading ? (
+                    Array.from({ length: 3 }).map((_, i) => (
+                      <TableRowSkeleton key={i} cols={6} />
+                    ))
+                  ) : fundRequests.length > 0 ? (
+                    fundRequests.map((req) => (
+                      <tr key={req._id} className="hover:bg-white/80 transition-colors">
+                        <td className="px-6 py-4 text-sm text-gray-900">{req.experimentTitle || 'Unknown Experiment'}</td>
+                        <td className="px-6 py-4 text-sm text-gray-700">{req.researcherName || 'Unknown researcher'}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900">${req.amountRequested?.toLocaleString()}</td>
+                        <td className="px-6 py-4">
+                          <Badge status={getStatusVariant(req.status)}>{req.status}</Badge>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {req.createdAt ? new Date(req.createdAt).toLocaleDateString() : '—'}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            onClick={() => setUpdateFundRequestModal(req)}
+                          >
+                            Review
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-12">
+                        <EmptyState title="No fund requests found" />
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
+      )}
+
       {activeTab === TAB_REPORTS && (
         <AdminReports />
       )}
+
+      {/* Fund Request update modal */}
+      <Modal
+        open={!!updateFundRequestModal}
+        onClose={() => { setUpdateFundRequestModal(null); setFundRequestDecisionNote(''); setApprovedAmount(''); }}
+        title="Review Fund Request"
+        size="md"
+      >
+        {updateFundRequestModal && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Experiment</p>
+              <p className="text-sm text-gray-900 mt-0.5">{updateFundRequestModal.experimentTitle}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Researcher</p>
+              <p className="text-sm text-gray-900 mt-0.5">{updateFundRequestModal.researcherName}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Requested Amount</p>
+              <p className="text-sm text-gray-900 mt-0.5">${updateFundRequestModal.amountRequested?.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Reason</p>
+              <p className="text-sm text-gray-900 mt-0.5">{updateFundRequestModal.reason}</p>
+            </div>
+
+            <hr className="border-slate-100" />
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Decision Note</label>
+              <Textarea
+                rows={3}
+                placeholder="Notes for your decision..."
+                value={fundRequestDecisionNote}
+                onChange={(e) => setFundRequestDecisionNote(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Approved Amount ($)</label>
+              <input
+                type="number"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                placeholder="Enter approved amount"
+                value={approvedAmount}
+                onChange={(e) => setApprovedAmount(e.target.value)}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="secondary" onClick={() => { setUpdateFundRequestModal(null); setFundRequestDecisionNote(''); setApprovedAmount(''); }}>
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => handleUpdateFundRequestStatus(updateFundRequestModal._id, 'rejected', fundRequestDecisionNote)}
+              >
+                Reject
+              </Button>
+              <Button
+                variant="success"
+                disabled={!approvedAmount}
+                onClick={() => handleUpdateFundRequestStatus(updateFundRequestModal._id, 'approved', fundRequestDecisionNote, approvedAmount)}
+              >
+                Approve
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Researcher detail modal */}
       <Modal
@@ -1172,10 +1360,10 @@ const AdminDashboard = () => {
             {detailModalResearcher.researcherType === 'Affiliated to Organization' && detailModalResearcher.affiliationProof && (
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Affiliation Proof</p>
-                <a 
-                  href={getAffiliationProofUrl(detailModalResearcher.affiliationProof)} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
+                <a
+                  href={getAffiliationProofUrl(detailModalResearcher.affiliationProof)}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="text-sm text-indigo-600 hover:text-indigo-800 mt-0.5 hover:underline block truncate"
                   title="View attached document or image"
                 >
@@ -1190,10 +1378,10 @@ const AdminDashboard = () => {
             {detailModalResearcher.hasPublishedResearch && detailModalResearcher.publicationSiteOrLink && (
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Publication site / link</p>
-                <a 
-                  href={detailModalResearcher.publicationSiteOrLink.includes('://') ? detailModalResearcher.publicationSiteOrLink : `https://${detailModalResearcher.publicationSiteOrLink}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
+                <a
+                  href={detailModalResearcher.publicationSiteOrLink.includes('://') ? detailModalResearcher.publicationSiteOrLink : `https://${detailModalResearcher.publicationSiteOrLink}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="text-sm text-indigo-600 hover:text-indigo-800 mt-0.5 hover:underline block truncate"
                   title={detailModalResearcher.publicationSiteOrLink}
                 >

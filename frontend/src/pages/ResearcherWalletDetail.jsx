@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../api/api';
 import { getExperimentWallet, getMyFundRequests } from '../api/funds';
+import html2pdf from 'html2pdf.js';
 import './ResearcherWallet.css';
 
 const ResearcherWalletDetail = () => {
@@ -48,6 +49,29 @@ const ResearcherWalletDetail = () => {
         }
     };
 
+    const handleDownloadPDF = () => {
+        try {
+            const element = document.getElementById('pdf-content');
+            if (!element) {
+                console.error('Element #pdf-content not found');
+                return;
+            }
+
+            const opt = {
+                margin: [10, 10],
+                filename: `Funding_Report_${experimentId}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, logging: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save();
+        } catch (err) {
+            console.error('PDF generation error:', err);
+            alert('Failed to generate PDF. Please check the console for details.');
+        }
+    };
+
     const calcPct = (raised, target) => target > 0 ? Math.min(100, Math.round((raised / target) * 100)) : 0;
 
     if (loading) return <div className="wallet-loading">Loading details...</div>;
@@ -71,13 +95,16 @@ const ResearcherWalletDetail = () => {
                 <div className="wallet-hero-inner">
                     <div className="hero-top-nav">
                         <Link to="/researcher/wallet" className="btn-back">← Back to Wallet</Link>
+                        <button onClick={handleDownloadPDF} className="btn-download-pdf">
+                            📥 Download PDF Report
+                        </button>
                     </div>
                     <h1>📊 Funding Graph</h1>
                     <p className="subtitle">{experiment.title}</p>
                 </div>
             </section>
 
-            <div className="wallet-detail-container">
+            <div className="wallet-detail-container" id="pdf-content">
                 <div className="wallet-detail-panel standalone">
                     <div className="detail-header">
                         <h3>📈 Funding Performance</h3>
