@@ -510,7 +510,7 @@ const Signup = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4 py-8 sm:py-12">
       <Card className="w-full max-w-xl sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <CardHeader>
-          <h2 className="text-2xl font-bold text-primary">Create account</h2>
+          <h2 className="text-2xl font-bold text-blue-600">Create account</h2>
           <div className="flex rounded-lg border border-gray-200 p-0.5 mt-4">
             <button
               type="button"

@@ -80,7 +80,7 @@ const Login = () => {
                 </form>
 
                 <div className="text-center mt-4">
-                    <p className="text-sm text-secondary">
+                    <p className="text-sm text-blue-950">
                         Don't have an account? <Link to="/signup" style={{ color: 'var(--primary-color)', fontWeight: '600' }}>Sign up</Link>
                     </p>
                 </div>

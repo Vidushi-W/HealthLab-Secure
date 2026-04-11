@@ -101,7 +101,7 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<div className="min-h-screen bg-[#e6f2ff] text-slate-900 antialiased"><SiteNavbar /><Login /></div>} />
-      <Route path="/signup" element={<Signup />} />
+      <Route path="/signup" element={<div className="min-h-screen bg-[#e6f2ff] text-slate-900 antialiased"><SiteNavbar /><Signup /></div>} />
       <Route path="/" element={<Layout><Home /></Layout>} />
       <Route path="/experiments" element={<Layout><ExperimentShowcase /></Layout>} />
       <Route path="/community" element={<Layout><Community /></Layout>} />
