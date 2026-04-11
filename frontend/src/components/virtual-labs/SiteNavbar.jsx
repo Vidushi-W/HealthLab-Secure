@@ -4,11 +4,11 @@ import { Search } from 'lucide-react';
 import { cn } from '../../lib/cn';
 
 const links = [
-  { label: 'Home', href: '#top' },
-  { label: 'About', href: '#about' },
+  { label: 'Home', href: '/#top' },
+  { label: 'About', href: '/#about' },
   { label: 'Labs', href: '/experiments', router: true },
-  { label: 'Institutes', href: '#institutes' },
-  { label: 'Contact', href: '#contact' },
+  { label: 'Institutes', href: '/#institutes' },
+  { label: 'Contact', href: '/#contact' },
 ];
 
 const SiteNavbar = () => {
@@ -39,6 +39,12 @@ const SiteNavbar = () => {
       aria-label="Primary"
     >
       <div className="relative mx-auto w-full max-w-[90rem] px-5 py-4 sm:min-h-[68px] sm:py-3 sm:px-8 lg:min-h-[76px] lg:px-12">
+        <Link
+          to="/"
+          className="mb-3 block text-center text-2xl font-extrabold tracking-tight text-white sm:absolute sm:left-8 sm:top-1/2 sm:mb-0 sm:-translate-y-1/2 lg:left-12"
+        >
+          HealthLab
+        </Link>
         <ul
           className="mb-3 flex flex-wrap items-center justify-center gap-1 sm:mb-0 sm:absolute sm:left-1/2 sm:top-1/2 sm:z-10 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:gap-3"
           role="list"

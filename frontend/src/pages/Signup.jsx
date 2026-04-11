@@ -371,7 +371,7 @@ const Signup = () => {
                   setAffiliationFile(e.target.files?.[0] || null);
                   if (validationErrors.affiliationProof) setValidationErrors((p) => ({ ...p, affiliationProof: null }));
                 }}
-                className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white hover:file:bg-primary-hover"
+                className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-600 file:text-white hover:file:bg-blue-700"
               />
               {validationErrors.affiliationProof && (
                 <p className="mt-1 text-sm text-red-600">{validationErrors.affiliationProof}</p>
@@ -443,7 +443,7 @@ const Signup = () => {
               type="button"
               onClick={() => switchUserType(USER_TYPE_PARTICIPANT)}
               className={`flex-1 py-2.5 text-sm font-semibold rounded-md transition-colors ${
-                userType === USER_TYPE_PARTICIPANT ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100'
+                userType === USER_TYPE_PARTICIPANT ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
               Participant
@@ -452,7 +452,7 @@ const Signup = () => {
               type="button"
               onClick={() => switchUserType(USER_TYPE_RESEARCHER)}
               className={`flex-1 py-2.5 text-sm font-semibold rounded-md transition-colors ${
-                userType === USER_TYPE_RESEARCHER ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100'
+                userType === USER_TYPE_RESEARCHER ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
               Researcher
@@ -493,11 +493,11 @@ const Signup = () => {
                   </Link>
                 )}
                 {step < 5 ? (
-                  <Button type="button" onClick={handleNext}>
+                  <Button type="button" onClick={handleNext} className="!bg-blue-600 hover:!bg-blue-700 focus:!ring-blue-600">
                     Next step
                   </Button>
                 ) : (
-                  <Button type="submit">Complete registration</Button>
+                  <Button type="submit" className="!bg-blue-600 hover:!bg-blue-700 focus:!ring-blue-600">Complete registration</Button>
                 )}
               </>
             ) : (
@@ -505,7 +505,7 @@ const Signup = () => {
                 <Link to="/login" className="inline-flex items-center justify-center px-4 py-2 rounded-lg font-semibold border border-gray-300 text-gray-700 hover:bg-gray-50">
                   Login instead
                 </Link>
-                <Button type="submit">Submit for review</Button>
+                <Button type="submit" className="!bg-blue-600 hover:!bg-blue-700 focus:!ring-blue-600">Submit for review</Button>
               </>
             )}
           </div>

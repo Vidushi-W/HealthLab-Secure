@@ -18,6 +18,7 @@ import MyContributions from './pages/MyContributions';
 import ResearcherWallet from './pages/ResearcherWallet';
 import ResearcherWalletDetail from './pages/ResearcherWalletDetail';
 import { getCurrentUser, logoutUser } from './api/auth';
+import { SiteNavbar } from './components/virtual-labs';
 
 const AppHeader = ({ user, handleLogout }) => {
   const [scrolled, setScrolled] = useState(false);
@@ -99,7 +100,7 @@ function App() {
 
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
+      <Route path="/login" element={<div className="min-h-screen bg-[#e6f2ff] text-slate-900 antialiased"><SiteNavbar /><Login /></div>} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/" element={<Layout><Home /></Layout>} />
       <Route path="/experiments" element={<Layout><ExperimentShowcase /></Layout>} />
