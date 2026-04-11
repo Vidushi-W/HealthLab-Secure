@@ -43,7 +43,8 @@ const ExperimentList = () => {
                     response = await api.get('/experiments');
                 }
 
-                setExperiments(response.data);
+                const publishedExperiments = response.data.filter(exp => exp.status !== 'draft');
+                setExperiments(publishedExperiments);
                 setLoading(false);
             } catch (err) {
                 console.error('Error fetching experiments:', err);
@@ -166,6 +167,7 @@ const ExperimentList = () => {
                     )}
                 </div>
             )}
+            <div className="w-full">
             {experiments.length === 0 ? (
                 <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-600 shadow-sm">
                     No experiments available at the moment.
@@ -175,32 +177,31 @@ const ExperimentList = () => {
                     {experiments.map((experiment) => (
                         <div
                             key={experiment._id}
-                            className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-card transition hover:-translate-y-0.5 hover:shadow-cardHover"
+                            className={`group relative flex flex-col p-6 rounded-2xl bg-white shadow-card transition-all duration-200 ${experiment.matchScore >= 80 ? 'shadow-[0_10px_25px_-5px_rgba(21,128,61,0.15),0_4px_10px_-3px_rgba(21,128,61,0.1)] -translate-y-0.5' : 'border border-slate-200 hover:-translate-y-0.5 hover:shadow-cardHover'}`}
                         >
-                            <div className="mb-3">
+                            {experiment.matchScore >= 80 && (
+                                <>
+                                    <div className="absolute inset-[-2px] bg-gradient-to-br from-green-700 to-green-500 rounded-2xl -z-10" />
+                                    <div className="absolute -top-3 right-5 bg-gradient-to-r from-green-700 to-green-500 text-white text-[0.7rem] font-extrabold py-1 px-3 rounded-xl tracking-wider shadow-[0_4px_6px_rgba(21,128,61,0.3)] z-10">
+                                        ✓ TOP AI MATCH
+                                    </div>
+                                </>
+                            )}
+                            <div className="mb-3 flex justify-between items-start">
                                 <SmartBadge score={experiment.matchScore} reason={experiment.matchReason} />
-                            </div>
-                            <div
-                                className={`absolute right-4 top-4 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold capitalize ring-1 ${
-                                    experiment.status === 'active'
-                                        ? 'bg-emerald-100 text-emerald-800 ring-emerald-200'
-                                        : experiment.status === 'draft'
-                                          ? 'bg-amber-100 text-amber-800 ring-amber-200'
-                                          : 'bg-rose-100 text-rose-800 ring-rose-200'
-                                }`}
-                            >
-                                {experiment.status}
                             </div>
 
                             <h2 className="text-lg font-bold leading-snug text-slate-900">{experiment.title}</h2>
-                            <p className="mt-2 max-h-[4.5rem] overflow-hidden text-ellipsis text-sm leading-relaxed text-slate-600">
+                            <p className="mt-2 text-sm leading-relaxed text-slate-600 mb-6 grow">
                                 {experiment.description}
                             </p>
 
-                            <div className="mt-5 border-t border-slate-100 pt-4 text-sm text-slate-600">
-                                <span className="font-medium text-slate-800">Participants:</span>{' '}
-                                {experiment.currentParticipantCount || 0} /{' '}
-                                {experiment.participantLimit === 0 ? 'Unlimited' : experiment.participantLimit}
+                            <div className="mt-auto border-t border-slate-100 pt-4 text-sm text-slate-600 flex justify-between items-center">
+                                <div>
+                                    <span className="font-medium text-slate-800">Participants:</span>{' '}
+                                    {experiment.currentParticipantCount || 0} /{' '}
+                                    {experiment.participantLimit === 0 ? 'Unlimited' : experiment.participantLimit}
+                                </div>
                             </div>
 
                             {!localStorage.getItem('token') ? (
@@ -229,20 +230,20 @@ const ExperimentList = () => {
                         </div>
                     ))}
                 </div>
-            )}
+            )}</div>
 
-            {/* CLINICAL INSIGHT MODAL (Year 3 Clinical-Grade Feature) */}
+            {/* CLINICAL INSIGHT MODAL */}
             {showModal && analysis && (
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-                    <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
-                        <div className="flex items-center gap-3 border-b border-slate-200 px-6 py-4">
-                            <div className="text-2xl" aria-hidden>🧠</div>
-                            <h2 className="text-lg font-extrabold text-blue-700 sm:text-xl">Personalized Clinical Insight</h2>
+                    <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl relative">
+                        <div className="flex items-center gap-3 border-b border-slate-200 px-6 py-4 bg-blue-50/50">
+                            <div className="text-2xl pt-1" aria-hidden>🧠</div>
+                            <h2 className="text-lg font-extrabold text-blue-700 sm:text-xl m-0">Personalized Clinical Insight</h2>
                         </div>
 
                         <div className="max-h-[80vh] overflow-y-auto px-6 py-5">
                             <p className="mb-6 text-sm leading-relaxed text-slate-700 sm:text-base">
-                                <span className="italic">“{analysis.text}”</span>
+                                <span className="italic">"{analysis.text}"</span>
                             </p>
 
                             <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
