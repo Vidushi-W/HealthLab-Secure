@@ -84,7 +84,9 @@ function App() {
   const researcherSoftPageBg =
     location.pathname === '/researcher/experiments' ||
     location.pathname === '/researcher/reviews';
-  const experimentsShowcasePage = location.pathname === '/experiments';
+  const experimentsShowcasePage =
+    location.pathname === '/experiments' ||
+    location.pathname === '/community';
 
   const Layout = ({ children }) => (
     <div className={`flex min-h-screen flex-col text-slate-900 antialiased ${experimentsShowcasePage ? 'bg-[linear-gradient(180deg,#edf6ff_0%,#dbeafe_45%,#c8dcfb_100%)]' : 'bg-[#e6f2ff]'}`}>

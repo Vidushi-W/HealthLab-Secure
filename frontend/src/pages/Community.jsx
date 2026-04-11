@@ -406,33 +406,50 @@ const Community = () => {
   if (!token) return null;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      <header className="mb-6 sm:mb-8 rounded-2xl border border-slate-200 bg-gradient-to-r from-cyan-50 via-white to-emerald-50 p-5 sm:p-6 shadow-sm">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:gap-8">
+      <header className="relative overflow-hidden rounded-[2rem] border border-blue-200/40 bg-gradient-to-br from-[#173a74] via-[#29518f] to-[#3b6ab2] p-6 text-white shadow-[0_30px_80px_-48px_rgba(30,64,175,0.55)] xl:p-8">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(191,219,254,0.24),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(147,197,253,0.14),transparent_28%)]" />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Community</h1>
-            <p className="mt-1 text-gray-600">Discuss, share, and connect with researchers and participants.</p>
+            <span className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-blue-50 shadow-sm backdrop-blur-sm">
+              Community hub
+            </span>
+            <h1 className="mt-4 max-w-3xl text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-[3.2rem] lg:leading-[1.02]">
+              Connect around health studies, questions, and shared progress
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-blue-50/92 sm:text-base">
+              Explore participant conversations, discover trending topics, and share research updates in a cleaner community space aligned with the rest of HealthLab.
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center rounded-full bg-white/80 border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700">
-              {total > 0 ? `${posts.length} on page ${page}` : '0'} posts
-            </span>
-            <span className="inline-flex items-center rounded-full bg-white/80 border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700">
-              {savedIds.size} saved
-            </span>
+          <div className="grid min-w-[280px] grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="rounded-[1.35rem] border border-white/18 bg-white/12 px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.14)] backdrop-blur-sm">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-50">Posts</p>
+              <p className="mt-2 text-3xl font-black text-white">{total || posts.length}</p>
+              <p className="mt-1 text-sm text-blue-50/82">Visible across the current feed</p>
+            </div>
+            <div className="rounded-[1.35rem] border border-white/18 bg-white/12 px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.14)] backdrop-blur-sm">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-50">Saved</p>
+              <p className="mt-2 text-3xl font-black text-white">{savedIds.size}</p>
+              <p className="mt-1 text-sm text-blue-50/82">Quick-access discussions</p>
+            </div>
+            <div className="rounded-[1.35rem] border border-white/18 bg-white/12 px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.14)] backdrop-blur-sm">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-50">Following</p>
+              <p className="mt-2 text-3xl font-black text-white">{followedTopics.length}</p>
+              <p className="mt-1 text-sm text-blue-50/82">Topics shaped by your activity</p>
+            </div>
           </div>
         </div>
       </header>
 
-      <div className="sticky top-4 z-20 mb-6 rounded-2xl border border-slate-200 bg-white/90 backdrop-blur p-3 sm:p-4 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="sticky top-4 z-20 rounded-[1.75rem] border border-white/65 bg-white/80 p-3 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.35)] backdrop-blur sm:p-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5">
+          <div className="inline-flex rounded-xl border border-slate-200/80 bg-slate-50/90 p-1 shadow-inner shadow-white/70">
             <button
               type="button"
               onClick={() => setActiveTab('feed')}
               className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                activeTab === 'feed' ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100'
+                activeTab === 'feed' ? 'bg-[linear-gradient(135deg,#2563eb,#1d4ed8)] text-white shadow-sm' : 'text-slate-600 hover:bg-white'
               }`}
             >
               Feed
@@ -441,7 +458,7 @@ const Community = () => {
               type="button"
               onClick={() => setActiveTab('saved')}
               className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                activeTab === 'saved' ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100'
+                activeTab === 'saved' ? 'bg-[linear-gradient(135deg,#2563eb,#1d4ed8)] text-white shadow-sm' : 'text-slate-600 hover:bg-white'
               }`}
             >
               Saved
@@ -452,14 +469,14 @@ const Community = () => {
               <select
                 value={sort}
                 onChange={(e) => setSort(e.target.value)}
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm focus:border-transparent focus:ring-2 focus:ring-blue-400"
               >
                 <option value="latest">Latest</option>
                 <option value="trending">Trending</option>
                 <option value="most_discussed">Most Discussed</option>
                 <option value="following">Following</option>
               </select>
-              <div className="relative flex flex-1 min-w-0 max-w-sm">
+              <div className="relative flex min-w-0 max-w-md flex-1">
                 <input
                   type="text"
                   placeholder="Search posts, tags, users..."
@@ -474,20 +491,20 @@ const Community = () => {
                     suggestionHideTimerRef.current = setTimeout(() => setShowSuggestions(false), 150);
                   }}
                   onKeyDown={(e) => e.key === 'Enter' && fetchFeed({ newPage: 1 })}
-                  className="block w-full rounded-l-lg border border-gray-300 bg-white px-3 py-2 text-sm placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="block w-full rounded-l-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 placeholder-slate-400 shadow-sm focus:border-transparent focus:ring-2 focus:ring-blue-400"
                 />
-                <Button type="button" size="sm" onClick={() => fetchFeed({ newPage: 1 })} className="rounded-l-none shadow-none">
+                <Button type="button" size="sm" onClick={() => fetchFeed({ newPage: 1 })} className="rounded-l-none rounded-r-xl border-0 bg-[linear-gradient(135deg,#2563eb,#1d4ed8)] px-4 shadow-none hover:bg-[linear-gradient(135deg,#1d4ed8,#1e40af)]">
                   Search
                 </Button>
                 {showSuggestions && searchSuggestions.length > 0 && (
-                  <div className="absolute top-[calc(100%+4px)] left-0 right-0 z-20 rounded-lg border border-gray-200 bg-white shadow-lg max-h-72 overflow-y-auto">
+                  <div className="absolute top-[calc(100%+8px)] left-0 right-0 z-20 max-h-72 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
                     {searchSuggestions.map((s, idx) => (
                       <button
                         key={`${s.type}-${s.value}-${idx}`}
                         type="button"
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => applySuggestion(s)}
-                        className="w-full text-left px-3 py-2 hover:bg-slate-50 border-b last:border-b-0 border-slate-100"
+                        className="w-full border-b border-slate-100 px-3 py-2 text-left hover:bg-slate-50 last:border-b-0"
                       >
                         <p className="text-sm text-slate-800">{s.value}</p>
                         <p className="text-[11px] uppercase tracking-wide text-slate-500">{s.type} · {s.count || 0} posts</p>
@@ -500,7 +517,7 @@ const Community = () => {
                 <button
                   type="button"
                   onClick={clearDiscoveryFilters}
-                  className="text-xs font-semibold text-slate-600 px-2 py-1 rounded-md border border-slate-200 hover:bg-slate-50"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
                 >
                   Clear filters
                 </button>
@@ -510,33 +527,33 @@ const Community = () => {
         </div>
         <Button
           onClick={() => setCreateOpen(!createOpen)}
-          className="shrink-0 px-5 py-3 text-base font-semibold shadow-lg shadow-primary/20 bg-primary hover:bg-primary-hover rounded-xl"
+          className="shrink-0 rounded-xl bg-[linear-gradient(135deg,#2563eb,#1d4ed8)] px-5 py-3 text-base font-semibold shadow-[0_18px_34px_-20px_rgba(37,99,235,0.8)] hover:bg-[linear-gradient(135deg,#1d4ed8,#1e40af)]"
         >
           {createOpen ? 'Cancel' : '+ New Post'}
         </Button>
       </div>
       </div>
 
-      <div className="mb-5 rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-emerald-50 px-4 py-3 shadow-sm">
-        <p className="text-sm text-slate-700">
+      <div className="rounded-[1.5rem] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(243,248,255,0.92))] px-5 py-4 shadow-[0_20px_50px_-36px_rgba(30,64,175,0.4)]">
+        <p className="text-sm leading-7 text-slate-700">
           Share your research question, findings, or a quick discussion point to get feedback from the community.
         </p>
       </div>
 
       {(activeTag || activeAuthor || sort === 'following') && (
-        <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {sort === 'following' && (
-            <span className="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold">
+            <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
               Following topics
             </span>
           )}
           {activeTag && (
-            <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">
+            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
               Tag: {activeTag}
             </span>
           )}
           {activeAuthor && (
-            <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
               User: {activeAuthor}
             </span>
           )}
@@ -587,7 +604,7 @@ const Community = () => {
             placeholder="health, research"
             className="bg-white"
           />
-          <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-3">
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
             <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-800">
               <input
                 type="checkbox"
@@ -671,13 +688,13 @@ const Community = () => {
       </Modal>
 
       {loading ? (
-        <div className="space-y-4">
+        <div className="space-y-5">
           {[1, 2, 3].map((i) => (
             <PostCardSkeleton key={i} />
           ))}
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-5">
           {posts.length === 0 ? (
             <EmptyState
               icon="💬"
@@ -695,17 +712,17 @@ const Community = () => {
             />
           ) : (
             posts.map((post) => (
-              <Card key={post._id} className="relative border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all duration-200">
+              <Card key={post._id} className="relative overflow-hidden rounded-[1.75rem] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(244,248,255,0.96))] shadow-[0_24px_60px_-40px_rgba(30,64,175,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_32px_70px_-42px_rgba(30,64,175,0.42)]">
                 {post.category && (
-                  <span className="absolute -top-2.5 left-4 px-3 py-1 rounded-full bg-emerald-600 text-white text-xs font-semibold uppercase tracking-wide shadow">
+                  <span className="absolute left-5 top-5 rounded-full border border-blue-200 bg-blue-50/95 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-800 shadow-sm">
                     {post.category}
                   </span>
                 )}
-                <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
-                  <span className="text-sm text-gray-500">
+                <div className={`flex flex-wrap items-start justify-between gap-2 ${post.category ? 'mb-4 pt-10' : 'mb-3'}`}>
+                  <span className="text-sm text-slate-500">
                     {post.author?.name || 'Unknown'} · {(post.author?.role || '').toLowerCase()}
                   </span>
-                  <span className="text-xs text-gray-400">{new Date(post.createdAt).toLocaleDateString()}</span>
+                  <span className="rounded-full border border-slate-200 bg-white/85 px-2.5 py-1 text-[11px] font-medium text-slate-500">{new Date(post.createdAt).toLocaleDateString()}</span>
                   {isAuthor(post) && (
                     <div className="flex gap-2 ml-auto">
                       <Link
@@ -729,11 +746,11 @@ const Community = () => {
                     {highlightText(post.title, search)}
                   </Link>
                 </h3>
-                <p className="text-slate-500 text-sm leading-relaxed mb-3">
+                <p className="mb-4 text-sm leading-7 text-slate-600">
                   {highlightText(post.content.length > 220 ? post.content.slice(0, 220) + '...' : post.content, search)}
                 </p>
                 {post.poll?.question && Array.isArray(post.poll?.options) && post.poll.options.length > 0 && (
-                  <div className="mb-3 rounded-xl border-2 border-blue-300 bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-50 p-3 shadow-sm">
+                  <div className="mb-4 rounded-[1.35rem] border border-blue-200 bg-[linear-gradient(180deg,rgba(239,246,255,0.95),rgba(255,255,255,0.96))] p-4 shadow-[0_18px_44px_-32px_rgba(59,130,246,0.5)]">
                     <div className="flex items-center gap-2 mb-2.5">
                       <span className="text-lg">🗳️</span>
                       <div className="flex-1">
@@ -752,17 +769,17 @@ const Community = () => {
                             key={`poll-opt-${post._id}-${idx}`}
                             type="button"
                             onClick={() => handlePollVote(post._id, idx)}
-                            className={`w-full text-left rounded-lg border-2 px-3 py-2 transition-all ${
+                            className={`w-full rounded-xl border px-3 py-2.5 text-left transition-all ${
                               isSelected
-                                ? 'border-blue-500 bg-white shadow-md ring-1 ring-blue-200'
-                                : 'border-blue-200 bg-white hover:border-blue-300'
+                                ? 'border-blue-400 bg-white shadow-sm ring-2 ring-blue-100'
+                                : 'border-blue-100 bg-white/90 hover:border-blue-300'
                             }`}
                           >
                             <div className="flex items-center justify-between gap-2 mb-1">
                               <span className="text-xs font-semibold text-blue-900">
                                 {isSelected && '✓ '}{label}
                               </span>
-                              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{percentage}%</span>
+                              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">{percentage}%</span>
                             </div>
                             <div className="w-full bg-blue-200 rounded-full h-1.5 overflow-hidden">
                               <div
@@ -783,7 +800,7 @@ const Community = () => {
                         key={t}
                         type="button"
                         onClick={() => handleTagClick(t)}
-                        className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-medium hover:bg-emerald-100 transition-colors"
+                        className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700 transition-colors hover:bg-blue-100"
                       >
                         {t}
                       </button>
@@ -793,7 +810,7 @@ const Community = () => {
                         key={'u-' + t}
                         type="button"
                         onClick={() => handleTagClick(t)}
-                        className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-medium hover:bg-slate-200 transition-colors"
+                        className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
                       >
                         {t}
                       </button>
@@ -803,7 +820,7 @@ const Community = () => {
                 {post.topComment?.content && (
                   <Link
                     to={`/community/${post._id}`}
-                    className="block mb-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 hover:border-slate-300 transition-colors"
+                    className="mb-4 block rounded-2xl border border-slate-200 bg-white/75 px-4 py-3 transition-colors hover:border-blue-200"
                   >
                     <p className="text-[11px] uppercase tracking-wide text-slate-500 mb-1">
                       Top comment {post.topComment?.author?.name ? `by ${post.topComment.author.name}` : ''}
@@ -813,13 +830,13 @@ const Community = () => {
                     </p>
                   </Link>
                 )}
-                <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-100 mt-1">
+                <div className="mt-2 flex items-center justify-between gap-3 border-t border-slate-200/70 pt-4">
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => handleLike(post._id, 'up')}
-                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors border ${
-                        isLiked(post) ? 'text-red-600 bg-red-50' : 'text-gray-600 hover:bg-gray-100'
+                      className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 transition-colors ${
+                        isLiked(post) ? 'border-rose-200 bg-rose-50 text-rose-600' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                       }`}
                       title="Like this post"
                     >
@@ -828,7 +845,7 @@ const Community = () => {
                     </button>
                     <Link
                       to={`/community/${post._id}`}
-                      className="flex items-center gap-1.5 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors border border-transparent hover:border-slate-200"
+                      className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-600 transition-colors hover:bg-slate-50"
                       title="View comments"
                     >
                       <MessageSquare size={16} />
@@ -839,7 +856,7 @@ const Community = () => {
                     <button
                       type="button"
                       onClick={() => handleShare(post._id)}
-                      className="text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors"
+                      className="rounded-xl border border-slate-200 bg-white p-2 text-slate-600 transition-colors hover:bg-slate-50"
                       title="Share this post"
                     >
                       <Share2 size={16} />
@@ -847,8 +864,8 @@ const Community = () => {
                     <button
                       type="button"
                       onClick={() => handleSave(post._id, savedIds.has(post._id))}
-                      className={`p-2 rounded-lg transition-colors ${
-                        savedIds.has(post._id) ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:bg-gray-100'
+                      className={`rounded-xl border p-2 transition-colors ${
+                        savedIds.has(post._id) ? 'border-blue-200 bg-blue-50 text-blue-600' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                       }`}
                       title={savedIds.has(post._id) ? 'Remove from bookmarks' : 'Bookmark this post'}
                     >
@@ -863,7 +880,7 @@ const Community = () => {
       )}
 
       {total >= 10 && totalPages > 1 && (
-        <div className="flex items-center justify-center gap-3 mt-8 px-4 py-6 rounded-2xl border border-slate-200 bg-slate-50">
+        <div className="mt-8 flex items-center justify-center gap-3 rounded-[1.5rem] border border-white/70 bg-white/70 px-4 py-6 shadow-[0_20px_50px_-38px_rgba(15,23,42,0.25)] backdrop-blur">
           {totalPages > 3 && (
             <button
               onClick={() => setPageWindowStart(Math.max(1, pageWindowStart - 3))}
@@ -884,10 +901,10 @@ const Community = () => {
                   fetchFeed({ newPage: pageNum });
                 }}
                 disabled={loading}
-                className={`btn btn-sm w-12 h-12 rounded-lg border-2 transition-all ${
+                className={`btn btn-sm h-12 w-12 rounded-xl border transition-all ${
                   pageNum === page 
-                    ? 'btn-active bg-primary text-white border-primary' 
-                    : 'bg-white text-slate-700 border-slate-300 hover:border-slate-400'
+                    ? 'btn-active border-blue-600 bg-[linear-gradient(135deg,#2563eb,#1d4ed8)] text-white' 
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
                 }`}
               >
                 {pageNum}
@@ -911,14 +928,14 @@ const Community = () => {
       <button
         type="button"
         onClick={() => setChatOpen((o) => !o)}
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-primary text-white shadow-lg hover:bg-primary-hover flex items-center justify-center text-xl z-50 transition-transform hover:scale-105"
+        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[linear-gradient(135deg,#2563eb,#1d4ed8)] text-xl text-white shadow-[0_18px_40px_-18px_rgba(37,99,235,0.85)] transition-transform hover:scale-105 hover:bg-[linear-gradient(135deg,#1d4ed8,#1e40af)]"
         aria-label={chatOpen ? 'Close chat' : 'Open AI assistant'}
       >
         {chatOpen ? '✕' : '💬'}
       </button>
       {chatOpen && (
-        <div className="fixed bottom-24 right-6 w-full max-w-md bg-white rounded-xl shadow-xl border border-gray-200 flex flex-col max-h-[70vh] z-40 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 bg-primary text-white">
+        <div className="fixed bottom-24 right-6 z-40 flex max-h-[70vh] w-full max-w-md flex-col overflow-hidden rounded-[1.6rem] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,247,255,0.95))] shadow-[0_32px_80px_-34px_rgba(15,23,42,0.38)] backdrop-blur">
+          <div className="flex items-center justify-between bg-[linear-gradient(135deg,#2563eb,#1d4ed8)] px-4 py-3 text-white">
             <h3 className="font-semibold">Community AI Assistant</h3>
             <button
               type="button"
@@ -929,18 +946,18 @@ const Community = () => {
               ✕
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[200px]">
+          <div className="min-h-[200px] flex-1 space-y-3 overflow-y-auto p-4">
             {chatMessages.length === 0 && (
-              <p className="text-sm text-gray-500">Ask about health, research, or community.</p>
+              <p className="text-sm text-slate-500">Ask about health, research, or community.</p>
             )}
             {chatMessages.map((m, i) => (
               <div
                 key={i}
                 className={`flex flex-col max-w-[90%] ${
-                  m.role === 'user' ? 'ml-auto bg-primary-light rounded-lg rounded-br-none p-3' : 'bg-gray-100 rounded-lg rounded-bl-none p-3'
+                  m.role === 'user' ? 'ml-auto rounded-2xl rounded-br-md bg-blue-50 p-3 text-slate-800' : 'rounded-2xl rounded-bl-md border border-slate-200 bg-white p-3 text-slate-800'
                 }`}
               >
-                <span className="text-xs font-semibold text-gray-500 mb-0.5">{m.role === 'user' ? 'You' : 'AI'}</span>
+                <span className="mb-0.5 text-xs font-semibold text-slate-500">{m.role === 'user' ? 'You' : 'AI'}</span>
                 <p className="text-sm whitespace-pre-wrap">{m.content}</p>
               </div>
             ))}
@@ -951,7 +968,7 @@ const Community = () => {
             )}
           </div>
           {chatError && <p className="px-4 text-sm text-red-600">{chatError}</p>}
-          <form onSubmit={handleSendChat} className="flex gap-2 p-3 border-t border-gray-200 bg-white">
+          <form onSubmit={handleSendChat} className="flex gap-2 border-t border-slate-200 bg-white/80 p-3">
             <input
               type="text"
               value={chatInput}
@@ -959,7 +976,7 @@ const Community = () => {
               placeholder="Type a message..."
               disabled={chatLoading}
               maxLength={4000}
-              className="flex-1 min-w-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-white"
+              className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:ring-2 focus:ring-blue-400 disabled:bg-white"
             />
             <Button type="submit" disabled={chatLoading || !chatInput.trim()} size="md">
               Send
