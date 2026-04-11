@@ -11,6 +11,7 @@ import {
   Select,
   ErrorMessage,
 } from '../components/ui';
+import { getPasswordChecks, getPasswordError } from '../utils/passwordPolicy';
 
 const USER_TYPE_PARTICIPANT = 'participant';
 const USER_TYPE_RESEARCHER = 'researcher';
@@ -20,6 +21,30 @@ const RESEARCHER_TYPES = [
   { value: 'Affiliated to Organization', label: 'Affiliated to Organization' },
   { value: 'Other', label: 'Other' },
 ];
+
+const PasswordChecklist = ({ password = '' }) => {
+  const checks = getPasswordChecks(password);
+
+  return (
+    <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-3">
+      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+        Strong password requirements
+      </p>
+      <div className="mt-2 grid gap-1 sm:grid-cols-2">
+        {checks.map((check) => (
+          <p
+            key={check.key}
+            className={`text-xs font-medium ${
+              check.passed ? 'text-emerald-600' : 'text-slate-500'
+            }`}
+          >
+            {check.passed ? '✓' : '○'} {check.label}
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -65,6 +90,9 @@ const Signup = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
+    if (validationErrors[name]) {
+      setValidationErrors((prev) => ({ ...prev, [name]: null }));
+    }
   };
 
   const handleResearcherChange = (e) => {
@@ -83,6 +111,18 @@ const Signup = () => {
 
   const handleNext = (e) => {
     e.preventDefault();
+    if (userType === USER_TYPE_PARTICIPANT && step === 1) {
+      const err = {};
+      if (!formData.name?.trim()) err.name = 'Full name is required';
+      if (!formData.email?.trim()) err.email = 'Email is required';
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) err.email = 'Enter a valid email';
+      const passwordError = getPasswordError(formData.password);
+      if (passwordError) err.password = passwordError;
+      if (Object.keys(err).length > 0) {
+        setValidationErrors((prev) => ({ ...prev, ...err }));
+        return;
+      }
+    }
     setStep(step + 1);
   };
 
@@ -96,8 +136,8 @@ const Signup = () => {
     if (!researcherData.fullName?.trim()) err.fullName = 'Full name is required';
     if (!researcherData.email?.trim()) err.email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(researcherData.email)) err.email = 'Enter a valid email';
-    if (!researcherData.password?.trim()) err.password = 'Password is required';
-    else if (researcherData.password.length < 6) err.password = 'Password must be at least 6 characters';
+    const passwordError = getPasswordError(researcherData.password);
+    if (passwordError) err.password = passwordError;
     if (!researcherData.nic?.trim()) err.nic = 'NIC is required';
     if (!researcherData.gender?.trim()) err.gender = 'Gender is required';
     if (!researcherData.currentWorkplace?.trim()) err.currentWorkplace = 'Current workplace is required';
@@ -119,6 +159,19 @@ const Signup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (userType === USER_TYPE_PARTICIPANT) {
+      const err = {};
+      if (!formData.name?.trim()) err.name = 'Full name is required';
+      if (!formData.email?.trim()) err.email = 'Email is required';
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) err.email = 'Enter a valid email';
+      const passwordError = getPasswordError(formData.password);
+      if (passwordError) err.password = passwordError;
+      if (Object.keys(err).length > 0) {
+        setValidationErrors((prev) => ({ ...prev, ...err }));
+        setStep(1);
+        return;
+      }
+    }
     if (userType === USER_TYPE_RESEARCHER && !validateResearcherForm()) return;
     try {
       if (userType === USER_TYPE_PARTICIPANT) {
@@ -162,18 +215,35 @@ const Signup = () => {
 
   const renderStep1 = () => (
     <div className="space-y-4">
-      <Input label="Full Name" name="name" value={formData.name} onChange={handleChange} required />
-      <Input label="Email" name="email" type="email" value={formData.email} onChange={handleChange} required />
+      <Input
+        label="Full Name"
+        name="name"
+        value={formData.name}
+        onChange={handleChange}
+        error={validationErrors.name}
+        required
+      />
+      <Input
+        label="Email"
+        name="email"
+        type="email"
+        value={formData.email}
+        onChange={handleChange}
+        error={validationErrors.email}
+        required
+      />
       <Input
         label="Password"
         name="password"
         type="password"
         value={formData.password}
         onChange={handleChange}
+        error={validationErrors.password}
         required
-        minLength={6}
-        hint="Minimum 6 characters"
+        minLength={8}
+        hint="Use 8+ characters with uppercase, lowercase, number, and special character."
       />
+      <PasswordChecklist password={formData.password} />
     </div>
   );
 
@@ -292,10 +362,13 @@ const Signup = () => {
             value={researcherData.password}
             onChange={handleResearcherChange}
             error={validationErrors.password}
-            hint="Minimum 6 characters"
+            hint="Use 8+ characters with uppercase, lowercase, number, and special character."
             required
-            minLength={6}
+            minLength={8}
           />
+          <div className="sm:col-span-2">
+            <PasswordChecklist password={researcherData.password} />
+          </div>
           <Input
             label="NIC"
             name="nic"
