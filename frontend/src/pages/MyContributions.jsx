@@ -37,14 +37,13 @@ const MyContributions = () => {
     const handleDevConfirm = async (orderId) => {
         try {
             await devConfirmPayment(orderId);
-            fetchContributions(); // Refresh the list
+            fetchContributions();
         } catch (err) {
             console.error('Failed to confirm payment:', err);
             alert('Failed to confirm payment. Check console for details.');
         }
     };
 
-    // Summary stats
     const totalContributed = contributions.reduce((sum, c) => sum + (c.paymentStatus === 'SUCCESS' ? c.amount : 0), 0);
     const totalPending = contributions.reduce((sum, c) => sum + (c.paymentStatus === 'PENDING' ? c.amount : 0), 0);
     const successCount = contributions.filter((c) => c.paymentStatus === 'SUCCESS').length;
@@ -64,20 +63,30 @@ const MyContributions = () => {
             {error && <div className="contributions-error">{error}</div>}
 
             {!loading && contributions.length > 0 && (
-                <div className="contributions-summary">
-                    <div className="summary-card success">
-                        <div className="summary-card-value">LKR {totalContributed.toLocaleString()}</div>
-                        <div className="summary-card-label">Total Contributed</div>
+                <>
+                    <div className="contributions-summary">
+                        <div className="summary-card success">
+                            <div className="summary-card-value">LKR {totalContributed.toLocaleString()}</div>
+                            <div className="summary-card-label">Total Contributed</div>
+                        </div>
+                        <div className="summary-card pending">
+                            <div className="summary-card-value">LKR {totalPending.toLocaleString()}</div>
+                            <div className="summary-card-label">Pending</div>
+                        </div>
+                        <div className="summary-card">
+                            <div className="summary-card-value">{successCount}</div>
+                            <div className="summary-card-label">Successful Payments</div>
+                        </div>
                     </div>
-                    <div className="summary-card pending">
-                        <div className="summary-card-value">LKR {totalPending.toLocaleString()}</div>
-                        <div className="summary-card-label">Pending</div>
+
+                    <div className="dev-notif-box">
+                        <strong>🛠️ Developer Tip (Localhost Testing)</strong>
+                        <p>
+                            In development mode, PayHere cannot send automatic status updates to <code>localhost</code>.
+                            If you've completed a payment, please use the <strong>Verify</strong> button in the table below to manually confirm it.
+                        </p>
                     </div>
-                    <div className="summary-card">
-                        <div className="summary-card-value">{successCount}</div>
-                        <div className="summary-card-label">Successful Payments</div>
-                    </div>
-                </div>
+                </>
             )}
 
             {loading ? (
@@ -112,8 +121,7 @@ const MyContributions = () => {
                                             {c.paymentStatus === 'PENDING' && c.paymentReferenceId && (
                                                 <button
                                                     onClick={() => handleDevConfirm(c.paymentReferenceId)}
-                                                    className="btn btn-sm"
-                                                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                                                    className="btn btn-verify"
                                                     title="DEV ONLY: Manually confirm this payment"
                                                 >
                                                     Verify

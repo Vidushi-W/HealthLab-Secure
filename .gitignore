@@ -112,6 +112,9 @@ backend/*.txt
 backend/db-structure.json
 !backend/package.json
 
+# Frontend local cache/runtime artifacts
+frontend/.vite/
+frontend/.cache/
 # Generated report exports
 *-report-*.pdf
 researchers-report-*.pdf

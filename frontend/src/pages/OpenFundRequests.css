@@ -8,7 +8,7 @@
     min-height: 200px;
     display: flex;
     align-items: center;
-    background: linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%);
+    background: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #60a5fa 100%);
 }
 
 .open-funds-hero-overlay {
@@ -85,7 +85,7 @@
 .open-fund-card:hover {
     transform: translateY(-4px);
     box-shadow: var(--shadow-lg);
-    border-color: rgba(16, 185, 129, 0.2);
+    border-color: rgba(37, 99, 235, 0.2);
 }
 
 .open-fund-card-title {
@@ -128,7 +128,7 @@
 .open-fund-card-progress .fund-progress-bar-fill {
     height: 100%;
     border-radius: 5px;
-    background: linear-gradient(90deg, #059669, #34d399);
+    background: linear-gradient(90deg, #1e40af, #60a5fa);
     transition: width 0.5s ease;
 }
 
@@ -141,7 +141,7 @@
 
 .open-fund-card-raised {
     font-weight: 700;
-    color: #059669;
+    color: #2563eb;
 }
 
 .open-fund-card-target {
@@ -152,14 +152,14 @@
     text-align: center;
     font-weight: 700;
     font-size: 0.9rem;
-    color: #059669;
+    color: #2563eb;
     margin-bottom: 0.5rem;
 }
 
 .open-fund-contribute-btn {
     width: 100%;
     padding: 0.875rem;
-    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
     color: white;
     border-radius: var(--border-radius);
     font-weight: 700;
@@ -172,7 +172,7 @@
 
 .open-fund-contribute-btn:hover {
     transform: scale(1.02);
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
 }
 
 .open-fund-contribute-btn:disabled {
@@ -228,8 +228,8 @@
 }
 
 .contribute-modal-info {
-    background: #f0fdf4;
-    border: 1px solid #bbf7d0;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
     border-radius: var(--border-radius);
     padding: 1rem;
     margin-bottom: 1.25rem;
@@ -268,11 +268,53 @@
 }
 
 .open-funds-success {
-    background: #d1fae5;
-    color: #065f46;
-    border: 1px solid #a7f3d0;
+    background: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
     padding: 0.85rem 1.25rem;
     border-radius: var(--border-radius);
     margin-bottom: 1.5rem;
     font-weight: 500;
+}
+
+/* AI Predictor */
+.open-fund-card-prediction {
+    background: rgba(37, 99, 235, 0.08);
+    border-radius: 12px;
+    padding: 12px;
+    margin-top: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px dashed rgba(37, 99, 235, 0.3);
+    animation: pulseGlow 2s infinite ease-in-out;
+}
+
+@keyframes pulseGlow {
+    0% {
+        background: rgba(37, 99, 235, 0.08);
+    }
+
+    50% {
+        background: rgba(37, 99, 235, 0.12);
+    }
+
+    100% {
+        background: rgba(37, 99, 235, 0.08);
+    }
+}
+
+.prediction-icon {
+    font-size: 1.4rem;
+}
+
+.prediction-text {
+    font-size: 0.85rem;
+    color: #1e40af;
+    line-height: 1.4;
+}
+
+.prediction-text strong {
+    color: #2563eb;
+    font-weight: 800;
 }

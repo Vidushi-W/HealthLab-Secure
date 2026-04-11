@@ -1,7 +1,8 @@
 require("dotenv").config();
 const dns = require("dns");
-dns.setServers(["8.8.8.8", "8.8.4.4"]);
-console.log("🌐 DNS: Forced to Google DNS (8.8.8.8)");
+dns.setDefaultResultOrder("ipv4first");
+// dns.setServers(["8.8.8.8", "8.8.4.4"]);
+// console.log("🌐 DNS: Forced to Google DNS (8.8.8.8)");
 
 
 const { connectDB } = require("./config/db");
