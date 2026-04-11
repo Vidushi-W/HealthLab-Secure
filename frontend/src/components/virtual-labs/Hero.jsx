@@ -74,7 +74,7 @@ const Hero = () => {
               <ArrowRight className="h-4 w-4" aria-hidden />
             </Link>
             <Link
-              to={user ? '/my-studies' : '/signup'}
+              to={user ? '/my-studies' : '/login'}
               className="inline-flex items-center rounded-xl border border-white/30 bg-white/10 px-5 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
               {user ? 'My Studies' : 'Get Started'}

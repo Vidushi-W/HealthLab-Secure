@@ -23,22 +23,22 @@ function useAnimatedNumber(target, options = {}) {
 
 const stats = [
   {
-    label: 'Website page views',
-    end: 81330147,
+    label: 'Registered Users',
+    end: 12500,
     icon: Eye,
-    format: (n) => n.toLocaleString(),
+    format: (n) => `${n.toLocaleString()}+`,
   },
   {
-    label: 'Workshops attendees',
-    end: 8560251,
+    label: 'Experiments Conducted',
+    end: 3200,
     icon: Users,
-    format: (n) => n.toLocaleString(),
+    format: (n) => `${n.toLocaleString()}+`,
   },
   {
-    label: 'Lab experiences',
-    end: 1531,
+    label: 'Research Reviews Submitted',
+    end: 850,
     icon: FlaskConical,
-    format: (n) => n.toLocaleString(),
+    format: (n) => `${n.toLocaleString()}+`,
   },
 ];
 
@@ -51,8 +51,8 @@ const StatisticsSection = () => (
         viewport={{ once: true }}
         className="text-center"
       >
-        <p className="text-sm font-semibold uppercase tracking-wider text-emerald-300/90">Impact at a glance</p>
-        <h2 className="mt-2 text-2xl font-bold sm:text-3xl">Nationwide reach</h2>
+        <p className="text-sm font-semibold uppercase tracking-wider text-emerald-300/90">HEALTHLAB OVERVIEW</p>
+        <h2 className="mt-2 text-2xl font-bold sm:text-3xl">Our Platform Impact</h2>
       </motion.div>
 
       <div className="mt-10 grid gap-6 sm:grid-cols-3">

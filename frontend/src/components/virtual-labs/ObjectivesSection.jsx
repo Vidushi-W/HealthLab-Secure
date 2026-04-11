@@ -4,27 +4,27 @@ import { BookOpen, Globe2, Layers, Sparkles } from 'lucide-react';
 
 const objectives = [
   {
-    title: 'Accessible anywhere',
+    title: 'Open Participation',
     description:
-      'Provide remote access to quality lab simulations so learners are not limited by location, schedule, or facility constraints.',
+      'Anyone can join ongoing health experiments, contribute real-world data, and actively take part in research that aims to improve everyday well-being.',
     icon: Globe2,
   },
   {
-    title: 'Practice & mastery',
+    title: 'Real-World Insights',
     description:
-      'Let students rehearse procedures, repeat experiments, and strengthen understanding through self-paced digital practice.',
+      'Participants log their daily health data, helping researchers analyze patterns and generate meaningful insights based on real human experiences.',
     icon: BookOpen,
   },
   {
-    title: 'Structured learning',
+    title: 'Research & Funding',
     description:
-      'Combine experiments with guidance, assessments, and resources that mirror real lab workflows and learning outcomes.',
+      'Researchers can create experiments, publish findings, and request funding from the community to support impactful health studies.',
     icon: Layers,
   },
   {
-    title: 'Innovation in teaching',
+    title: 'Community Collaboration',
     description:
-      'Support instructors with scalable tools that complement classroom teaching and outreach programmes nationwide.',
+      'Users can engage through discussions, share experiences, and connect with others via posts and comments, building a supportive health-focused community.',
     icon: Sparkles,
   },
 ];
@@ -48,12 +48,12 @@ const ObjectivesSection = () => (
         transition={{ duration: 0.5 }}
         className="mx-auto max-w-2xl text-center"
       >
-        <p className="text-sm font-semibold uppercase tracking-wider text-blue-800">Objectives</p>
+        <p className="text-sm font-semibold uppercase tracking-wider text-blue-800">OUR MISSION</p>
         <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-          Why Virtual Labs matter
+          Why HealthLab Matters
         </h2>
         <p className="mt-4 text-slate-600">
-          Built for national-scale education: equitable access, rigorous practice, and modern pedagogy.
+          Empowering people and researchers to collaborate on real-world health experiments through participation, data sharing, and community-driven insights.
         </p>
       </motion.div>
 
