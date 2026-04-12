@@ -1,6 +1,5 @@
 # HealthLab
 
-Classification: Public-SLIIT
 
 HealthLab is a full-stack MERN system for digital health research management. It brings together researcher onboarding, experiment creation, participant eligibility and enrollment, daily activity logging, community collaboration, funding workflows, moderation, analytics, and AI-assisted research support in a single platform.
 
@@ -72,7 +71,6 @@ HealthLab/
 |   |   |-- integration/
 |   |   |-- performance/
 |   |   `-- unit/
-|   |-- tests/
 |   |-- README.md
 |   `-- package.json
 |-- frontend/
@@ -888,10 +886,10 @@ HealthLab frontend is deployed as a Vite application on Vercel.
 
 The current repository git history shows the following contributors:
 
-- Vidushi Weerasinghe
-- Geethma Dias
-- Sinali Thathnara
-- Sithmisasanka
+- J.V.S. Weerasinghe
+- H.G.S. Dias
+- M.A.T.S Meewalarachchi
+- W.D.S.G.S.Sasanka
 
 ---
 
