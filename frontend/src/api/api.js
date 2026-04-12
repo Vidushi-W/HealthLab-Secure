@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+export const BASE_URL = 'https://healthlab-backend-0lo8.onrender.com/api';
+
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
