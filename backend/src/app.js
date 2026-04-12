@@ -26,7 +26,21 @@ const communityRoutes = require("./modules/community/communityRoutes");
 
 const app = express();
 
-app.use(cors());
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://health-lab-black.vercel.app",
+];
+
+app.use(cors({
+  origin(origin, callback) {
+    // Allow server-to-server calls and local tools that don't send an Origin header.
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
