@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Link, useLocation } from 'react-router-dom';
+import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import ExperimentShowcase from './components/ExperimentShowcase';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -71,6 +71,7 @@ const AppHeader = ({ user, handleLogout }) => {
 function App() {
   const [user, setUser] = useState(getCurrentUser());
   const location = useLocation();
+  const navigate = useNavigate();
   const isHomePage = location.pathname === '/';
 
   useEffect(() => {
@@ -79,7 +80,7 @@ function App() {
 
   const handleLogout = () => {
     logoutUser();
-    window.location.href = '/login';
+    navigate('/login');
   };
 
   const researcherSoftPageBg =
