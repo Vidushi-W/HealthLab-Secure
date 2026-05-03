@@ -1,9 +1,77 @@
 const { GoogleGenAI } = require("@google/genai");
 const benefitService = require("./benefitService");
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
+function extractResponseText(response) {
+  if (typeof response?.text === "string" && response.text.trim()) {
+    return response.text.trim();
+  }
+
+  const parts = response?.candidates?.[0]?.content?.parts || [];
+  const text = parts
+    .map((part) => (typeof part?.text === "string" ? part.text : ""))
+    .join("")
+    .trim();
+
+  return text || "";
+}
+
+function buildSummaryFailure(errorMessage, statusCode = 503, errorCode = "GEMINI_UNAVAILABLE") {
+  return {
+    ok: false,
+    text: "",
+    statusCode,
+    errorCode,
+    errorMessage,
+  };
+}
+
+async function generateSummaryResult(prompt) {
+  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === "your_api_key_here") {
+    console.warn("Gemini API: Missing apiKey.");
+    return buildSummaryFailure(
+      "Gemini API key is missing. Set GEMINI_API_KEY in backend/.env and restart the backend.",
+      503,
+      "GEMINI_MISSING_KEY"
+    );
+  }
+
+  try {
+    const ai = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY,
+    });
+    const response = await ai.models.generateContent({
+      model: process.env.GEMINI_MODEL || "gemini-2.5-flash-lite",
+      contents: prompt,
+    });
+
+    const text = extractResponseText(response);
+    if (!text) {
+      return buildSummaryFailure(
+        "Gemini returned an empty response for the summary request.",
+        502,
+        "GEMINI_EMPTY_RESPONSE"
+      );
+    }
+
+    return {
+      ok: true,
+      text,
+      statusCode: 200,
+      errorCode: null,
+      errorMessage: null,
+    };
+  } catch (err) {
+    const details =
+      err?.message ||
+      err?.error?.message ||
+      err?.statusText ||
+      "Unknown Gemini API error";
+    const statusCode = Number(err?.status) || Number(err?.code) || 503;
+
+    console.error("Gemini API Error:", details);
+    return buildSummaryFailure(`Gemini API request failed: ${details}`, statusCode);
+  }
+}
 
 /**
  * Generate a text summary using the Gemini API.
@@ -11,20 +79,8 @@ const ai = new GoogleGenAI({
  * @returns {Promise<string>} - The generated text response.
  */
 async function generateSummary(prompt) {
-  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === "your_api_key_here") {
-    console.warn("⚠️ Gemini API: Missing apiKey. Falling back to simulated clinical data.");
-    return "FALLBACK_MODE";
-  }
-
-  try {
-    const model = ai.getGenerativeModel({ model: process.env.GEMINI_MODEL || "gemini-1.5-flash" });
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
-  } catch (err) {
-    console.error("❌ Gemini API Error:", err.message);
-    return "FALLBACK_MODE";
-  }
+  const result = await generateSummaryResult(prompt);
+  return result.ok ? result.text : "FALLBACK_MODE";
 }
 
 /**
@@ -59,27 +115,27 @@ async function verifyClinicalEligibility(userConditions, excludedConditions) {
   const result = await generateSummary(prompt);
 
   if (result === "FALLBACK_MODE") {
-    // Basic Rule-Based Semantic Fallback for Demo
-    const conflict = userConditions.find(u =>
-      excludedConditions.some(e => u.toLowerCase().includes(e.toLowerCase()) || e.toLowerCase().includes(u.toLowerCase()))
+    // Basic rule-based semantic fallback for demo mode.
+    const conflict = userConditions.find((u) =>
+      excludedConditions.some((e) => u.toLowerCase().includes(e.toLowerCase()) || e.toLowerCase().includes(u.toLowerCase()))
     );
 
     if (conflict) {
       return {
         isConflicted: true,
         conflictReason: "Clinical Conflict Detected (Simulated)",
-        clinicalExplanation: `Our semantic engine detected a potential overlap between your condition '${conflict}' and the study exclusions. Even in simulated mode, this constitutes a protocol risk.`
+        clinicalExplanation: `Our semantic engine detected a potential overlap between your condition '${conflict}' and the study exclusions. Even in simulated mode, this constitutes a protocol risk.`,
       };
     }
     return { isConflicted: false };
   }
 
   try {
-    // Attempt to extract JSON from the response
+    // Attempt to extract JSON from the response.
     const jsonMatch = result.match(/\{[\s\S]*\}/);
     return jsonMatch ? JSON.parse(jsonMatch[0]) : { isConflicted: false };
   } catch (e) {
-    console.error("❌ Gemini Medical Parsing Error:", e);
+    console.error("Gemini Medical Parsing Error:", e);
     return { isConflicted: false };
   }
 }
@@ -89,7 +145,7 @@ async function verifyClinicalEligibility(userConditions, excludedConditions) {
  * This highlights "Participant Lifecycle" engagement and "Technical Depth".
  */
 async function generatePersonalizedBenefitAnalysis(user, experiment) {
-  // 1. Generate rule-based insights first (these are deterministic and high-quality)
+  // Generate rule-based insights first because they are deterministic and useful as fallback.
   const ruleBasedInsights = benefitService.generateInsights(user, experiment);
 
   const profile = {
@@ -100,7 +156,7 @@ async function generatePersonalizedBenefitAnalysis(user, experiment) {
     sleepPatterns: user.sleepPatterns || "Not provided",
     smokingStatus: user.smokingStatus || "Not provided",
     activityLevel: user.activityLevel || "Not provided",
-    medicalHistory: (user.medicalConditions || []).join(", ")
+    medicalHistory: (user.medicalConditions || []).join(", "),
   };
 
   const prompt = `
@@ -121,7 +177,7 @@ async function generatePersonalizedBenefitAnalysis(user, experiment) {
     - Key Focus Tags: [${(experiment.tags || []).join(", ")}]
 
     Deterministic Clinical Insights:
-    ${ruleBasedInsights.map(i => `- ${i}`).join("\n")}
+    ${ruleBasedInsights.map((i) => `- ${i}`).join("\n")}
     
     INSTRUCTIONS:
     Build upon the Deterministic Clinical Insights above. 
@@ -130,13 +186,12 @@ async function generatePersonalizedBenefitAnalysis(user, experiment) {
     Maintain a professional, medical-grade tone.
   `;
 
-  console.log(`🧠 [Insight Engine] Generating narrative for ${user.email} (Study: "${experiment.title}")`);
+  console.log(`[Insight Engine] Generating narrative for ${user.email} (Study: "${experiment.title}")`);
   const result = await generateSummary(prompt);
 
-  // 2. High-Quality Rule-Based Fallback (No AI)
+  // High-quality non-AI fallback.
   if (result === "FALLBACK_MODE") {
-    console.log("⚠️ [Insight Engine] Missing API Key. Returning deterministic rule-based insights.");
-    // Join the insights into a professional paragraph for the UI
+    console.log("[Insight Engine] AI unavailable. Returning deterministic rule-based insights.");
     return ruleBasedInsights.join(" ");
   }
 
@@ -145,8 +200,7 @@ async function generatePersonalizedBenefitAnalysis(user, experiment) {
 
 module.exports = {
   generateSummary,
+  generateSummaryResult,
   verifyClinicalEligibility,
   generatePersonalizedBenefitAnalysis,
 };
-
-

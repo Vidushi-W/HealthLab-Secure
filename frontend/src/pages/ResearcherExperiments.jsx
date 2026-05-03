@@ -5,6 +5,20 @@ import researcherHeroBg from '../assets/images/Researcher Background_One.png';
 
 const STATUS_OPTIONS = ['draft', 'published', 'closed'];
 
+function sanitizeAiSummary(value) {
+    if (typeof value !== 'string') return '';
+    const trimmed = value.trim();
+    return trimmed === 'FALLBACK_MODE' ? '' : trimmed;
+}
+
+function normalizeExperiment(exp) {
+    if (!exp || typeof exp !== 'object') return exp;
+    return {
+        ...exp,
+        aiSummary: sanitizeAiSummary(exp.aiSummary),
+    };
+}
+
 // Auto-generate a safe key from a label
 function generateKey(label) {
     return label
@@ -69,7 +83,11 @@ const ResearcherExperiments = () => {
             setLoading(true);
             setError('');
             const { data } = await api.get('/experiments');
-            const mine = Array.isArray(data) ? data.filter((e) => String(e.ownerId) === String(userId)) : [];
+            const mine = Array.isArray(data)
+                ? data
+                    .map(normalizeExperiment)
+                    .filter((e) => String(e.ownerId) === String(userId))
+                : [];
             setExperiments(mine);
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to load experiments.');
@@ -108,22 +126,23 @@ const ResearcherExperiments = () => {
     };
 
     const openEdit = (exp) => {
+        const normalizedExp = normalizeExperiment(exp);
         setEditingId(exp._id);
         setViewingId(null);
         setForm({
-            title: exp.title || '',
-            description: exp.description || '',
-            status: exp.status || 'draft',
-            participantLimit: exp.participantLimit ?? 0,
-            startDate: exp.startDate ? exp.startDate.slice(0, 10) : '',
-            endDate: exp.endDate ? exp.endDate.slice(0, 10) : '',
-            applicationDeadline: exp.applicationDeadline ? exp.applicationDeadline.slice(0, 10) : '',
-            conflictTagsInput: Array.isArray(exp.conflictTags) ? exp.conflictTags.join(', ') : '',
-            aiSummary: exp.aiSummary || '',
-            aiSummaryUpdatedAt: exp.aiSummaryUpdatedAt || null,
+            title: normalizedExp.title || '',
+            description: normalizedExp.description || '',
+            status: normalizedExp.status || 'draft',
+            participantLimit: normalizedExp.participantLimit ?? 0,
+            startDate: normalizedExp.startDate ? normalizedExp.startDate.slice(0, 10) : '',
+            endDate: normalizedExp.endDate ? normalizedExp.endDate.slice(0, 10) : '',
+            applicationDeadline: normalizedExp.applicationDeadline ? normalizedExp.applicationDeadline.slice(0, 10) : '',
+            conflictTagsInput: Array.isArray(normalizedExp.conflictTags) ? normalizedExp.conflictTags.join(', ') : '',
+            aiSummary: normalizedExp.aiSummary || '',
+            aiSummaryUpdatedAt: normalizedExp.aiSummaryUpdatedAt || null,
             logFieldDefinitions:
-                Array.isArray(exp.logFieldDefinitions) && exp.logFieldDefinitions.length > 0
-                    ? exp.logFieldDefinitions.map((f) => ({
+                Array.isArray(normalizedExp.logFieldDefinitions) && normalizedExp.logFieldDefinitions.length > 0
+                    ? normalizedExp.logFieldDefinitions.map((f) => ({
                         label: f.label || '',
                         key: f.key || '',
                         type: f.type || 'text',
@@ -146,22 +165,23 @@ const ResearcherExperiments = () => {
     };
 
     const openView = (exp) => {
+        const normalizedExp = normalizeExperiment(exp);
         setViewingId(exp._id);
         setEditingId(null);
         setForm({
-            title: exp.title || '',
-            description: exp.description || '',
-            status: exp.status || 'draft',
-            participantLimit: exp.participantLimit ?? 0,
-            startDate: exp.startDate ? exp.startDate.slice(0, 10) : '',
-            endDate: exp.endDate ? exp.endDate.slice(0, 10) : '',
-            applicationDeadline: exp.applicationDeadline ? exp.applicationDeadline.slice(0, 10) : '',
-            conflictTagsInput: Array.isArray(exp.conflictTags) ? exp.conflictTags.join(', ') : '',
-            aiSummary: exp.aiSummary || '',
-            aiSummaryUpdatedAt: exp.aiSummaryUpdatedAt || null,
+            title: normalizedExp.title || '',
+            description: normalizedExp.description || '',
+            status: normalizedExp.status || 'draft',
+            participantLimit: normalizedExp.participantLimit ?? 0,
+            startDate: normalizedExp.startDate ? normalizedExp.startDate.slice(0, 10) : '',
+            endDate: normalizedExp.endDate ? normalizedExp.endDate.slice(0, 10) : '',
+            applicationDeadline: normalizedExp.applicationDeadline ? normalizedExp.applicationDeadline.slice(0, 10) : '',
+            conflictTagsInput: Array.isArray(normalizedExp.conflictTags) ? normalizedExp.conflictTags.join(', ') : '',
+            aiSummary: normalizedExp.aiSummary || '',
+            aiSummaryUpdatedAt: normalizedExp.aiSummaryUpdatedAt || null,
             logFieldDefinitions:
-                Array.isArray(exp.logFieldDefinitions) && exp.logFieldDefinitions.length > 0
-                    ? exp.logFieldDefinitions.map((f) => ({
+                Array.isArray(normalizedExp.logFieldDefinitions) && normalizedExp.logFieldDefinitions.length > 0
+                    ? normalizedExp.logFieldDefinitions.map((f) => ({
                         label: f.label || '',
                         key: f.key || '',
                         type: f.type || 'text',
@@ -256,18 +276,22 @@ const ResearcherExperiments = () => {
             setGeneratingAiSummaryId(viewingId);
             setError('');
             const { data } = await api.post(`/experiments/${viewingId}/ai-summary`);
+            const aiSummary = sanitizeAiSummary(data.aiSummary);
             setForm((prev) => ({
                 ...prev,
-                aiSummary: data.aiSummary || '',
+                aiSummary,
                 aiSummaryUpdatedAt: data.aiSummaryUpdatedAt || null,
             }));
             setExperiments((prev) =>
                 prev.map((e) =>
                     e._id === viewingId
-                        ? { ...e, aiSummary: data.aiSummary, aiSummaryUpdatedAt: data.aiSummaryUpdatedAt }
+                        ? { ...e, aiSummary, aiSummaryUpdatedAt: data.aiSummaryUpdatedAt }
                         : e
                 )
             );
+            if (!aiSummary) {
+                setError('AI summary is unavailable right now. Please restart the backend and try again.');
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to generate AI summary.');
         } finally {
@@ -775,23 +799,24 @@ const ResearcherExperiments = () => {
                                             className="rounded-xl bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-300"
                                             onClick={() => {
                                                 const exp = experiments.find((e) => e._id === viewingId);
-                                                if (exp) {
+                                                const normalizedExp = normalizeExperiment(exp);
+                                                if (normalizedExp) {
                                                     setViewingId(null);
-                                                    setEditingId(exp._id);
+                                                    setEditingId(normalizedExp._id);
                                                     setForm({
-                                                        title: exp.title || '',
-                                                        description: exp.description || '',
-                                                        status: exp.status || 'draft',
-                                                        participantLimit: exp.participantLimit ?? 0,
-                                                        startDate: exp.startDate ? exp.startDate.slice(0, 10) : '',
-                                                        endDate: exp.endDate ? exp.endDate.slice(0, 10) : '',
-                                                        applicationDeadline: exp.applicationDeadline ? exp.applicationDeadline.slice(0, 10) : '',
-                                                        conflictTagsInput: Array.isArray(exp.conflictTags) ? exp.conflictTags.join(', ') : '',
-                                                        aiSummary: exp.aiSummary || '',
-                                                        aiSummaryUpdatedAt: exp.aiSummaryUpdatedAt || null,
+                                                        title: normalizedExp.title || '',
+                                                        description: normalizedExp.description || '',
+                                                        status: normalizedExp.status || 'draft',
+                                                        participantLimit: normalizedExp.participantLimit ?? 0,
+                                                        startDate: normalizedExp.startDate ? normalizedExp.startDate.slice(0, 10) : '',
+                                                        endDate: normalizedExp.endDate ? normalizedExp.endDate.slice(0, 10) : '',
+                                                        applicationDeadline: normalizedExp.applicationDeadline ? normalizedExp.applicationDeadline.slice(0, 10) : '',
+                                                        conflictTagsInput: Array.isArray(normalizedExp.conflictTags) ? normalizedExp.conflictTags.join(', ') : '',
+                                                        aiSummary: normalizedExp.aiSummary || '',
+                                                        aiSummaryUpdatedAt: normalizedExp.aiSummaryUpdatedAt || null,
                                                         logFieldDefinitions:
-                                                            Array.isArray(exp.logFieldDefinitions) && exp.logFieldDefinitions.length > 0
-                                                                ? exp.logFieldDefinitions.map((f) => ({
+                                                            Array.isArray(normalizedExp.logFieldDefinitions) && normalizedExp.logFieldDefinitions.length > 0
+                                                                ? normalizedExp.logFieldDefinitions.map((f) => ({
                                                                     label: f.label || '',
                                                                     key: f.key || '',
                                                                     type: f.type || 'text',

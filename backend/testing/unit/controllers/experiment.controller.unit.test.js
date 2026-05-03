@@ -17,6 +17,7 @@ jest.mock("../../../src/validators/experimentValidators", () => ({
 
 jest.mock("../../../src/services/gemini.service", () => ({
   generateSummary: jest.fn(),
+  generateSummaryResult: jest.fn(),
 }));
 
 jest.mock("../../../src/services/protocolService", () => ({
@@ -348,7 +349,10 @@ describe("experimentController unit", () => {
       Participation.find.mockReturnValue({
         select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue([]) }),
       });
-      geminiService.generateSummary.mockResolvedValue("# Overview\n## Patterns\nStrong results");
+      geminiService.generateSummaryResult.mockResolvedValue({
+        ok: true,
+        text: "# Overview\n## Patterns\nStrong results",
+      });
       const req = { params: { id: "exp-1" } };
       const res = createRes();
 
@@ -386,13 +390,50 @@ describe("experimentController unit", () => {
           ]),
         }),
       });
-      geminiService.generateSummary.mockResolvedValue("Plain summary");
+      geminiService.generateSummaryResult.mockResolvedValue({
+        ok: true,
+        text: "Plain summary",
+      });
       const req = { params: { id: "exp-1" } };
       const res = createRes();
 
       await generateExperimentAiSummary(req, res, next);
 
-      expect(geminiService.generateSummary.mock.calls[0][0]).toContain('"water": 3');
+      expect(geminiService.generateSummaryResult.mock.calls[0][0]).toContain('"water": 3');
+    });
+
+    test("returns the Gemini error details when summary generation fails", async () => {
+      const experiment = {
+        _id: { toString: () => "exp-1" },
+        title: "Hydration Study",
+        description: "Tracks hydration",
+        status: "draft",
+        participantLimit: 10,
+        currentParticipantCount: 1,
+        eligibilityCriteria: {},
+        logFieldDefinitions: [],
+        save: jest.fn().mockResolvedValue(undefined),
+      };
+      Experiment.findById.mockResolvedValue(experiment);
+      Participation.find.mockReturnValue({
+        select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue([]) }),
+      });
+      geminiService.generateSummaryResult.mockResolvedValue({
+        ok: false,
+        statusCode: 503,
+        errorCode: "GEMINI_UNAVAILABLE",
+        errorMessage: "Gemini API request failed: quota exceeded",
+      });
+      const req = { params: { id: "exp-1" } };
+      const res = createRes();
+
+      await generateExperimentAiSummary(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(503);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Gemini API request failed: quota exceeded",
+        code: "GEMINI_UNAVAILABLE",
+      });
     });
   });
 

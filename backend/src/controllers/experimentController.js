@@ -6,6 +6,9 @@ const {
 } = require("../validators/experimentValidators");
 const geminiService = require("../services/gemini.service");
 
+const MAX_PARTICIPANTS_IN_AI_SUMMARY = 25;
+const MAX_LOGS_PER_PARTICIPANT_IN_AI_SUMMARY = 20;
+
 // POST /experiments
 const createExperiment = async (req, res, next) => {
   try {
@@ -115,8 +118,11 @@ const generateExperimentAiSummary = async (req, res, next) => {
       .select("userId userAge status dateJoined logs")
       .lean();
 
-    const participantData = participations.map((p) => {
-      const logs = (p.logs || []).map((log) => {
+    const includedParticipations = participations.slice(0, MAX_PARTICIPANTS_IN_AI_SUMMARY);
+    const omittedParticipantCount = Math.max(participations.length - includedParticipations.length, 0);
+
+    const participantData = includedParticipations.map((p) => {
+      const logs = (p.logs || []).slice(0, MAX_LOGS_PER_PARTICIPANT_IN_AI_SUMMARY).map((log) => {
         const data = log.data;
         let plain = {};
         if (data instanceof Map) plain = Object.fromEntries(data);
@@ -133,7 +139,9 @@ const generateExperimentAiSummary = async (req, res, next) => {
         userAge: p.userAge,
         status: p.status,
         dateJoined: p.dateJoined,
-        logCount: logs.length,
+        logCount: Array.isArray(p.logs) ? p.logs.length : 0,
+        includedLogCount: logs.length,
+        omittedLogCount: Math.max((p.logs || []).length - logs.length, 0),
         logs,
       };
     });
@@ -153,6 +161,18 @@ const generateExperimentAiSummary = async (req, res, next) => {
  Experiment details
 ${JSON.stringify(experimentDetails, null, 2)}
 
+ Data window used for this summary
+${JSON.stringify(
+      {
+        totalJoinedParticipants: participations.length,
+        participantsIncludedInPrompt: participantData.length,
+        participantsOmittedFromPrompt: omittedParticipantCount,
+        maxLogsPerParticipantIncluded: MAX_LOGS_PER_PARTICIPANT_IN_AI_SUMMARY,
+      },
+      null,
+      2
+    )}
+
  Participant logged data
 The following are participants who joined this experiment and the log entries they submitted (daily or periodic data per the experiment's log field definitions).
 ${JSON.stringify(participantData, null, 2)}
@@ -168,7 +188,14 @@ Sections to include:
 
 Provide the summary now:`;
 
-    let aiSummary = await geminiService.generateSummary(prompt);
+    const summaryResult = await geminiService.generateSummaryResult(prompt);
+    if (!summaryResult.ok) {
+      return res.status(summaryResult.statusCode || 503).json({
+        message: summaryResult.errorMessage || "AI summary is temporarily unavailable. Please verify the Gemini API configuration and try again.",
+        code: summaryResult.errorCode || "GEMINI_UNAVAILABLE",
+      });
+    }
+    let aiSummary = summaryResult.text;
     // Strip markdown heading markers (#, ##, ###) from the start of lines
     if (typeof aiSummary === "string") {
       aiSummary = aiSummary.replace(/^#+\s*/gm, "").trim();
