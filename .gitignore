@@ -76,7 +76,9 @@ frontend/.vite/
 .parcel-cache/
 
 # Backend
+# Uploaded affiliation proofs, post images, and local XSS test files must not be committed.
 backend/uploads/
+xss-test.html
 backend/uploads/post-images/
 backend/uploads/affiliation-proofs/
 backend/db-structure.json
