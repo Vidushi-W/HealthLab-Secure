@@ -50,8 +50,21 @@ app.use((req, res, next) => {
   next();
 });
 
-// Static uploads
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+// V1 fix: files under /uploads must not be executed as web pages.
+// Only real images and PDFs are shown in the browser.
+// Any other file, including an already uploaded .html page, is forced to download.
+// nosniff stops the browser from guessing that the download is a web page and running it.
+const SAFE_UPLOAD_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp", ".pdf"]);
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads"), {
+  setHeaders(res, filePath) {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    const ext = path.extname(filePath).toLowerCase();
+    if (!SAFE_UPLOAD_EXTENSIONS.has(ext)) {
+      res.setHeader("Content-Type", "application/octet-stream");
+      res.setHeader("Content-Disposition", "attachment");
+    }
+  },
+}));
 
 // 📊 Health check
 app.get("/health", (req, res) => {
