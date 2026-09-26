@@ -289,12 +289,25 @@ const deleteDailyLog = async (req, res, next) => {
     next(err);
   }
 };
-
+//issue one - Researchers access other studies’ participant data → IDOR
+//issue one solution - The server now loads the requested experiment before retrieving participant information and checks whether the authenticated researcher owns it.
 // GET /participations/experiment/:experimentId/participants - Get participants list (Researcher only)
 const getParticipantsList = async (req, res, next) => {
   try {
     const { experimentId } = req.params;
     const { includeWithdrawn } = req.query;
+ // Role checks alone are insufficient: a researcher must only see
+    // participant information for an experiment they own.
+    const experiment = await Experiment.findById(experimentId).select("ownerId");
+    if (!experiment) {
+      return res.status(404).json({ message: "Experiment not found" });
+    }
+    if (
+      req.user.role !== "admin" &&
+      (!experiment.ownerId || experiment.ownerId.toString() !== req.user._id.toString())
+    ) {
+      return res.status(403).json({ message: "Not authorized to view these participants" });
+    }
 
     const query = { experimentId };
 

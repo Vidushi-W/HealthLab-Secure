@@ -113,6 +113,16 @@ const generateExperimentAiSummary = async (req, res, next) => {
     if (!experiment) {
       return res.status(404).json({ message: "Experiment not found" });
     }
+//issue one - Researchers access other studies’ participant data → IDOR
+//issue one solution - The server now loads the requested experiment before retrieving participant information and checks whether the authenticated researcher owns it.
+ // The summary includes participant ages and daily logs, so it needs the
+    // same ownership check as the participant-list endpoint.
+    if (
+      req.user.role !== "admin" &&
+      (!experiment.ownerId || experiment.ownerId.toString() !== req.user._id.toString())
+    ) {
+      return res.status(403).json({ message: "Not authorized to access this experiment's participant data" });
+    }
 
     const participations = await Participation.find({ experimentId, status: "joined" })
       .select("userId userAge status dateJoined logs")
