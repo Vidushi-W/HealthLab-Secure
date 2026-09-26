@@ -50,10 +50,15 @@ app.use((req, res, next) => {
   next();
 });
 
-// V1 fix: files under /uploads must not be executed as web pages.
-// Only real images and PDFs are shown in the browser.
-// Any other file, including an already uploaded .html page, is forced to download.
-// nosniff stops the browser from guessing that the download is a web page and running it.
+
+// V4 fix: researcher identity documents are not public.
+// A direct address such as /uploads/affiliation-proofs/<file> used to open the document
+// for anyone, with no login. This block rejects those requests.
+// An admin opens the same document only through /api/admin/affiliation-proofs/:filename.
+app.use("/uploads/affiliation-proofs", (req, res) => {
+  res.status(401).json({ message: "Researcher identity documents are not public." });
+});
+
 const SAFE_UPLOAD_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp", ".pdf"]);
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads"), {
   setHeaders(res, filePath) {
