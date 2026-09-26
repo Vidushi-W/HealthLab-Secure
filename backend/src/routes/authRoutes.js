@@ -18,12 +18,14 @@ const {
 
 const { uploadAffiliationProof } = require("../middleware/upload");
 const { protect } = require("../middleware/authMiddleware");
+const { loginRateLimiter, registrationRateLimiter } = require("../middleware/authRateLimit");
 
 /**
  * Participant registration (simple)
  */
 router.post(
   "/register-participant",
+  registrationRateLimiter,
   registerParticipantRules ? registerParticipantRules() : [],
   validate || ((req, res, next) => next()),
   authController.registerParticipant
@@ -34,6 +36,7 @@ router.post(
  */
 router.post(
   "/register",
+  registrationRateLimiter,
   uploadAffiliationProof,
   registerResearcherRules ? registerResearcherRules() : [],
   validate || ((req, res, next) => next()),
@@ -44,7 +47,7 @@ router.post(
 /**
  * Login (validated)
  */
-router.post("/login", loginRules ? loginRules() : [], validate || ((req, res, next) => next()), login || loginUser);
+router.post("/login", loginRateLimiter, loginRules ? loginRules() : [], validate || ((req, res, next) => next()), login || loginUser);
 
 /**
  * Profile management

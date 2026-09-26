@@ -1,3 +1,15 @@
+
+## Live Demo
+- https://health-lab-black.vercel.app/
+-
+
+## Key Highlights
+- 87+ REST API endpoints across 12 domains
+- Role-based system (Participant, Researcher, Admin)
+- AI-powered recommendations and summaries
+- Integrated funding and contribution workflows
+- Community and moderation system
+
 # HealthLab
 
 Classification: Public-SLIIT
