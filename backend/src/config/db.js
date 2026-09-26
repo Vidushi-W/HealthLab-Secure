@@ -3,6 +3,40 @@ const mongoose = require("mongoose");
 const DB_NAME = "af_project_db";
 let dbInstance = null;
 
+function maskMongoUri(uri) {
+  return uri.replace(/:([^:@]+)@/, ":****@");
+}
+
+function buildMongoUri(uri, dbName) {
+  const queryIdx = uri.indexOf("?");
+  const queryPart = queryIdx >= 0 ? uri.slice(queryIdx) : "";
+  let baseUri = queryIdx >= 0 ? uri.slice(0, queryIdx) : uri;
+
+  baseUri = baseUri.replace(/\/+$/, "");
+
+  const protocolEnd = baseUri.indexOf("://");
+  const firstSlashAfterProtocol = baseUri.indexOf("/", protocolEnd + 3);
+
+  if (firstSlashAfterProtocol === -1) {
+    return `${baseUri}/${dbName}${queryPart}`;
+  }
+
+  return `${baseUri.slice(0, firstSlashAfterProtocol + 1)}${dbName}${queryPart}`;
+}
+
+function getConnectionHint(error, uri) {
+  if (error.code === "ENOTFOUND" && error.syscall === "querySrv") {
+    return [
+      "MongoDB Atlas SRV DNS lookup failed.",
+      `The cluster host in MONGODB_URI could not be resolved: ${error.hostname}.`,
+      "Copy a fresh Drivers connection string from MongoDB Atlas and update backend/.env.",
+      `Current URI: ${maskMongoUri(uri)}`,
+    ].join(" ");
+  }
+
+  return error.message;
+}
+
 /**
  * Single MongoDB connection to af_project_db.
  * All models are registered on this connection.
@@ -13,36 +47,17 @@ const connectDB = async () => {
 
   if (!uri) throw new Error("MONGODB_URI or MONGO_URI missing");
 
-  console.log(`🔌 Mongoose: Input URI from env: ${uri.replace(/:([^:@]+)@/, ":****@")}`);
-  console.log(`⏳ MongoDB: Connecting to ${uri.replace(/:([^:@]+)@/, ":****@")}...`);
+  console.log(`Mongoose: Input URI from env: ${maskMongoUri(uri)}`);
+  console.log(`MongoDB: Connecting to ${maskMongoUri(uri)}...`);
 
   try {
-    // Build URI with dbName: replace existing path or append if missing
-    const queryIdx = uri.indexOf("?");
-    const queryPart = queryIdx >= 0 ? uri.slice(queryIdx) : "";
-    let baseUri = queryIdx >= 0 ? uri.slice(0, queryIdx) : uri;
-
-    // Remove any trailing slashes to avoid double slashes
-    baseUri = baseUri.replace(/\/+$/, "");
-
-    // Find where the credentials/host ends and the path starts
-    const protocolEnd = baseUri.indexOf("://");
-    const firstSlashAfterProtocol = baseUri.indexOf("/", protocolEnd + 3);
-
-    let finalUri;
-    if (firstSlashAfterProtocol === -1) {
-      // No path present, append it safely
-      finalUri = `${baseUri}/${dbName}${queryPart}`;
-    } else {
-      // Replace the existing path with the desired dbName
-      finalUri = `${baseUri.slice(0, firstSlashAfterProtocol + 1)}${dbName}${queryPart}`;
-    }
-    console.log(`🔌 Mongoose: Final connection string: ${finalUri.replace(/:([^:@]+)@/, ":****@")}`);
+    const finalUri = buildMongoUri(uri, dbName);
+    console.log(`Mongoose: Final connection string: ${maskMongoUri(finalUri)}`);
 
     const options = {
       serverSelectionTimeoutMS: 30000,
       socketTimeoutMS: 45000,
-      family: 4, // Force IPv4 if needed
+      family: 4,
     };
 
     let retries = 5;
@@ -52,17 +67,17 @@ const connectDB = async () => {
         break;
       } catch (err) {
         retries -= 1;
-        console.error(`❌ MongoDB Connection Attempt Failed. Retries left: ${retries}`);
+        console.error(`MongoDB connection attempt failed. Retries left: ${retries}`);
         if (retries === 0) throw err;
-        await new Promise(res => setTimeout(res, 3000));
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
     }
 
     dbInstance = mongoose.connection.useDb(dbName, { useCache: true });
-    console.log(`✅ MongoDB: Connected to ${dbName} (single database)`);
+    console.log(`MongoDB: Connected to ${dbName} (single database)`);
     return dbInstance;
   } catch (error) {
-    console.error(`❌ MongoDB Error: ${error.message}`);
+    console.error(`MongoDB Error: ${getConnectionHint(error, uri)}`);
     throw error;
   }
 };
