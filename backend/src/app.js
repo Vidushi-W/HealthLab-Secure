@@ -9,6 +9,7 @@ const researcherApprovedForPublish = require("./middleware/researcherApproved");
 const { extractUserFromHeader } = require("./middleware/rbacMiddleware");
 const { errorHandler, notFound } = require("./middleware/errorMiddleware");
 const dbReadyMiddleware = require("./middleware/dbReadyMiddleware");
+const frameGuard = require("./middleware/frameGuard");
 
 // Route imports
 const authRoutes = require("./routes/authRoutes");
@@ -25,6 +26,9 @@ const paymentRoutes = require("./routes/paymentRoutes");
 const communityRoutes = require("./modules/community/communityRoutes");
 
 const app = express();
+
+// Prevent clickjacking of backend-rendered/static responses and API pages.
+app.use(frameGuard);
 
 const allowedOrigins = [
   "http://localhost:5173",

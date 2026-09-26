@@ -6,5 +6,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     open: true,
+    headers: {
+      'Content-Security-Policy': "frame-ancestors 'none'",
+      'X-Frame-Options': 'DENY',
+    },
   },
 })
