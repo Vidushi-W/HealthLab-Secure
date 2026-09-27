@@ -3,11 +3,16 @@ const Experiment = require("../models/Experiment");
 const Participation = require("../models/Participation");
 const {
   pickAllowedCreateFields,
+  pickAllowedUpdateFields,
 } = require("../validators/experimentValidators");
 const geminiService = require("../services/gemini.service");
 
 const MAX_PARTICIPANTS_IN_AI_SUMMARY = 25;
 const MAX_LOGS_PER_PARTICIPANT_IN_AI_SUMMARY = 20;
+
+const canManageExperiment = (experiment, user) =>
+  user?.role?.toLowerCase() === "admin" ||
+  (experiment.ownerId && user?._id && experiment.ownerId.toString() === user._id.toString());
 
 // POST /experiments
 const createExperiment = async (req, res, next) => {
@@ -79,11 +84,17 @@ const getExperimentById = async (req, res, next) => {
 // PUT /experiments/:id
 const updateExperiment = async (req, res, next) => {
   try {
-    console.log("PUT body:", req.body);
+    const experiment = await Experiment.findById(req.params.id);
+    if (!experiment) return res.status(404).json({ message: "Experiment not found" });
+    if (!canManageExperiment(experiment, req.user)) {
+      return res.status(403).json({ message: "Not authorized to manage this experiment" });
+    }
+
+    const updates = pickAllowedUpdateFields(req.body);
 
     const updated = await Experiment.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updates,
       { returnDocument: "after", runValidators: true }
     );
 
@@ -97,6 +108,12 @@ const updateExperiment = async (req, res, next) => {
 // DELETE /experiments/:id
 const deleteExperiment = async (req, res, next) => {
   try {
+    const experiment = await Experiment.findById(req.params.id);
+    if (!experiment) return res.status(404).json({ message: "Experiment not found" });
+    if (!canManageExperiment(experiment, req.user)) {
+      return res.status(403).json({ message: "Not authorized to manage this experiment" });
+    }
+
     const deleted = await Experiment.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ message: "Experiment not found" });
     return res.status(200).json({ message: "Experiment deleted" });

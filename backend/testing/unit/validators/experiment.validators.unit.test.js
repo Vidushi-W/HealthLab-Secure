@@ -2,6 +2,7 @@ const { validationResult } = require("express-validator");
 const {
   createExperimentRules,
   pickAllowedCreateFields,
+  pickAllowedUpdateFields,
 } = require("../../../src/validators/experimentValidators");
 
 const runValidation = async (body) => {
@@ -98,6 +99,19 @@ describe("experimentValidators unit", () => {
 
     test("returns an empty object when called with an empty payload", () => {
       expect(pickAllowedCreateFields({})).toEqual({});
+    });
+  });
+
+  describe("pickAllowedUpdateFields", () => {
+    test("keeps editable properties and drops ownership, counters, and lifecycle metadata", () => {
+      expect(pickAllowedUpdateFields({
+        title: "Updated study",
+        ownerId: "attacker-controlled-owner",
+        currentParticipantCount: 0,
+        publishedAt: null,
+        aiSummary: "forged summary",
+        createdAt: "2020-01-01",
+      })).toEqual({ title: "Updated study" });
     });
   });
 });

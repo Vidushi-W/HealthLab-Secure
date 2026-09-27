@@ -13,6 +13,7 @@ jest.mock("../../../src/models/Participation", () => ({
 
 jest.mock("../../../src/validators/experimentValidators", () => ({
   pickAllowedCreateFields: jest.fn((body) => body),
+  pickAllowedUpdateFields: jest.fn((body) => Object.fromEntries(Object.entries(body).filter(([key]) => ["title", "description", "status", "eligibilityRules", "eligibilityCriteria", "participantLimit", "tags", "conflictTags", "associatedExercises", "logFieldDefinitions", "startDate", "endDate", "applicationDeadline"].includes(key)))),
 }));
 
 jest.mock("../../../src/services/gemini.service", () => ({
@@ -26,7 +27,7 @@ jest.mock("../../../src/services/protocolService", () => ({
 
 const Experiment = require("../../../src/models/Experiment");
 const Participation = require("../../../src/models/Participation");
-const { pickAllowedCreateFields } = require("../../../src/validators/experimentValidators");
+const { pickAllowedCreateFields, pickAllowedUpdateFields } = require("../../../src/validators/experimentValidators");
 const geminiService = require("../../../src/services/gemini.service");
 const protocolService = require("../../../src/services/protocolService");
 const {
@@ -235,8 +236,9 @@ describe("experimentController unit", () => {
   describe("updateExperiment", () => {
     test("updates an experiment successfully", async () => {
       const updated = { _id: "exp-1", title: "Updated Study" };
+      Experiment.findById.mockResolvedValue({ _id: "exp-1", ownerId: "researcher-1" });
       Experiment.findByIdAndUpdate.mockResolvedValue(updated);
-      const req = { params: { id: "exp-1" }, body: { title: "Updated Study" } };
+      const req = { params: { id: "exp-1" }, user: { _id: "researcher-1", role: "researcher" }, body: { title: "Updated Study" } };
       const res = createRes();
 
       await updateExperiment(req, res, next);
@@ -249,10 +251,34 @@ describe("experimentController unit", () => {
       expect(res.status).toHaveBeenCalledWith(200);
     });
 
+    test("denies another researcher and never applies submitted changes", async () => {
+      Experiment.findById.mockResolvedValue({ _id: "exp-1", ownerId: "owner-1" });
+      const req = { params: { id: "exp-1" }, user: { _id: "researcher-1", role: "researcher" }, body: { title: "Takeover" } };
+      const res = createRes();
+
+      await updateExperiment(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(Experiment.findByIdAndUpdate).not.toHaveBeenCalled();
+    });
+
+    test("filters system-managed fields from update payloads", async () => {
+      Experiment.findById.mockResolvedValue({ _id: "exp-1", ownerId: "researcher-1" });
+      Experiment.findByIdAndUpdate.mockResolvedValue({ _id: "exp-1", title: "Updated" });
+      const req = { params: { id: "exp-1" }, user: { _id: "researcher-1", role: "researcher" }, body: { title: "Updated", ownerId: "researcher-1", currentParticipantCount: 0, publishedAt: null, aiSummary: "forged" } };
+      const res = createRes();
+
+      await updateExperiment(req, res, next);
+
+      expect(pickAllowedUpdateFields).toHaveBeenCalledWith(req.body);
+      expect(Experiment.findByIdAndUpdate).toHaveBeenCalledWith("exp-1", { title: "Updated" }, { returnDocument: "after", runValidators: true });
+    });
+
     test("supports partial updates", async () => {
       const updated = { _id: "exp-1", description: "Only description changed" };
+      Experiment.findById.mockResolvedValue({ _id: "exp-1", ownerId: "researcher-1" });
       Experiment.findByIdAndUpdate.mockResolvedValue(updated);
-      const req = { params: { id: "exp-1" }, body: { description: "Only description changed" } };
+      const req = { params: { id: "exp-1" }, user: { _id: "researcher-1", role: "researcher" }, body: { description: "Only description changed" } };
       const res = createRes();
 
       await updateExperiment(req, res, next);
@@ -265,8 +291,8 @@ describe("experimentController unit", () => {
     });
 
     test("returns 404 when updating a non-existing experiment", async () => {
-      Experiment.findByIdAndUpdate.mockResolvedValue(null);
-      const req = { params: { id: "missing" }, body: { title: "Updated" } };
+      Experiment.findById.mockResolvedValue(null);
+      const req = { params: { id: "missing" }, user: { _id: "researcher-1", role: "researcher" }, body: { title: "Updated" } };
       const res = createRes();
 
       await updateExperiment(req, res, next);
@@ -277,8 +303,9 @@ describe("experimentController unit", () => {
 
     test("forwards validator failures to next", async () => {
       const error = new Error("validation failed");
+      Experiment.findById.mockResolvedValue({ _id: "exp-1", ownerId: "researcher-1" });
       Experiment.findByIdAndUpdate.mockRejectedValue(error);
-      const req = { params: { id: "exp-1" }, body: { participantLimit: "invalid" } };
+      const req = { params: { id: "exp-1" }, user: { _id: "researcher-1", role: "researcher" }, body: { participantLimit: "invalid" } };
       const res = createRes();
 
       await updateExperiment(req, res, next);
@@ -289,8 +316,9 @@ describe("experimentController unit", () => {
 
   describe("deleteExperiment", () => {
     test("deletes an experiment successfully", async () => {
+      Experiment.findById.mockResolvedValue({ _id: "exp-1", ownerId: "researcher-1" });
       Experiment.findByIdAndDelete.mockResolvedValue({ _id: "exp-1" });
-      const req = { params: { id: "exp-1" } };
+      const req = { params: { id: "exp-1" }, user: { _id: "researcher-1", role: "researcher" } };
       const res = createRes();
 
       await deleteExperiment(req, res, next);
@@ -299,9 +327,20 @@ describe("experimentController unit", () => {
       expect(res.json).toHaveBeenCalledWith({ message: "Experiment deleted" });
     });
 
+    test("denies another researcher from deleting an experiment", async () => {
+      Experiment.findById.mockResolvedValue({ _id: "exp-1", ownerId: "owner-1" });
+      const req = { params: { id: "exp-1" }, user: { _id: "researcher-1", role: "researcher" } };
+      const res = createRes();
+
+      await deleteExperiment(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(Experiment.findByIdAndDelete).not.toHaveBeenCalled();
+    });
+
     test("returns 404 when deleting a non-existing experiment", async () => {
-      Experiment.findByIdAndDelete.mockResolvedValue(null);
-      const req = { params: { id: "missing" } };
+      Experiment.findById.mockResolvedValue(null);
+      const req = { params: { id: "missing" }, user: { _id: "researcher-1", role: "researcher" } };
       const res = createRes();
 
       await deleteExperiment(req, res, next);
@@ -312,8 +351,9 @@ describe("experimentController unit", () => {
 
     test("forwards delete failures to next", async () => {
       const error = new Error("delete failed");
+      Experiment.findById.mockResolvedValue({ _id: "bad-id", ownerId: "researcher-1" });
       Experiment.findByIdAndDelete.mockRejectedValue(error);
-      const req = { params: { id: "bad-id" } };
+      const req = { params: { id: "bad-id" }, user: { _id: "researcher-1", role: "researcher" } };
       const res = createRes();
 
       await deleteExperiment(req, res, next);

@@ -14,6 +14,24 @@ const ALLOWED_CREATE_FIELDS = [
   "applicationDeadline",
 ];
 
+// Only researcher-editable fields may be changed after creation. Ownership,
+// counters, lifecycle timestamps, and generated summaries remain server-managed.
+const ALLOWED_UPDATE_FIELDS = [
+  "title",
+  "description",
+  "status",
+  "eligibilityRules",
+  "eligibilityCriteria",
+  "participantLimit",
+  "tags",
+  "conflictTags",
+  "associatedExercises",
+  "logFieldDefinitions",
+  "startDate",
+  "endDate",
+  "applicationDeadline",
+];
+
 // System-managed fields that must NEVER be accepted from the frontend
 const SYSTEM_FIELDS = [
   "_id",
@@ -187,9 +205,20 @@ const pickAllowedCreateFields = (payload = {}) => {
   return sanitized;
 };
 
+const pickAllowedUpdateFields = (payload = {}) => {
+  const sanitized = {};
+  for (const key of ALLOWED_UPDATE_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(payload, key)) {
+      sanitized[key] = payload[key];
+    }
+  }
+  return sanitized;
+};
+
 module.exports = {
   createExperimentRules,
   validate,
   pickAllowedCreateFields,
+  pickAllowedUpdateFields,
 };
 
