@@ -84,6 +84,17 @@ test('optional authentication checks cookies and bans; roles use the database us
   user.banned = true;
   expect((await request(server).get('/optional').set('Cookie', cookie())).status).toBe(403);
 });
+test('an authenticated account without a role cannot use x-user-role to gain access', async () => {
+  const server = express();
+  server.use(cookieParser());
+  server.get('/admin', protect, authorize('admin'), (req,res) => res.sendStatus(200));
+  user.role = undefined;
+  const response = await request(server)
+    .get('/admin')
+    .set('Cookie', cookie())
+    .set('x-user-role', 'admin');
+  expect(response.status).toBe(403);
+});
 test('CSRF header is mandatory, including login/logout and legacy paths', async () => {
   for (const path of ['/api/auth/login', '/api/auth/logout', '/auth/logout']) {
     expect((await request(app).post(path)).status).toBe(403);
