@@ -113,8 +113,14 @@ function App() {
     </div>
   );
 
-  if (sessionError) return <p>Unable to check your session. <button onClick={() => window.location.reload()}>Retry</button></p>;
-  if (!sessionReady) return <p>Loading session...</p>;
+  if (sessionError) {
+    return (
+      <p className="min-h-screen bg-[#e6f2ff] p-6 text-slate-900">
+        Unable to check your session. <button type="button" onClick={() => window.location.reload()}>Retry</button>
+      </p>
+    );
+  }
+  if (!sessionReady) return <p className="min-h-screen bg-[#e6f2ff] p-6 text-slate-900">Loading session...</p>;
   return (
     <Routes>
       <Route path="/login" element={<div className="min-h-screen bg-[#e6f2ff] text-slate-900 antialiased"><SiteNavbar /><Login /></div>} />
@@ -147,9 +153,22 @@ function App() {
       <Route path="/dashboard/:participationId" element={<Layout><StudyDashboardStyled /></Layout>} />
       <Route path="/researcher/experiments" element={<Layout><ResearcherExperiments /></Layout>} />
 
-      {user && (user.role || '').toLowerCase() === 'admin' && (
-        <Route path="/admin" element={<Layout><AdminDashboard /></Layout>} />
-      )}
+      <Route
+        path="/admin"
+        element={
+          <Layout>
+            {user && (user.role || '').toLowerCase() === 'admin' ? (
+              <AdminDashboard />
+            ) : (
+              <div className="mx-auto max-w-lg px-6 py-16 text-center">
+                <h1 className="text-2xl font-bold text-slate-900">Admin sign-in required</h1>
+                <p className="mt-2 text-slate-600">Sign in with an admin account to open the dashboard.</p>
+                <Link to="/login" className="mt-6 inline-block rounded-lg bg-blue-900 px-4 py-2 text-sm font-medium text-white">Go to login</Link>
+              </div>
+            )}
+          </Layout>
+        }
+      />
     </Routes>
   );
 }

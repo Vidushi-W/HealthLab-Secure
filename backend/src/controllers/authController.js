@@ -1,5 +1,4 @@
 const path = require("path");
-const { setAuthCookie } = require("../utils/authCookie");
 const User = require("../models/User");
 const Researcher = require("../models/Researcher");
 const bcrypt = require("bcryptjs");
@@ -7,6 +6,7 @@ const jwt = require("jsonwebtoken");
 const asyncHandler = require("../utils/asyncHandler");
 const { parseBool } = require("../validators/authValidators");
 const { JWT_SECRET, JWT_EXPIRES_IN } = require("../config/constants");
+const { setAuthCookie } = require("../utils/authCookie");
 const authService = require('../services/authService');
 const { isStrongPassword, STRONG_PASSWORD_MESSAGE } = require("../utils/passwordPolicy");
 
@@ -73,6 +73,7 @@ const registerParticipant = asyncHandler(async (req, res) => {
   );
 
   setAuthCookie(res, token);
+
   res.status(201).json({
     success: true,
     message: "Participant registered successfully",
@@ -149,7 +150,8 @@ const registerResearcher = asyncHandler(async (req, res) => {
     researcherData.publicationSiteOrLink = publicationSiteOrLink;
   }
   if (req.file && req.file.filename) {
-    researcherData.affiliationProof = path.posix.join("uploads", "affiliation-proofs", req.file.filename);
+    researcherData.affiliationProof = path.posix.join("uploads", "affiliation-proofs",
+       req.file.filename);
   }
 
   const researcher = await Researcher.create(researcherData);
@@ -173,9 +175,7 @@ const registerUser = async (req, res, next) => {
   try {
     const { name, email, password, role } = req.body;
     const user = await authService.registerUser(name, email, password, role);
-    const { token, ...profile } = user;
-    setAuthCookie(res, token);
-    res.status(201).json({ success: true, user: profile });
+    res.status(201).json(user);
   } catch (error) {
     next(error);
   }
@@ -183,7 +183,7 @@ const registerUser = async (req, res, next) => {
 
 /**
  * Login (unifying loginUser from fund_management)
- * Returns user details; the JWT is sent only in an HttpOnly cookie.
+ * Returns { user: { _id, name, email, role } } and sets the session cookie.
  */
 const loginUser = async (req, res, next) => {
   try {
@@ -196,7 +196,7 @@ const loginUser = async (req, res, next) => {
       role: result.role,
     };
     setAuthCookie(res, result.token);
-    res.status(200).json({ success: true, user });
+    res.status(200).json({ user });
   } catch (error) {
     res.status(401);
     next(error);
@@ -225,13 +225,6 @@ const login = asyncHandler(async (req, res) => {
     });
   }
 
-  if (user.banned === true) {
-    return res.status(403).json({
-      success: false,
-      message: "Account access is restricted",
-    });
-  }
-
   const token = jwt.sign(
     { id: user._id, role: user.role },
     JWT_SECRET,
@@ -251,6 +244,7 @@ const login = asyncHandler(async (req, res) => {
   }
 
   setAuthCookie(res, token);
+
   res.status(200).json({
     success: true,
     user: payload,
