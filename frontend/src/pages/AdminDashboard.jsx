@@ -1,3 +1,4 @@
+import { getCurrentUser } from '../api/auth';
 import React, { useState, useEffect } from 'react';
 import api from '../api/api';
 import {
@@ -103,7 +104,7 @@ const normalizeOverviewAnalytics = (raw) => {
 };
 
 // V4 fix: do not build a public /uploads address for an identity document.
-// Ask the admin API for the file. That request includes the logged-in admin token.
+// Ask the admin API for the file. That request includes the logged-in admin session.
 const openAffiliationProof = async (rawPath) => {
   const fileName = String(rawPath || "").replace(/\\/g, "/").split("/").filter(Boolean).pop();
   if (!fileName) return null;
@@ -152,7 +153,7 @@ const AdminDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [dateRange, setDateRange] = useState('30'); // '7', '30', 'all'
 
-  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const currentUser = (getCurrentUser() || {});
   const currentUserId = currentUser._id;
 
   useEffect(() => {
@@ -167,9 +168,9 @@ const AdminDashboard = () => {
     try {
       setAnalyticsLoading(true);
       const days = dateRange === 'all' ? 365 : parseInt(dateRange);
-      const token = localStorage.getItem('token');
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      console.log(`[fetchAnalytics] Starting fetch. Token: ${token ? 'YES' : 'NO'}, User: ${user.email}, Days: ${days}`);
+      const authenticated = getCurrentUser();
+      const user = (getCurrentUser() || {});
+      console.log(`[fetchAnalytics] Starting fetch. Authenticated: ${authenticated ? 'YES' : 'NO'}, User: ${user.email}, Days: ${days}`);
 
       const [analyticsResponse, usersResponse, experimentsResponse] = await Promise.all([
         api.get(`/admin/analytics?days=${days}`),

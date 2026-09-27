@@ -17,7 +17,7 @@ import OpenFundRequests from './pages/OpenFundRequests';
 import MyContributions from './pages/MyContributions';
 import ResearcherWallet from './pages/ResearcherWallet';
 import ResearcherWalletDetail from './pages/ResearcherWalletDetail';
-import { getCurrentUser, logoutUser } from './api/auth';
+import { getCurrentUser, logoutUser, restoreSession } from './api/auth';
 import { SiteNavbar } from './components/virtual-labs';
 
 const AppHeader = ({ user, handleLogout }) => {
@@ -70,6 +70,14 @@ const AppHeader = ({ user, handleLogout }) => {
 
 function App() {
   const [user, setUser] = useState(getCurrentUser());
+  const [sessionReady, setSessionReady] = useState(false);
+  const [sessionError, setSessionError] = useState(false);
+  useEffect(() => {
+    const syncUser = () => setUser(getCurrentUser());
+    window.addEventListener('auth-changed', syncUser);
+    restoreSession().then(() => setSessionReady(true)).catch(() => setSessionError(true));
+    return () => window.removeEventListener('auth-changed', syncUser);
+  }, []);
   const location = useLocation();
   const navigate = useNavigate();
   const isHomePage = location.pathname === '/';
@@ -78,9 +86,11 @@ function App() {
     setUser(getCurrentUser());
   }, [location]);
 
-  const handleLogout = () => {
-    logoutUser();
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      navigate('/login');
+    } catch { window.alert('Logout failed. Please try again.'); }
   };
 
   const researcherSoftPageBg =
@@ -103,6 +113,8 @@ function App() {
     </div>
   );
 
+  if (sessionError) return <p>Unable to check your session. <button onClick={() => window.location.reload()}>Retry</button></p>;
+  if (!sessionReady) return <p>Loading session...</p>;
   return (
     <Routes>
       <Route path="/login" element={<div className="min-h-screen bg-[#e6f2ff] text-slate-900 antialiased"><SiteNavbar /><Login /></div>} />

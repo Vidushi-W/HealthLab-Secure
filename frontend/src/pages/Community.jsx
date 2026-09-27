@@ -1,3 +1,4 @@
+import { getCurrentUser } from '../api/auth';
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -61,8 +62,8 @@ const Community = () => {
   const [pageWindowStart, setPageWindowStart] = useState(1);
   const suggestionHideTimerRef = useRef(null);
 
-  const token = localStorage.getItem('token');
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const authenticated = getCurrentUser();
+  const user = (getCurrentUser() || {});
   const userId = user._id;
   const [followedTopics, setFollowedTopics] = useState(() => {
     try {
@@ -75,7 +76,7 @@ const Community = () => {
   });
 
   useEffect(() => {
-    if (!token) {
+    if (!authenticated) {
       setError('auth');
       setLoading(false);
       return;
@@ -86,18 +87,18 @@ const Community = () => {
       setPageWindowStart(1);
       fetchFeed({ newPage: 1 });
     }
-  }, [token, sort, activeTab, activeTag, activeAuthor, followedTopics]);
+  }, [authenticated, sort, activeTab, activeTag, activeAuthor, followedTopics]);
 
   useEffect(() => {
-    if (token && activeTab === 'saved') {
+    if (authenticated && activeTab === 'saved') {
       setPage(1);
       setPageWindowStart(1);
       fetchSaved();
     }
-  }, [token, activeTab]);
+  }, [authenticated, activeTab]);
 
   useEffect(() => {
-    if (!token) {
+    if (!authenticated) {
       setSearchSuggestions([]);
       return;
     }

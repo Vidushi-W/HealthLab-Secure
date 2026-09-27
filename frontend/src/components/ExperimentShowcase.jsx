@@ -1,3 +1,4 @@
+import { getCurrentUser } from '../api/auth';
 import React, { useEffect, useState } from 'react';
 import { Activity, ArrowRight, FlaskConical, ShieldCheck, Sparkles, Users } from 'lucide-react';
 import api from '../api/api';
@@ -52,8 +53,8 @@ const ExperimentShowcase = () => {
     useEffect(() => {
         const fetchExperiments = async () => {
             try {
-                const token = localStorage.getItem('token');
-                const response = token ? await api.get('/recommendations') : await api.get('/experiments');
+                const authenticated = getCurrentUser();
+                const response = authenticated ? await api.get('/recommendations') : await api.get('/experiments');
                 const publishedExperiments = response.data.filter((exp) => exp.status !== 'draft');
                 setExperiments(publishedExperiments);
                 setLoading(false);
@@ -285,7 +286,7 @@ const ExperimentShowcase = () => {
                                                     </div>
                                                 </div>
 
-                                                {!localStorage.getItem('token') ? (
+                                                {!getCurrentUser() ? (
                                                     <button
                                                         className="inline-flex w-full items-center justify-center gap-2 rounded-[1.2rem] border border-blue-200 bg-white px-4 py-3 text-sm font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-50"
                                                         onClick={() => { window.location.href = '/login'; }}
