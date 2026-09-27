@@ -4,7 +4,15 @@ const { db } = require("../config/db");
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
-  password: { type: String, required: true, select: false },
+  // Local accounts require a password. Google accounts are identified by google_id instead.
+  password: {
+    type: String,
+    required: function passwordRequired() {
+      return !this.google_id;
+    },
+    select: false,
+  },
+  google_id: { type: String, unique: true, sparse: true },
   role: { type: String, default: "participant" },
   isApproved: { type: Boolean, default: false },
   banned: { type: Boolean, default: false },
@@ -25,6 +33,7 @@ const userSchema = new mongoose.Schema({
 
 // Add matchPassword method to schema
 userSchema.methods.matchPassword = async function (enteredPassword) {
+  if (!this.password) return false;
   const bcrypt = require("bcryptjs");
   return await bcrypt.compare(enteredPassword, this.password);
 };
@@ -32,7 +41,7 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 // Pre-save hook for password hashing and BMI calculation
 userSchema.pre("save", async function () {
   // Hash password if modified
-  if (this.isModified("password")) {
+  if (this.isModified("password") && this.password) {
     const bcrypt = require("bcryptjs");
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);

@@ -217,6 +217,13 @@ const login = asyncHandler(async (req, res) => {
     });
   }
 
+  if (!user.password) {
+    return res.status(401).json({
+      success: false,
+      message: "This account uses Google sign-in. Continue with Google instead.",
+    });
+  }
+
   const match = await bcrypt.compare(password, user.password);
   if (!match) {
     return res.status(401).json({

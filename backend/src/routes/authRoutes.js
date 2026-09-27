@@ -24,7 +24,8 @@ const {
 
 const { uploadAffiliationProof } = require("../middleware/upload");
 const { protect } = require("../middleware/authMiddleware");
-const { loginRateLimiter, registrationRateLimiter } = require("../middleware/authRateLimit");
+const { loginRateLimiter, registrationRateLimiter, googleAuthRateLimiter } = require("../middleware/authRateLimit");
+const { beginGoogleAuth, googleCallback } = require("../controllers/googleAuthController");
 
 /**
  * Participant registration (simple)
@@ -54,6 +55,9 @@ router.post(
  * Login (validated)
  */
 router.post("/login", loginRateLimiter, loginRules ? loginRules() : [], validate || ((req, res, next) => next()), login || loginUser);
+
+router.get("/google", googleAuthRateLimiter, beginGoogleAuth);
+router.get("/google/callback", googleAuthRateLimiter, googleCallback);
 
 /**
  * Profile management

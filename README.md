@@ -12,6 +12,19 @@
 
 # HealthLab
 
+## Project repositories
+
+- Original project: https://github.com/Vidushi-W/HealthLab.git
+- Modified project: https://github.com/Vidushi-W/HealthLab-Secure.git
+
+## Team members
+
+| Registration Number | Name 
+| --- | --- | --- |
+| IT23281400 | J.V.S.Weerasinghe 
+| IT23219366 | M.A.T.S.Meewalaarachchi 
+| IT23227972 | H.G.S.Dias 
+| IT23349810 | E.A.S.K.Dissanayake 
 
 HealthLab is a full-stack MERN system for digital health research management. It brings together researcher onboarding, experiment creation, participant eligibility and enrollment, daily activity logging, community collaboration, funding workflows, moderation, analytics, and AI-assisted research support in a single platform.
 

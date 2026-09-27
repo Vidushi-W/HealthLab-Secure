@@ -1,10 +1,21 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { loginUser, getCurrentUser } from '../api/auth';
+import GoogleAuthButton from '../components/GoogleAuthButton';
+
+const GOOGLE_ERRORS = {
+    not_configured: 'Google sign-in is not configured yet.',
+    denied: 'Google sign-in was cancelled or could not be verified.',
+    unverified: 'Google did not confirm this email address.',
+    restricted: 'Account access is restricted.',
+    conflict: 'This email is already linked to a different Google account.',
+    failed: 'Google sign-in failed. Please try again.',
+};
 
 const Login = () => {
     const location = useLocation();
     const successMessage = location.state?.message;
+    const googleError = GOOGLE_ERRORS[new URLSearchParams(location.search).get('google_error')] || '';
     const [formData, setFormData] = useState({
         email: '',
         password: ''
@@ -45,7 +56,7 @@ const Login = () => {
                 <p className="auth-subtitle">Sign in to continue your health journey</p>
 
                 {successMessage && <div className="text-center mb-4" style={{ color: 'var(--secondary-color)', fontWeight: 600 }}>{successMessage}</div>}
-                {error && <div className="text-error text-center mb-4">{error}</div>}
+                {(error || googleError) && <div className="text-error text-center mb-4">{error || googleError}</div>}
 
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
@@ -78,6 +89,8 @@ const Login = () => {
                         Sign In
                     </button>
                 </form>
+
+                <GoogleAuthButton />
 
                 <div className="text-center mt-4">
                     <p className="text-sm text-blue-950">
