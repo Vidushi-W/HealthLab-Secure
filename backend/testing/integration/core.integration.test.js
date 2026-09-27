@@ -18,7 +18,7 @@ const signToken = (user) =>
     { expiresIn: "1d" }
   );
 
-const authHeader = (user) => `Bearer ${signToken(user)}`;
+const authHeader = (user) => `healthlab_session=${signToken(user)}`;
 
 const participantPayload = (overrides = {}) => ({
   name: "Participant User",
@@ -212,7 +212,7 @@ describe("Core integration", () => {
     test("registers a participant with personal and physical details", async () => {
       const payload = participantPayload();
 
-      const res = await request(app).post("/api/auth/register-participant").send(payload);
+      const res = await request(app).post("/api/auth/register-participant").send(payload).set("X-Requested-With", "HealthLab");
       const user = await User.findOne({ email: payload.email }).select("+password");
 
       expect(res.status).toBe(201);
@@ -223,9 +223,9 @@ describe("Core integration", () => {
 
     test("rejects participant registration with a duplicate email", async () => {
       const payload = participantPayload();
-      await request(app).post("/api/auth/register-participant").send(payload);
+      await request(app).post("/api/auth/register-participant").send(payload).set("X-Requested-With", "HealthLab");
 
-      const res = await request(app).post("/api/auth/register-participant").send(payload);
+      const res = await request(app).post("/api/auth/register-participant").send(payload).set("X-Requested-With", "HealthLab");
 
       expect(res.status).toBe(409);
       expect(res.body.message).toContain("Email already registered");
@@ -233,7 +233,7 @@ describe("Core integration", () => {
 
     test("rejects participant registration with a weak password", async () => {
       const res = await request(app)
-        .post("/api/auth/register-participant")
+        .post("/api/auth/register-participant").set("X-Requested-With", "HealthLab")
         .send(participantPayload({ password: "weak" }));
 
       expect(res.status).toBe(400);
@@ -244,7 +244,7 @@ describe("Core integration", () => {
       const payload = participantPayload();
       delete payload.name;
 
-      const res = await request(app).post("/api/auth/register-participant").send(payload);
+      const res = await request(app).post("/api/auth/register-participant").send(payload).set("X-Requested-With", "HealthLab");
 
       expect(res.status).toBe(400);
       expect(res.body.message).toContain("Full name is required");
@@ -252,7 +252,7 @@ describe("Core integration", () => {
 
     test("rejects participant registration when email is invalid", async () => {
       const res = await request(app)
-        .post("/api/auth/register-participant")
+        .post("/api/auth/register-participant").set("X-Requested-With", "HealthLab")
         .send(participantPayload({ email: "not-an-email" }));
 
       expect(res.status).toBe(400);
@@ -261,24 +261,25 @@ describe("Core integration", () => {
 
     test("logs in a participant successfully", async () => {
       const payload = participantPayload();
-      await request(app).post("/api/auth/register-participant").send(payload);
+      await request(app).post("/api/auth/register-participant").send(payload).set("X-Requested-With", "HealthLab");
 
-      const res = await request(app).post("/api/auth/login").send({
+      const res = await request(app).post("/api/auth/login").set("X-Requested-With", "HealthLab").send({
         email: payload.email,
         password: payload.password,
       });
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.token).toBeTruthy();
+      expect(res.body.token).toBeUndefined();
+      expect(res.headers["set-cookie"][0]).toContain("HttpOnly");
       expect(res.body.user.role).toBe("participant");
     });
 
     test("rejects login with a wrong password", async () => {
       const payload = participantPayload();
-      await request(app).post("/api/auth/register-participant").send(payload);
+      await request(app).post("/api/auth/register-participant").send(payload).set("X-Requested-With", "HealthLab");
 
-      const res = await request(app).post("/api/auth/login").send({
+      const res = await request(app).post("/api/auth/login").set("X-Requested-With", "HealthLab").send({
         email: payload.email,
         password: "WrongPassword@2026",
       });
@@ -292,7 +293,7 @@ describe("Core integration", () => {
 
       const res = await request(app)
         .get("/api/auth/profile")
-        .set("Authorization", authHeader(user));
+        .set("Cookie", authHeader(user));
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -315,8 +316,8 @@ describe("Core integration", () => {
       });
 
       const res = await request(app)
-        .put("/api/auth/profile")
-        .set("Authorization", authHeader(user))
+        .put("/api/auth/profile").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send({ weight: 68, height: 170, activityLevel: "Very Active", gender: "Female" });
 
       expect(res.status).toBe(200);
@@ -327,7 +328,7 @@ describe("Core integration", () => {
     test("registers a researcher successfully with pending status", async () => {
       const payload = researcherPayload();
 
-      const res = await request(app).post("/api/auth/register").field(payload);
+      const res = await request(app).post("/api/auth/register").field(payload).set("X-Requested-With", "HealthLab");
       const researcher = await Researcher.findOne().populate("user");
 
       expect(res.status).toBe(201);
@@ -338,9 +339,9 @@ describe("Core integration", () => {
 
     test("rejects researcher registration when duplicate email is used", async () => {
       const payload = researcherPayload();
-      await request(app).post("/api/auth/register").field(payload);
+      await request(app).post("/api/auth/register").field(payload).set("X-Requested-With", "HealthLab");
 
-      const res = await request(app).post("/api/auth/register").field(payload);
+      const res = await request(app).post("/api/auth/register").field(payload).set("X-Requested-With", "HealthLab");
 
       expect(res.status).toBe(409);
       expect(res.body.message).toContain("Email already registered");
@@ -348,7 +349,7 @@ describe("Core integration", () => {
 
     test("rejects researcher registration when Other type explanation is missing", async () => {
       const res = await request(app)
-        .post("/api/auth/register")
+        .post("/api/auth/register").set("X-Requested-With", "HealthLab")
         .field(researcherPayload({ otherResearcherTypeExplanation: "" }));
 
       expect(res.status).toBe(400);
@@ -357,7 +358,7 @@ describe("Core integration", () => {
 
     test("rejects researcher registration when publication link is required but missing", async () => {
       const res = await request(app)
-        .post("/api/auth/register")
+        .post("/api/auth/register").set("X-Requested-With", "HealthLab")
         .field(
           researcherPayload({
             hasPublishedResearch: "true",
@@ -371,7 +372,7 @@ describe("Core integration", () => {
 
     test("rejects researcher registration when affiliation proof is required but missing", async () => {
       const res = await request(app)
-        .post("/api/auth/register")
+        .post("/api/auth/register").set("X-Requested-With", "HealthLab")
         .field(
           researcherPayload({
             researcherType: "Affiliated to Organization",
@@ -390,8 +391,8 @@ describe("Core integration", () => {
       const { researcher } = await createResearcherUser("pending");
 
       const res = await request(app)
-        .put(`/api/admin/researchers/${researcher._id}/approve`)
-        .set("Authorization", authHeader(admin))
+        .put(`/api/admin/researchers/${researcher._id}/approve`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(admin))
         .send({ reviewNotes: "Approved for experiment publishing" });
 
       expect(res.status).toBe(200);
@@ -403,8 +404,8 @@ describe("Core integration", () => {
       const { researcher } = await createResearcherUser("pending");
 
       const res = await request(app)
-        .put(`/api/admin/researchers/${researcher._id}/approve`)
-        .set("Authorization", authHeader(participant))
+        .put(`/api/admin/researchers/${researcher._id}/approve`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({ reviewNotes: "Attempted approval" });
 
       expect(res.status).toBe(403);
@@ -415,7 +416,7 @@ describe("Core integration", () => {
       const { researcher } = await createResearcherUser("pending");
 
       const res = await request(app)
-        .put(`/api/admin/researchers/${researcher._id}/approve`)
+        .put(`/api/admin/researchers/${researcher._id}/approve`).set("X-Requested-With", "HealthLab")
         .send({ reviewNotes: "Attempted approval" });
 
       expect(res.status).toBe(401);
@@ -425,8 +426,8 @@ describe("Core integration", () => {
       const { user } = await createResearcherUser("approved");
 
       const res = await request(app)
-        .post("/api/experiments")
-        .set("Authorization", authHeader(user))
+        .post("/api/experiments").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(experimentPayload());
 
       expect(res.status).toBe(201);
@@ -438,8 +439,8 @@ describe("Core integration", () => {
       const { user } = await createResearcherUser("pending");
 
       const res = await request(app)
-        .post("/api/experiments")
-        .set("Authorization", authHeader(user))
+        .post("/api/experiments").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(experimentPayload());
 
       expect(res.status).toBe(403);
@@ -450,8 +451,8 @@ describe("Core integration", () => {
       const participant = await createUser({ role: "participant" });
 
       const res = await request(app)
-        .post("/api/experiments")
-        .set("Authorization", authHeader(participant))
+        .post("/api/experiments").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send(experimentPayload());
 
       expect(res.status).toBe(403);
@@ -459,7 +460,7 @@ describe("Core integration", () => {
     });
 
     test("rejects experiment creation without authentication", async () => {
-      const res = await request(app).post("/api/experiments").send(experimentPayload());
+      const res = await request(app).post("/api/experiments").send(experimentPayload()).set("X-Requested-With", "HealthLab");
 
       expect(res.status).toBe(401);
     });
@@ -468,8 +469,8 @@ describe("Core integration", () => {
       const { user } = await createResearcherUser("approved");
 
       const res = await request(app)
-        .post("/api/experiments")
-        .set("Authorization", authHeader(user))
+        .post("/api/experiments").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(experimentPayload({ participantLimit: -1 }));
 
       expect(res.status).toBe(400);
@@ -482,8 +483,8 @@ describe("Core integration", () => {
       delete payload.logFieldDefinitions;
 
       const res = await request(app)
-        .post("/api/experiments")
-        .set("Authorization", authHeader(user))
+        .post("/api/experiments").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(payload);
 
       expect(res.status).toBe(400);
@@ -494,8 +495,8 @@ describe("Core integration", () => {
       const { user } = await createResearcherUser("approved");
 
       const res = await request(app)
-        .post("/api/experiments")
-        .set("Authorization", authHeader(user))
+        .post("/api/experiments").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(experimentPayload({ title: "A".repeat(201) }));
 
       expect(res.status).toBe(400);
@@ -548,8 +549,8 @@ describe("Core integration", () => {
       const experiment = await createExperimentDoc(user);
 
       const res = await request(app)
-        .put(`/api/experiments/${experiment._id}`)
-        .set("Authorization", authHeader(user))
+        .put(`/api/experiments/${experiment._id}`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send({ title: "Updated Experiment Title" });
 
       expect(res.status).toBe(200);
@@ -561,8 +562,8 @@ describe("Core integration", () => {
       const experiment = await createExperimentDoc(user, { description: "Initial description" });
 
       const res = await request(app)
-        .put(`/api/experiments/${experiment._id}`)
-        .set("Authorization", authHeader(user))
+        .put(`/api/experiments/${experiment._id}`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send({ description: "Edited description only" });
 
       expect(res.status).toBe(200);
@@ -573,8 +574,8 @@ describe("Core integration", () => {
       const { user } = await createResearcherUser("approved");
 
       const res = await request(app)
-        .put(`/api/experiments/${new mongoose.Types.ObjectId()}`)
-        .set("Authorization", authHeader(user))
+        .put(`/api/experiments/${new mongoose.Types.ObjectId()}`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send({ title: "Updated" });
 
       expect(res.status).toBe(404);
@@ -585,8 +586,8 @@ describe("Core integration", () => {
       const experiment = await createExperimentDoc(user);
 
       const res = await request(app)
-        .put(`/api/experiments/${experiment._id}`)
-        .set("Authorization", authHeader(user))
+        .put(`/api/experiments/${experiment._id}`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send({ participantLimit: -5 });
 
       expect(res.status).toBeGreaterThanOrEqual(400);
@@ -598,8 +599,8 @@ describe("Core integration", () => {
       const experiment = await createExperimentDoc(user);
 
       const res = await request(app)
-        .put(`/api/experiments/${experiment._id}`)
-        .set("Authorization", authHeader(admin))
+        .put(`/api/experiments/${experiment._id}`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(admin))
         .send({ title: "Admin Updated Title" });
 
       expect(res.status).toBe(200);
@@ -611,8 +612,8 @@ describe("Core integration", () => {
       const experiment = await createExperimentDoc(user);
 
       const res = await request(app)
-        .delete(`/api/experiments/${experiment._id}`)
-        .set("Authorization", authHeader(user));
+        .delete(`/api/experiments/${experiment._id}`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user));
 
       expect(res.status).toBe(200);
       expect(res.body.message).toContain("deleted");
@@ -622,8 +623,8 @@ describe("Core integration", () => {
       const { user } = await createResearcherUser("approved");
 
       const res = await request(app)
-        .delete(`/api/experiments/${new mongoose.Types.ObjectId()}`)
-        .set("Authorization", authHeader(user));
+        .delete(`/api/experiments/${new mongoose.Types.ObjectId()}`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user));
 
       expect(res.status).toBe(404);
     });
@@ -634,8 +635,8 @@ describe("Core integration", () => {
       const experiment = await createExperimentDoc(user);
 
       const res = await request(app)
-        .delete(`/api/experiments/${experiment._id}`)
-        .set("Authorization", authHeader(admin));
+        .delete(`/api/experiments/${experiment._id}`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(admin));
 
       expect(res.status).toBe(200);
     });
@@ -665,8 +666,8 @@ describe("Core integration", () => {
       const { user } = await createResearcherUser("approved");
 
       const res = await request(app)
-        .post("/api/reviews")
-        .set("Authorization", authHeader(user))
+        .post("/api/reviews").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(reviewPayload());
 
       expect(res.status).toBe(201);
@@ -678,8 +679,8 @@ describe("Core integration", () => {
       const { user } = await createResearcherUser("approved");
 
       const res = await request(app)
-        .post("/api/reviews")
-        .set("Authorization", authHeader(user))
+        .post("/api/reviews").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(reviewPayload({ status: "published" }));
 
       expect(res.status).toBe(201);
@@ -690,8 +691,8 @@ describe("Core integration", () => {
       const participant = await createUser({ role: "participant" });
 
       const res = await request(app)
-        .post("/api/reviews")
-        .set("Authorization", authHeader(participant))
+        .post("/api/reviews").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send(reviewPayload());
 
       expect(res.status).toBe(403);
@@ -699,7 +700,7 @@ describe("Core integration", () => {
     });
 
     test("rejects review creation without authentication", async () => {
-      const res = await request(app).post("/api/reviews").send(reviewPayload());
+      const res = await request(app).post("/api/reviews").send(reviewPayload()).set("X-Requested-With", "HealthLab");
 
       expect(res.status).toBe(401);
     });
@@ -710,8 +711,8 @@ describe("Core integration", () => {
       delete payload.title;
 
       const res = await request(app)
-        .post("/api/reviews")
-        .set("Authorization", authHeader(user))
+        .post("/api/reviews").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(payload);
 
       expect(res.status).toBe(400);
@@ -724,8 +725,8 @@ describe("Core integration", () => {
       delete payload.summary;
 
       const res = await request(app)
-        .post("/api/reviews")
-        .set("Authorization", authHeader(user))
+        .post("/api/reviews").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(payload);
 
       expect(res.status).toBe(400);
@@ -738,8 +739,8 @@ describe("Core integration", () => {
       delete payload.content;
 
       const res = await request(app)
-        .post("/api/reviews")
-        .set("Authorization", authHeader(user))
+        .post("/api/reviews").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(payload);
 
       expect(res.status).toBe(400);
@@ -750,8 +751,8 @@ describe("Core integration", () => {
       const { user } = await createResearcherUser("approved");
 
       const res = await request(app)
-        .post("/api/reviews")
-        .set("Authorization", authHeader(user))
+        .post("/api/reviews").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(reviewPayload({ status: "submitted" }));
 
       expect(res.status).toBe(400);
@@ -762,8 +763,8 @@ describe("Core integration", () => {
       const { user } = await createResearcherUser("approved");
 
       const res = await request(app)
-        .post("/api/reviews")
-        .set("Authorization", authHeader(user))
+        .post("/api/reviews").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(reviewPayload({ experiment: "bad-id" }));
 
       expect(res.status).toBe(400);
@@ -774,8 +775,8 @@ describe("Core integration", () => {
       const { user } = await createResearcherUser("approved");
 
       const res = await request(app)
-        .post("/api/reviews")
-        .set("Authorization", authHeader(user))
+        .post("/api/reviews").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(reviewPayload({ experiment: String(new mongoose.Types.ObjectId()) }));
 
       expect(res.status).toBe(404);
@@ -785,12 +786,12 @@ describe("Core integration", () => {
     test("lists only published reviews for anonymous viewers", async () => {
       const { user } = await createResearcherUser("approved");
       await request(app)
-        .post("/api/reviews")
-        .set("Authorization", authHeader(user))
+        .post("/api/reviews").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(reviewPayload({ title: "Published review", status: "published" }));
       await request(app)
-        .post("/api/reviews")
-        .set("Authorization", authHeader(user))
+        .post("/api/reviews").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(reviewPayload({ title: "Draft review", status: "draft" }));
 
       const res = await request(app).get("/api/reviews");
@@ -803,13 +804,13 @@ describe("Core integration", () => {
     test("lets an author see their own drafts in review listings", async () => {
       const { user } = await createResearcherUser("approved");
       await request(app)
-        .post("/api/reviews")
-        .set("Authorization", authHeader(user))
+        .post("/api/reviews").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(reviewPayload({ title: "Author draft", status: "draft" }));
 
       const res = await request(app)
         .get("/api/reviews")
-        .set("Authorization", authHeader(user));
+        .set("Cookie", authHeader(user));
 
       expect(res.status).toBe(200);
       expect(res.body.data.items).toHaveLength(1);
@@ -818,8 +819,8 @@ describe("Core integration", () => {
     test("returns a published review by id for anonymous viewers", async () => {
       const { user } = await createResearcherUser("approved");
       const created = await request(app)
-        .post("/api/reviews")
-        .set("Authorization", authHeader(user))
+        .post("/api/reviews").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(reviewPayload({ status: "published" }));
 
       const res = await request(app).get(`/api/reviews/${created.body.data._id}`);
@@ -831,8 +832,8 @@ describe("Core integration", () => {
     test("blocks anonymous access to a draft review by id", async () => {
       const { user } = await createResearcherUser("approved");
       const created = await request(app)
-        .post("/api/reviews")
-        .set("Authorization", authHeader(user))
+        .post("/api/reviews").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(reviewPayload({ status: "draft" }));
 
       const res = await request(app).get(`/api/reviews/${created.body.data._id}`);
@@ -843,13 +844,13 @@ describe("Core integration", () => {
     test("lets the author fetch their own draft review by id", async () => {
       const { user } = await createResearcherUser("approved");
       const created = await request(app)
-        .post("/api/reviews")
-        .set("Authorization", authHeader(user))
+        .post("/api/reviews").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(reviewPayload({ status: "draft" }));
 
       const res = await request(app)
         .get(`/api/reviews/${created.body.data._id}`)
-        .set("Authorization", authHeader(user));
+        .set("Cookie", authHeader(user));
 
       expect(res.status).toBe(200);
       expect(res.body.data.status).toBe("draft");
@@ -865,13 +866,13 @@ describe("Core integration", () => {
     test("updates a review successfully", async () => {
       const { user } = await createResearcherUser("approved");
       const created = await request(app)
-        .post("/api/reviews")
-        .set("Authorization", authHeader(user))
+        .post("/api/reviews").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(reviewPayload());
 
       const res = await request(app)
-        .put(`/api/reviews/${created.body.data._id}`)
-        .set("Authorization", authHeader(user))
+        .put(`/api/reviews/${created.body.data._id}`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send({ title: "Updated review title" });
 
       expect(res.status).toBe(200);
@@ -881,13 +882,13 @@ describe("Core integration", () => {
     test("supports partial review updates", async () => {
       const { user } = await createResearcherUser("approved");
       const created = await request(app)
-        .post("/api/reviews")
-        .set("Authorization", authHeader(user))
+        .post("/api/reviews").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(reviewPayload());
 
       const res = await request(app)
-        .put(`/api/reviews/${created.body.data._id}`)
-        .set("Authorization", authHeader(user))
+        .put(`/api/reviews/${created.body.data._id}`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send({ status: "published" });
 
       expect(res.status).toBe(200);
@@ -898,13 +899,13 @@ describe("Core integration", () => {
       const { user } = await createResearcherUser("approved");
       const { user: otherUser } = await createResearcherUser("approved");
       const created = await request(app)
-        .post("/api/reviews")
-        .set("Authorization", authHeader(user))
+        .post("/api/reviews").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(reviewPayload());
 
       const res = await request(app)
-        .put(`/api/reviews/${created.body.data._id}`)
-        .set("Authorization", authHeader(otherUser))
+        .put(`/api/reviews/${created.body.data._id}`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(otherUser))
         .send({ title: "Intruder edit" });
 
       expect(res.status).toBe(403);
@@ -913,13 +914,13 @@ describe("Core integration", () => {
     test("rejects invalid review update bodies", async () => {
       const { user } = await createResearcherUser("approved");
       const created = await request(app)
-        .post("/api/reviews")
-        .set("Authorization", authHeader(user))
+        .post("/api/reviews").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(reviewPayload());
 
       const res = await request(app)
-        .put(`/api/reviews/${created.body.data._id}`)
-        .set("Authorization", authHeader(user))
+        .put(`/api/reviews/${created.body.data._id}`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send({ title: "" });
 
       expect(res.status).toBe(400);
@@ -929,13 +930,13 @@ describe("Core integration", () => {
     test("deletes a review successfully", async () => {
       const { user } = await createResearcherUser("approved");
       const created = await request(app)
-        .post("/api/reviews")
-        .set("Authorization", authHeader(user))
+        .post("/api/reviews").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(reviewPayload());
 
       const res = await request(app)
-        .delete(`/api/reviews/${created.body.data._id}`)
-        .set("Authorization", authHeader(user));
+        .delete(`/api/reviews/${created.body.data._id}`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user));
 
       expect(res.status).toBe(200);
       expect(res.body.data.message).toContain("deleted");
@@ -945,13 +946,13 @@ describe("Core integration", () => {
       const { user } = await createResearcherUser("approved");
       const { user: otherUser } = await createResearcherUser("approved");
       const created = await request(app)
-        .post("/api/reviews")
-        .set("Authorization", authHeader(user))
+        .post("/api/reviews").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(reviewPayload());
 
       const res = await request(app)
-        .delete(`/api/reviews/${created.body.data._id}`)
-        .set("Authorization", authHeader(otherUser));
+        .delete(`/api/reviews/${created.body.data._id}`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(otherUser));
 
       expect(res.status).toBe(403);
     });
@@ -960,8 +961,8 @@ describe("Core integration", () => {
       const { user } = await createResearcherUser("approved");
       const experiment = await createExperimentDoc(user);
       await request(app)
-        .post("/api/reviews")
-        .set("Authorization", authHeader(user))
+        .post("/api/reviews").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(user))
         .send(reviewPayload({ experiment: String(experiment._id), status: "published" }));
 
       const res = await request(app).get(`/api/experiments/${experiment._id}/reviews`);
@@ -1015,7 +1016,7 @@ describe("Core integration", () => {
 
       const res = await request(app)
         .get("/api/recommendations")
-        .set("Authorization", authHeader(participant));
+        .set("Cookie", authHeader(participant));
 
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(2);
@@ -1037,7 +1038,7 @@ describe("Core integration", () => {
 
       const res = await request(app)
         .get("/api/recommendations")
-        .set("Authorization", authHeader(participant));
+        .set("Cookie", authHeader(participant));
 
       expect(res.status).toBe(200);
       expect(res.body[0].enrolled).toBe(true);
@@ -1048,7 +1049,7 @@ describe("Core integration", () => {
 
       const res = await request(app)
         .get("/api/recommendations")
-        .set("Authorization", authHeader(participant));
+        .set("Cookie", authHeader(participant));
 
       expect(res.status).toBe(200);
       expect(res.body).toEqual([]);
@@ -1059,7 +1060,7 @@ describe("Core integration", () => {
 
       const res = await request(app)
         .get("/api/participations/my-studies")
-        .set("Authorization", authHeader(participant));
+        .set("Cookie", authHeader(participant));
 
       expect(res.status).toBe(200);
       expect(res.body.totalStudies).toBe(0);
@@ -1067,7 +1068,7 @@ describe("Core integration", () => {
     });
 
     test("rejects enrollment without authentication", async () => {
-      const res = await request(app).post("/api/participations/join").send({});
+      const res = await request(app).post("/api/participations/join").send({}).set("X-Requested-With", "HealthLab");
 
       expect(res.status).toBe(401);
     });
@@ -1076,8 +1077,8 @@ describe("Core integration", () => {
       const participant = await createUser({ role: "participant" });
 
       const res = await request(app)
-        .post("/api/participations/join")
-        .set("Authorization", authHeader(participant))
+        .post("/api/participations/join").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({});
 
       expect(res.status).toBe(400);
@@ -1091,8 +1092,8 @@ describe("Core integration", () => {
       });
 
       const res = await request(app)
-        .post("/api/participations/join")
-        .set("Authorization", authHeader(participant))
+        .post("/api/participations/join").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({ experimentId: String(experiment._id) });
 
       expect(res.status).toBe(201);
@@ -1105,13 +1106,13 @@ describe("Core integration", () => {
       const experiment = await createExperimentDoc(researcher);
 
       await request(app)
-        .post("/api/participations/join")
-        .set("Authorization", authHeader(participant))
+        .post("/api/participations/join").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({ experimentId: String(experiment._id) });
 
       const res = await request(app)
-        .post("/api/participations/join")
-        .set("Authorization", authHeader(participant))
+        .post("/api/participations/join").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({ experimentId: String(experiment._id) });
 
       expect(res.status).toBe(409);
@@ -1127,8 +1128,8 @@ describe("Core integration", () => {
       });
 
       const res = await request(app)
-        .post("/api/participations/join")
-        .set("Authorization", authHeader(participant))
+        .post("/api/participations/join").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({ experimentId: String(experiment._id) });
 
       expect(res.status).toBe(409);
@@ -1143,8 +1144,8 @@ describe("Core integration", () => {
       });
 
       const res = await request(app)
-        .post("/api/participations/join")
-        .set("Authorization", authHeader(participant))
+        .post("/api/participations/join").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({ experimentId: String(experiment._id) });
 
       expect(res.status).toBe(403);
@@ -1164,8 +1165,8 @@ describe("Core integration", () => {
       });
 
       const res = await request(app)
-        .post("/api/participations/join")
-        .set("Authorization", authHeader(participant))
+        .post("/api/participations/join").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({ experimentId: String(experiment._id) });
 
       expect(res.status).toBe(400);
@@ -1177,13 +1178,13 @@ describe("Core integration", () => {
       const { user: researcher } = await createResearcherUser("approved");
       const experiment = await createExperimentDoc(researcher);
       await request(app)
-        .post("/api/participations/join")
-        .set("Authorization", authHeader(participant))
+        .post("/api/participations/join").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({ experimentId: String(experiment._id) });
 
       const res = await request(app)
         .get("/api/participations/my-studies")
-        .set("Authorization", authHeader(participant));
+        .set("Cookie", authHeader(participant));
 
       expect(res.status).toBe(200);
       expect(res.body.totalStudies).toBe(1);
@@ -1195,13 +1196,13 @@ describe("Core integration", () => {
       const { user: researcher } = await createResearcherUser("approved");
       const experiment = await createExperimentDoc(researcher);
       const joinRes = await request(app)
-        .post("/api/participations/join")
-        .set("Authorization", authHeader(participant))
+        .post("/api/participations/join").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({ experimentId: String(experiment._id) });
 
       const res = await request(app)
         .get(`/api/participations/${joinRes.body.participation._id}`)
-        .set("Authorization", authHeader(participant));
+        .set("Cookie", authHeader(participant));
 
       expect(res.status).toBe(200);
       expect(res.body.experimentId.title).toBe(experiment.title);
@@ -1213,13 +1214,13 @@ describe("Core integration", () => {
       const { user: researcher } = await createResearcherUser("approved");
       const experiment = await createExperimentDoc(researcher);
       const joinRes = await request(app)
-        .post("/api/participations/join")
-        .set("Authorization", authHeader(participant))
+        .post("/api/participations/join").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({ experimentId: String(experiment._id) });
 
       const res = await request(app)
         .get(`/api/participations/${joinRes.body.participation._id}`)
-        .set("Authorization", authHeader(otherParticipant));
+        .set("Cookie", authHeader(otherParticipant));
 
       expect(res.status).toBe(404);
     });
@@ -1229,13 +1230,13 @@ describe("Core integration", () => {
       const { user: researcher } = await createResearcherUser("approved");
       const experiment = await createExperimentDoc(researcher);
       const joinRes = await request(app)
-        .post("/api/participations/join")
-        .set("Authorization", authHeader(participant))
+        .post("/api/participations/join").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({ experimentId: String(experiment._id) });
 
       const res = await request(app)
-        .post(`/api/participations/${joinRes.body.participation._id}/logs`)
-        .set("Authorization", authHeader(participant))
+        .post(`/api/participations/${joinRes.body.participation._id}/logs`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({ logData: { sleepHours: 7 } });
 
       expect(res.status).toBe(201);
@@ -1247,18 +1248,18 @@ describe("Core integration", () => {
       const { user: researcher } = await createResearcherUser("approved");
       const experiment = await createExperimentDoc(researcher);
       const joinRes = await request(app)
-        .post("/api/participations/join")
-        .set("Authorization", authHeader(participant))
+        .post("/api/participations/join").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({ experimentId: String(experiment._id) });
 
       await request(app)
-        .post(`/api/participations/${joinRes.body.participation._id}/logs`)
-        .set("Authorization", authHeader(participant))
+        .post(`/api/participations/${joinRes.body.participation._id}/logs`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({ logData: { sleepHours: 6 } });
 
       const res = await request(app)
-        .post(`/api/participations/${joinRes.body.participation._id}/logs`)
-        .set("Authorization", authHeader(participant))
+        .post(`/api/participations/${joinRes.body.participation._id}/logs`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({ logData: { sleepHours: 8 } });
 
       expect(res.status).toBe(201);
@@ -1270,8 +1271,8 @@ describe("Core integration", () => {
       const participant = await createUser({ role: "participant" });
 
       const res = await request(app)
-        .post(`/api/participations/${new mongoose.Types.ObjectId()}/logs`)
-        .set("Authorization", authHeader(participant))
+        .post(`/api/participations/${new mongoose.Types.ObjectId()}/logs`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({ logData: { sleepHours: 7 } });
 
       expect(res.status).toBe(404);
@@ -1282,18 +1283,18 @@ describe("Core integration", () => {
       const { user: researcher } = await createResearcherUser("approved");
       const experiment = await createExperimentDoc(researcher);
       const joinRes = await request(app)
-        .post("/api/participations/join")
-        .set("Authorization", authHeader(participant))
+        .post("/api/participations/join").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({ experimentId: String(experiment._id) });
 
       await request(app)
-        .post(`/api/participations/${joinRes.body.participation._id}/logs`)
-        .set("Authorization", authHeader(participant))
+        .post(`/api/participations/${joinRes.body.participation._id}/logs`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({ logData: { sleepHours: 7, mood: "good" } });
 
       const res = await request(app)
         .get(`/api/participations/${joinRes.body.participation._id}`)
-        .set("Authorization", authHeader(participant));
+        .set("Cookie", authHeader(participant));
 
       expect(res.status).toBe(200);
       expect(res.body.logs).toHaveLength(1);
@@ -1305,18 +1306,18 @@ describe("Core integration", () => {
       const { user: researcher } = await createResearcherUser("approved");
       const experiment = await createExperimentDoc(researcher);
       const joinRes = await request(app)
-        .post("/api/participations/join")
-        .set("Authorization", authHeader(participant))
+        .post("/api/participations/join").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({ experimentId: String(experiment._id) });
 
       await request(app)
-        .post(`/api/participations/${joinRes.body.participation._id}/logs`)
-        .set("Authorization", authHeader(participant))
+        .post(`/api/participations/${joinRes.body.participation._id}/logs`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({ logData: { sleepHours: 7 } });
 
       const res = await request(app)
-        .delete(`/api/participations/${joinRes.body.participation._id}/logs/today`)
-        .set("Authorization", authHeader(participant));
+        .delete(`/api/participations/${joinRes.body.participation._id}/logs/today`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant));
 
       expect(res.status).toBe(200);
       expect(res.body.logs).toEqual([]);
@@ -1327,13 +1328,13 @@ describe("Core integration", () => {
       const { user: researcher } = await createResearcherUser("approved");
       const experiment = await createExperimentDoc(researcher);
       const joinRes = await request(app)
-        .post("/api/participations/join")
-        .set("Authorization", authHeader(participant))
+        .post("/api/participations/join").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({ experimentId: String(experiment._id) });
 
       const res = await request(app)
-        .delete(`/api/participations/${joinRes.body.participation._id}/logs/today`)
-        .set("Authorization", authHeader(participant));
+        .delete(`/api/participations/${joinRes.body.participation._id}/logs/today`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant));
 
       expect(res.status).toBe(404);
     });
@@ -1343,13 +1344,13 @@ describe("Core integration", () => {
       const { user: researcher } = await createResearcherUser("approved");
       const experiment = await createExperimentDoc(researcher);
       const joinRes = await request(app)
-        .post("/api/participations/join")
-        .set("Authorization", authHeader(participant))
+        .post("/api/participations/join").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({ experimentId: String(experiment._id) });
 
       const res = await request(app)
-        .put(`/api/participations/${joinRes.body.participation._id}/leave`)
-        .set("Authorization", authHeader(participant));
+        .put(`/api/participations/${joinRes.body.participation._id}/leave`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant));
 
       expect(res.status).toBe(200);
       expect(res.body.message).toContain("successfully left");
@@ -1359,8 +1360,8 @@ describe("Core integration", () => {
       const participant = await createUser({ role: "participant" });
 
       const res = await request(app)
-        .put(`/api/participations/${new mongoose.Types.ObjectId()}/leave`)
-        .set("Authorization", authHeader(participant));
+        .put(`/api/participations/${new mongoose.Types.ObjectId()}/leave`).set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant));
 
       expect(res.status).toBe(404);
     });
@@ -1370,7 +1371,7 @@ describe("Core integration", () => {
 
       const res = await request(app)
         .get(`/api/participations/experiment/${new mongoose.Types.ObjectId()}/participants`)
-        .set("Authorization", authHeader(participant));
+        .set("Cookie", authHeader(participant));
 
       expect(res.status).toBe(403);
     });
@@ -1380,13 +1381,13 @@ describe("Core integration", () => {
       const { user: researcher } = await createResearcherUser("approved");
       const experiment = await createExperimentDoc(researcher);
       await request(app)
-        .post("/api/participations/join")
-        .set("Authorization", authHeader(participant))
+        .post("/api/participations/join").set("X-Requested-With", "HealthLab")
+        .set("Cookie", authHeader(participant))
         .send({ experimentId: String(experiment._id) });
 
       const res = await request(app)
         .get(`/api/participations/experiment/${experiment._id}/participants`)
-        .set("Authorization", authHeader(researcher));
+        .set("Cookie", authHeader(researcher));
 
       expect(res.status).toBe(200);
       expect(res.body.stats.totalJoined).toBe(1);
@@ -1408,7 +1409,7 @@ describe("Core integration", () => {
 
       const res = await request(app)
         .get(`/api/participations/experiment/${experiment._id}/participants?includeWithdrawn=true`)
-        .set("Authorization", authHeader(researcher));
+        .set("Cookie", authHeader(researcher));
 
       expect(res.status).toBe(200);
       expect(res.body.participants).toHaveLength(1);

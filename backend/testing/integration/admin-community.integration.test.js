@@ -44,8 +44,8 @@ describe('Admin + Community integration', () => {
     const post = await Post.create({ title: 'Hello', content: 'World', author: author._id, tags: [] });
 
     const reportRes = await request(app)
-      .post(`/api/posts/${post._id}/report`)
-      .set('Authorization', `Bearer ${sign(reporter._id)}`)
+      .post(`/api/posts/${post._id}/report`).set("X-Requested-With", "HealthLab")
+      .set('Cookie', `healthlab_session=${sign(reporter._id)}`)
       .send({ reason: 'spam' });
 
     expect(reportRes.status).toBe(201);
@@ -53,7 +53,7 @@ describe('Admin + Community integration', () => {
 
     const adminList = await request(app)
       .get('/api/admin/reports?status=pending')
-      .set('Authorization', `Bearer ${sign(admin._id)}`);
+      .set('Cookie', `healthlab_session=${sign(admin._id)}`);
 
     expect(adminList.status).toBe(200);
     expect(adminList.body.success).toBe(true);
@@ -68,13 +68,13 @@ describe('Admin + Community integration', () => {
     const post = await Post.create({ title: 'Title', content: 'Body', author: author._id, tags: [] });
 
     await request(app)
-      .post(`/api/posts/${post._id}/report`)
-      .set('Authorization', `Bearer ${sign(reporter._id)}`)
+      .post(`/api/posts/${post._id}/report`).set("X-Requested-With", "HealthLab")
+      .set('Cookie', `healthlab_session=${sign(reporter._id)}`)
       .send({ reason: 'spam' });
 
     const duplicate = await request(app)
-      .post(`/api/posts/${post._id}/report`)
-      .set('Authorization', `Bearer ${sign(reporter._id)}`)
+      .post(`/api/posts/${post._id}/report`).set("X-Requested-With", "HealthLab")
+      .set('Cookie', `healthlab_session=${sign(reporter._id)}`)
       .send({ reason: 'spam' });
 
     expect(duplicate.status).toBe(400);
@@ -87,8 +87,8 @@ describe('Admin + Community integration', () => {
     const post = await Post.create({ title: 'Title', content: 'Body', author: author._id, tags: [] });
 
     const res = await request(app)
-      .post(`/api/posts/${post._id}/report`)
-      .set('Authorization', `Bearer ${sign(reporter._id)}`)
+      .post(`/api/posts/${post._id}/report`).set("X-Requested-With", "HealthLab")
+      .set('Cookie', `healthlab_session=${sign(reporter._id)}`)
       .send({ reason: 'other', customReason: '' });
 
     expect(res.status).toBe(400);
