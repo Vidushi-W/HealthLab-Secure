@@ -30,6 +30,8 @@ const createPayment = async (req, res, next) => {
         }
 
         const orderId = `HLTH-${fundRequest._id.toString().slice(-6)}-${Date.now()}`;
+        const currency = 'LKR';
+        const hash = payhereService.generateHash(orderId, amount, currency);
 
         const contribution = await Contribution.create({
             fundRequestId: fundRequest._id,
@@ -50,9 +52,6 @@ const createPayment = async (req, res, next) => {
             experimentId: fundRequest.experimentId,
             metadata: { contributionId: contribution._id, amount, orderId }
         });
-
-        const currency = 'LKR';
-        const hash = payhereService.generateHash(orderId, amount, currency);
 
         return res.status(201).json({
             message: 'Payment initiated. Use the checkout payload to redirect to PayHere.',
