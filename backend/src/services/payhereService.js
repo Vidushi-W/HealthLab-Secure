@@ -6,7 +6,7 @@ const SANDBOX = process.env.PAYHERE_SANDBOX === 'true';
 
 const assertConfigured = () => {
     if (!MERCHANT_ID || !MERCHANT_SECRET) {
-        const error = new Error('Payment service is not configured. Set PAYHERE_MERCHANT_ID and PAYHERE_MERCHANT_SECRET.');
+        const error = new Error('Payment service is not configured. Add PAYHERE_MERCHANT_ID and PAYHERE_MERCHANT_SECRET to backend/.env, then restart the backend.');
         error.statusCode = 503;
         throw error;
     }

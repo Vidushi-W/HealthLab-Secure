@@ -9,9 +9,8 @@
 // Middleware to check if user has required roles
 const requireRole = (allowedRoles) => {
   return (req, res, next) => {
-    // In a real app, this would come from JWT token verification
-    // For now, we expect it to be set in req.user or req.headers
-    const userRole = req.user?.role || req.headers["x-user-role"];
+    // Roles must come from the authenticated account, never caller-controlled headers.
+    const userRole = req.user?.role;
 
     if (!userRole) {
       return res.status(401).json({

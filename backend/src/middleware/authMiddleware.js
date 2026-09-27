@@ -36,7 +36,9 @@ const authorize = (...args) => {
     if (!req.user) {
       return res.status(401).json({ error: "Unauthorized", message: "Authentication required" });
     }
-    const role = req.user.role || req.headers["x-user-role"];
+    // Authorization must use the authenticated account's persisted role only.
+    // Request headers are caller-controlled and must never fill in a missing role.
+    const role = req.user.role;
     if (!allowedRoles.includes(role)) {
       return res.status(403).json({
         error: "Forbidden",
