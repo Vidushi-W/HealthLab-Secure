@@ -257,8 +257,11 @@ const getReports = asyncHandler(async (req, res) => {
   return res.status(HTTP_STATUS.OK).json(data);
 });
 
-// V4 fix: send one identity document only after the admin login check on this route.
-// The name is reduced to a single file name so a request cannot climb into other folders.
+// V4 fix: send one identity document only after the admin check on this route.
+// path.basename drops any folder prefix, and the name must be a plain file name,
+// so a request cannot use ../ to read files outside uploads/affiliation-proofs.
+// Content-Type is taken from the file bytes, not from the name the uploader chose,
+// so a renamed file is not shown as a different kind of document.
 const getAffiliationProof = asyncHandler(async (req, res) => {
   const filename = path.basename(req.params.filename || "");
   if (!/^[A-Za-z0-9._-]+$/.test(filename)) {

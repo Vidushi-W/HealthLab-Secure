@@ -59,10 +59,14 @@ app.use((req, res, next) => {
 });
 
 
-// V4 fix: researcher identity documents are not public.
-// A direct address such as /uploads/affiliation-proofs/<file> used to open the document
-// for anyone, with no login. This block rejects those requests.
-// An admin opens the same document only through /api/admin/affiliation-proofs/:filename.
+
+// V4 fix: researcher identity documents are not public files.
+// Images and PDFs in uploads/affiliation-proofs used to be served by the
+// static /uploads folder below. Anyone who knew or guessed
+// /uploads/affiliation-proofs/<file> could open a researcher's identity
+// document with no login. This route is registered first, so that address
+// now returns 401. An admin opens the same file through
+// GET /api/admin/affiliation-proofs/:filename, which requires an admin token.
 app.use("/uploads/affiliation-proofs", (req, res) => {
   res.status(401).json({ message: "Researcher identity documents are not public." });
 });
