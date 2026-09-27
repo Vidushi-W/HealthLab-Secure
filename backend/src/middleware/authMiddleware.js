@@ -42,9 +42,6 @@ const protect = async (req, res, next) => {
     });
   }
 };
-    return res.status(401).json({ message: "Not authorized" });
-  }
-};
 
 const requireAuth = (req, res, next) => {
   if (!req.user) {
