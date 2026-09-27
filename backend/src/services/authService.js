@@ -36,9 +36,10 @@ const registerUser = async (name, email, password, role) => {
 };
 
 const loginUser = async (email, password) => {
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select('+password');
 
     if (user && (await user.matchPassword(password))) {
+        if (user.banned === true) throw new Error('Account access is restricted');
         return {
             _id: user._id,
             name: user.name,

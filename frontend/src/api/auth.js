@@ -1,42 +1,46 @@
 import api, { BASE_URL } from './api';
-
-
-export const registerUser = async (userData) => {
-    const response = await api.post('/auth/register-participant', userData);
-    if (response.data.token) {
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        localStorage.setItem('token', response.data.token);
-    }
-    return response.data;
+let currentUser = null;
+const setCurrentUser = (user) => {
+    currentUser = user;
+    window.dispatchEvent(new Event('auth-changed'));
 };
-
-/** Researcher registration: sends FormData (supports optional affiliationProof file). Returns { success, message, researcher }. */
+// Remove credentials and cached identity left by pre-cookie versions.
+localStorage.removeItem('token');
+sessionStorage.removeItem('token');
+localStorage.removeItem('user');
+export const restoreSession = async () => {
+    try {
+        const { data } = await api.get('/auth/profile');
+        setCurrentUser(data.user);
+    } catch (error) {
+        setCurrentUser(null);
+        if (![401, 403].includes(error.response?.status)) throw error;
+    }
+};
+export const registerUser = async (userData) => {
+    const { data } = await api.post('/auth/register-participant', userData);
+    setCurrentUser(data.user);
+    return data;
+};
 export const registerResearcher = async (formData) => {
     const response = await api.post('/auth/register', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
 };
-
 export const loginUser = async (credentials) => {
-    const response = await api.post('/auth/login', credentials);
-    const data = response.data;
-    if (data.token) {
-        localStorage.setItem('token', data.token);
-        // Backend may send { user: { _id, name, email, role } } or flat { _id, name, email, role }
-        const user = data.user || (data._id && { _id: data._id, name: data.name, email: data.email, role: data.role });
-        if (user) localStorage.setItem('user', JSON.stringify(user));
-    }
+    const { data } = await api.post('/auth/login', credentials);
+    setCurrentUser(data.user);
     return data;
 };
-
-export const logoutUser = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
+export const logoutUser = async () => {
+    await api.post('/auth/logout');
+    setCurrentUser(null);
 };
-
-export const getCurrentUser = () => {
-    return JSON.parse(localStorage.getItem('user'));
-};
-
+export const getCurrentUser = () => currentUser;
+api.interceptors.response.use(response => response, error => {
+    if (error.response?.status === 401 ||
+        (error.response?.status === 403 && error.response?.data?.message === 'Account access is restricted')) setCurrentUser(null);
+    return Promise.reject(error);
+});
 export { BASE_URL };

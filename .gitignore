@@ -137,3 +137,7 @@ admin-overview-report-*.pdf
 # Optional: uncomment if you use these
 # .vercel
 # .netlify
+
+# Local security testing artifacts
+backend/.npm-cache/
+backend/evidence/

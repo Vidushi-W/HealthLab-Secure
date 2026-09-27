@@ -1,6 +1,8 @@
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
+const csrfGuard = require("./middleware/csrfGuard");
 const mongoose = require("mongoose");
 
 // Middleware imports
@@ -9,6 +11,7 @@ const researcherApprovedForPublish = require("./middleware/researcherApproved");
 const { extractUserFromHeader } = require("./middleware/rbacMiddleware");
 const { errorHandler, notFound } = require("./middleware/errorMiddleware");
 const dbReadyMiddleware = require("./middleware/dbReadyMiddleware");
+const frameGuard = require("./middleware/frameGuard");
 
 // Route imports
 const authRoutes = require("./routes/authRoutes");
@@ -26,6 +29,9 @@ const communityRoutes = require("./modules/community/communityRoutes");
 
 const app = express();
 
+// Prevent clickjacking of backend-rendered/static responses and API pages.
+app.use(frameGuard);
+
 const allowedOrigins = [
   "http://localhost:5173",
   "https://health-lab-black.vercel.app",
@@ -41,6 +47,8 @@ app.use(cors({
   },
   credentials: true,
 }));
+app.use(cookieParser());
+app.use(csrfGuard);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

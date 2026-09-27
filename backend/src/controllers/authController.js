@@ -1,4 +1,5 @@
 const path = require("path");
+const { setAuthCookie } = require("../utils/authCookie");
 const User = require("../models/User");
 const Researcher = require("../models/Researcher");
 const bcrypt = require("bcryptjs");
@@ -71,10 +72,10 @@ const registerParticipant = asyncHandler(async (req, res) => {
     { expiresIn: JWT_EXPIRES_IN }
   );
 
+  setAuthCookie(res, token);
   res.status(201).json({
     success: true,
     message: "Participant registered successfully",
-    token,
     user: {
       _id: user._id,
       name: user.name,
@@ -172,7 +173,9 @@ const registerUser = async (req, res, next) => {
   try {
     const { name, email, password, role } = req.body;
     const user = await authService.registerUser(name, email, password, role);
-    res.status(201).json(user);
+    const { token, ...profile } = user;
+    setAuthCookie(res, token);
+    res.status(201).json({ success: true, user: profile });
   } catch (error) {
     next(error);
   }
@@ -180,7 +183,7 @@ const registerUser = async (req, res, next) => {
 
 /**
  * Login (unifying loginUser from fund_management)
- * Returns { user: { _id, name, email, role }, token } so frontend can read data.user.role for redirects.
+ * Returns user details; the JWT is sent only in an HttpOnly cookie.
  */
 const loginUser = async (req, res, next) => {
   try {
@@ -192,7 +195,8 @@ const loginUser = async (req, res, next) => {
       email: result.email,
       role: result.role,
     };
-    res.status(200).json({ user, token: result.token });
+    setAuthCookie(res, result.token);
+    res.status(200).json({ success: true, user });
   } catch (error) {
     res.status(401);
     next(error);
@@ -221,6 +225,13 @@ const login = asyncHandler(async (req, res) => {
     });
   }
 
+  if (user.banned === true) {
+    return res.status(403).json({
+      success: false,
+      message: "Account access is restricted",
+    });
+  }
+
   const token = jwt.sign(
     { id: user._id, role: user.role },
     JWT_SECRET,
@@ -239,9 +250,9 @@ const login = asyncHandler(async (req, res) => {
     payload.researcherStatus = researcher ? researcher.status : null;
   }
 
+  setAuthCookie(res, token);
   res.status(200).json({
     success: true,
-    token,
     user: payload,
   });
 });

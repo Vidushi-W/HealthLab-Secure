@@ -2,6 +2,7 @@ const router = require("express").Router();
 
 const { protect, authorize, optionalAuth } = require('../middleware/authMiddleware');
 const researcherApprovedForPublish = require("../middleware/researcherApproved");
+const { aiRateLimiter } = require("../middleware/aiRateLimit");
 
 const {
   createExperiment,
@@ -44,7 +45,7 @@ router.post(
 );
 
 router.get("/:experimentId/wallet", getWallet); // Service handles ownership check
-router.post("/:id/ai-summary", authorize(["researcher", "admin"]), generateExperimentAiSummary);
+router.post("/:id/ai-summary", authorize(["researcher", "admin"]), aiRateLimiter, generateExperimentAiSummary);
 router.put("/:id", authorize(["researcher", "admin"]), researcherApprovedForPublish, updateExperiment);
 router.delete("/:id", authorize(["researcher", "admin"]), researcherApprovedForPublish, deleteExperiment);
 
