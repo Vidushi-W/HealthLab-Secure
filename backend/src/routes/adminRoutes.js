@@ -28,6 +28,7 @@ const {
   updateStatus,
   getReports,
   disburseRequest,
+  getAffiliationProof,
 } = require("../controllers/adminController");
 const { getWallet } = require("../controllers/walletController");
 const {
@@ -38,6 +39,9 @@ const {
 } = require("../modules/community/controllers/reportController");
 
 const adminGuard = [protect, authorize("admin")];
+
+// V4 fix: identity documents require an admin token. A public /uploads link is rejected in app.js.
+router.get("/affiliation-proofs/:filename", adminGuard, getAffiliationProof);
 
 // Analytics and reports
 router.get("/analytics", adminGuard, getAnalytics);

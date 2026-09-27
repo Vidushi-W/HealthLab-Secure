@@ -1,4 +1,6 @@
 // Admin controller: handles HTTP for users, researchers, experiments, fund requests. Uses services for logic.
+const path = require("path");
+const fs = require("fs");
 const User = require("../models/User");
 const Researcher = require("../models/Researcher");
 const asyncHandler = require("../utils/asyncHandler");
@@ -255,6 +257,29 @@ const getReports = asyncHandler(async (req, res) => {
   return res.status(HTTP_STATUS.OK).json(data);
 });
 
+// V4 fix: send one identity document only after the admin login check on this route.
+// The name is reduced to a single file name so a request cannot climb into other folders.
+const getAffiliationProof = asyncHandler(async (req, res) => {
+  const filename = path.basename(req.params.filename || "");
+  if (!/^[A-Za-z0-9._-]+$/.test(filename)) {
+    return errorResponse(res, HTTP_STATUS.BAD_REQUEST, "Invalid document name");
+  }
+  const filePath = path.join(process.cwd(), "uploads", "affiliation-proofs", filename);
+  if (!fs.existsSync(filePath)) {
+    return errorResponse(res, HTTP_STATUS.NOT_FOUND, "Document not found");
+  }
+  const file = fs.readFileSync(filePath);
+  let contentType = "application/octet-stream";
+  if (file[0] === 0x89 && file[1] === 0x50) contentType = "image/png";
+  else if (file[0] === 0xff && file[1] === 0xd8) contentType = "image/jpeg";
+  else if (file[0] === 0x47 && file[1] === 0x49) contentType = "image/gif";
+  else if (file.toString("ascii", 0, 4) === "%PDF") contentType = "application/pdf";
+  else if (file.toString("ascii", 0, 4) === "RIFF") contentType = "image/webp";
+  res.setHeader("Content-Type", contentType);
+  res.setHeader("Content-Disposition", "inline");
+  return res.send(file);
+});
+
 // Stub: not implemented
 const disburseRequest = asyncHandler(async (req, res) => {
   return res.status(501).json({ success: false, message: "Not implemented" });
@@ -280,5 +305,6 @@ module.exports = {
   updateStatus,
   getReports,
   disburseRequest,
+  getAffiliationProof,
 };
 
