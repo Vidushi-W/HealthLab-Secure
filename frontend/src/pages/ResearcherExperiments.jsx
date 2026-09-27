@@ -1,3 +1,4 @@
+import { getCurrentUser } from '../api/auth';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/api';
@@ -35,7 +36,7 @@ function generateKey(label) {
 
 const ResearcherExperiments = () => {
     const navigate = useNavigate();
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = (getCurrentUser() || {});
     const userId = user._id || user.id;
 
     const [experiments, setExperiments] = useState([]);

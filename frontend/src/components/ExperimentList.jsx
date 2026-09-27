@@ -1,3 +1,4 @@
+import { getCurrentUser } from '../api/auth';
 import React, { useEffect, useState } from 'react';
 import api from '../api/api';
 import SmartBadge from './common/SmartBadge';
@@ -33,10 +34,10 @@ const ExperimentList = () => {
     useEffect(() => {
         const fetchExperiments = async () => {
             try {
-                const token = localStorage.getItem('token');
+                const authenticated = getCurrentUser();
                 let response;
 
-                if (token) {
+                if (authenticated) {
                     // Fetch recommendations (which are experiments + match score)
                     response = await api.get('/recommendations');
                 } else {
@@ -214,7 +215,7 @@ const ExperimentList = () => {
                                 </div>
                             </div>
 
-                            {!localStorage.getItem('token') ? (
+                            {!getCurrentUser() ? (
                                 <button
                                     className="mt-4 w-full rounded-xl bg-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:bg-slate-300"
                                     onClick={() => window.location.href = '/login'}

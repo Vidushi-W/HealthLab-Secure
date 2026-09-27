@@ -1,3 +1,4 @@
+import { getCurrentUser } from '../api/auth';
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Heart, Share2, Bookmark, ArrowLeft, Flag } from 'lucide-react';
@@ -41,16 +42,16 @@ const PostDetail = () => {
   const [editForm, setEditForm] = useState({ title: '', content: '', tags: [] });
   const [reportOpen, setReportOpen] = useState(false);
 
-  const token = localStorage.getItem('token');
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const authenticated = getCurrentUser();
+  const user = (getCurrentUser() || {});
 
   useEffect(() => {
-    if (!token) {
+    if (!authenticated) {
       navigate('/login');
       return;
     }
     fetchPost();
-  }, [id, token]);
+  }, [id, authenticated]);
 
   const fetchPost = () => {
     getPostById(id)
@@ -175,7 +176,7 @@ const PostDetail = () => {
     }
   };
 
-  if (!token) return null;
+  if (!authenticated) return null;
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-6">

@@ -1,3 +1,4 @@
+import { getCurrentUser } from '../api/auth';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -16,7 +17,7 @@ const MyStudies = () => {
 
     useEffect(() => {
         const fetchMyStudies = async () => {
-            if (!localStorage.getItem('token')) {
+            if (!getCurrentUser()) {
                 setError('auth');
                 setLoading(false);
                 return;

@@ -1,3 +1,4 @@
+import { getCurrentUser } from '../api/auth';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../api/api';
@@ -8,7 +9,7 @@ import './ResearcherWallet.css';
 const ResearcherWalletDetail = () => {
     const { experimentId } = useParams();
     const navigate = useNavigate();
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = (getCurrentUser() || {});
     const userId = user._id || user.id;
 
     const [data, setData] = useState(null);
