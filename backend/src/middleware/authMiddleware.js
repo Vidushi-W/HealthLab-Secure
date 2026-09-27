@@ -1,58 +1,23 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const { JWT_SECRET } = require("../config/constants");
-
+const { AUTH_COOKIE_NAME } = require("../utils/authCookie");
+const sessionUser = async (req) => {
+  const token = req.cookies?.[AUTH_COOKIE_NAME];
+  if (!token) return null;
+  const decoded = jwt.verify(token, JWT_SECRET);
+  const id = decoded.id || decoded.userId;
+  if (!id) throw new Error("Token payload missing ID");
+  return User.findById(id).select("-password");
+};
 const protect = async (req, res, next) => {
-  let token;
-
-  console.log(`📡 Auth Middleware: Checking headers...`);
-  console.log(`   Authorization: ${req.headers.authorization ? 'Present' : 'MISSING'}`);
-
-  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
-    try {
-      // Get token from header
-      token = req.headers.authorization.split(" ")[1];
-      console.log(`   Token found. Verifying...`);
-
-      // Verify token
-      const decoded = jwt.verify(token, JWT_SECRET);
-      console.log(`   Token verified for user ID: ${decoded.id || decoded.userId}`);
-
-      // Get user from the token - handle both 'id' and 'userId' for compatibility
-      const id = decoded.id || decoded.userId;
-      if (!id) {
-        console.log("❌ Auth: No id/userId found in token");
-        return res.status(401).json({ message: "Not authorized. Token payload missing ID." });
-      }
-
-      console.log(`⏳ Auth: Looking up user ${id} in ${User.db.name}...`);
-      req.user = await User.findById(id).select("-password");
-
-      if (!req.user) {
-        console.log(`❌ Auth: User ${id} not found in ${User.db.name}`);
-        return res.status(401).json({ message: `User ${id} not found in ${User.db.name}` });
-      }
-
-      if (req.user.banned === true) {
-        return res.status(403).json({
-          success: false,
-          message: "Account access is restricted",
-        });
-      }
-
-      console.log(`✅ Auth: Authenticated user ${req.user.email}`);
-      console.log(`   Profile: Gender [${req.user.gender}], Age [${req.user.age}], BMI [${req.user.bmi}], Activity [${req.user.activityLevel || "N/A"}], Sleep [${req.user.sleepPatterns || "N/A"}], Smoking [${req.user.smokingStatus || "N/A"}]`);
-      return next();
-    } catch (error) {
-      console.error("❌ Auth Error during verification:", error.message);
-      return res.status(401).json({ message: "Not authorized", error: error.message });
-    }
-  }
-
-  if (!token) {
-    console.log("❌ Auth: No Bearer token found in headers");
-    console.log("   Full Authorization Header:", req.headers.authorization);
-    return res.status(401).json({ message: "Authentication required", error: "No token provided" });
+  try {
+    req.user = await sessionUser(req);
+    if (!req.user) return res.status(401).json({ message: "Authentication required" });
+    if (req.user.banned === true) return res.status(403).json({ success: false, message: "Account access is restricted" });
+    return next();
+  } catch {
+    return res.status(401).json({ message: "Not authorized" });
   }
 };
 
@@ -82,27 +47,13 @@ const authorize = (...args) => {
   };
 };
 
-const optionalAuth = async (req, res, next) => {
-  try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-    if (!token) {
-      req.user = null;
-      return next();
-    }
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await User.findById(decoded.id).select("_id name email role");
-    req.user = user || null;
-    next();
-  } catch {
-    req.user = null;
-    next();
-  }
-};
 
-module.exports = {
-  protect,
-  requireAuth,
-  authorize,
-  optionalAuth,
+const optionalAuth = async (req, res, next) => {
+  try { req.user = await sessionUser(req); } catch { req.user = null; }
+  if (req.user?.banned === true) {
+    req.user = null;
+    return res.status(403).json({ success: false, message: "Account access is restricted" });
+  }
+  next();
 };
+module.exports = { protect, requireAuth, authorize, optionalAuth };

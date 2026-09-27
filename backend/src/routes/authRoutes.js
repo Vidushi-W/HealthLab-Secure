@@ -1,4 +1,10 @@
 const router = require("express").Router();
+const { clearAuthCookie } = require("../utils/authCookie");
+router.use((req, res, next) => { res.set("Cache-Control", "no-store"); next(); });
+router.post("/logout", (req, res) => {
+  clearAuthCookie(res);
+  res.json({ success: true });
+});
 const authController = require("../controllers/authController");
 // Merging controller function names if they differ
 const {
