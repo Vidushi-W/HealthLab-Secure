@@ -33,6 +33,13 @@ const protect = async (req, res, next) => {
         return res.status(401).json({ message: `User ${id} not found in ${User.db.name}` });
       }
 
+      if (req.user.banned === true) {
+        return res.status(403).json({
+          success: false,
+          message: "Account access is restricted",
+        });
+      }
+
       console.log(`✅ Auth: Authenticated user ${req.user.email}`);
       console.log(`   Profile: Gender [${req.user.gender}], Age [${req.user.age}], BMI [${req.user.bmi}], Activity [${req.user.activityLevel || "N/A"}], Sleep [${req.user.sleepPatterns || "N/A"}], Smoking [${req.user.smokingStatus || "N/A"}]`);
       return next();
