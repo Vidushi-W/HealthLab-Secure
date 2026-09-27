@@ -49,6 +49,13 @@ const loginRateLimiter = createRateLimiter({
   message: "Too many login attempts. Please try again in 15 minutes.",
 });
 
+const googleAuthRateLimiter = createRateLimiter({
+  keyPrefix: "google-auth",
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: "Too many Google sign-in attempts. Please try again in 15 minutes.",
+});
+
 const registrationRateLimiter = createRateLimiter({
   keyPrefix: "registration",
   windowMs: 60 * 60 * 1000,
@@ -64,6 +71,7 @@ function resetAuthRateLimits() {
 module.exports = {
   createRateLimiter,
   loginRateLimiter,
+  googleAuthRateLimiter,
   registrationRateLimiter,
   resetAuthRateLimits,
 };

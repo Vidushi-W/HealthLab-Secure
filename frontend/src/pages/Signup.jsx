@@ -12,6 +12,7 @@ import {
   ErrorMessage,
 } from '../components/ui';
 import { getPasswordChecks, getPasswordError } from '../utils/passwordPolicy';
+import GoogleAuthButton from '../components/GoogleAuthButton';
 
 const USER_TYPE_PARTICIPANT = 'participant';
 const USER_TYPE_RESEARCHER = 'researcher';
@@ -532,7 +533,10 @@ const Signup = () => {
             </button>
           </div>
           {userType === USER_TYPE_PARTICIPANT && (
-            <p className="text-sm text-gray-500 mt-3">Step {step} of 5</p>
+            <>
+              <p className="text-sm text-gray-500 mt-3">Step {step} of 5</p>
+              <GoogleAuthButton label="Sign up with Google" />
+            </>
           )}
           {userType === USER_TYPE_RESEARCHER && (
             <p className="text-sm text-gray-500 mt-3">Register as a researcher. Admin approval required before you can sign in.</p>
