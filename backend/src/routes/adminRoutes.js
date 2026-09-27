@@ -40,7 +40,10 @@ const {
 
 const adminGuard = [protect, authorize("admin")];
 
-// V4 fix: identity documents require an admin token. A public /uploads link is rejected in app.js.
+// V4 fix: only a logged-in admin can request an identity document.
+// adminGuard checks the bearer token and the admin role before the file is read.
+// A missing token, or a token for a participant or researcher, is rejected here.
+// The old public /uploads/affiliation-proofs address is rejected in app.js.
 router.get("/affiliation-proofs/:filename", adminGuard, getAffiliationProof);
 
 // Analytics and reports
