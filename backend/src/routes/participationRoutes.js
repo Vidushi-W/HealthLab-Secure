@@ -1,5 +1,6 @@
 const router = require("express").Router();
 const { protect, requireAuth, authorize } = require("../middleware/authMiddleware");
+const { aiRateLimiter } = require("../middleware/aiRateLimit");
 
 const {
   joinExperiment,
@@ -14,10 +15,11 @@ const {
 
 
 // GET /participations/preview-analysis/:experimentId - Get clinical insight before joining
-router.get("/preview-analysis/:experimentId", protect, requireAuth, getPreJoinAnalysis);
+router.get("/preview-analysis/:experimentId", protect, requireAuth, aiRateLimiter, getPreJoinAnalysis);
 
 // POST /participations/join - Join an experiment (authenticated users)
-router.post("/join", protect, requireAuth, joinExperiment);
+// Eligibility checks can invoke Gemini semantic matching for configured criteria.
+router.post("/join", protect, requireAuth, aiRateLimiter, joinExperiment);
 
 // GET /participations/my-studies - Get user's studies (authenticated users)
 router.get("/my-studies", protect, requireAuth, getMyStudies);

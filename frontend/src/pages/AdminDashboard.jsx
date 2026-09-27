@@ -102,32 +102,19 @@ const normalizeOverviewAnalytics = (raw) => {
   };
 };
 
-const getBackendOrigin = () => {
-  try {
-    return new URL(api?.defaults?.baseURL || '').origin;
-  } catch (err) {
-    return window.location.origin;
-  }
-};
-
-const getAffiliationProofUrl = (rawPath) => {
-  if (!rawPath) return '';
-  const value = String(rawPath).trim();
-  if (!value) return '';
-  if (/^https?:\/\//i.test(value)) return value;
-
-  let normalized = value.replace(/\\/g, '/').replace(/^\/+/, '');
-
-  if (!normalized.startsWith('uploads/')) {
-    if (normalized.startsWith('affiliation-proofs/')) {
-      normalized = `uploads/${normalized}`;
-    } else {
-      const fileName = normalized.split('/').pop();
-      normalized = fileName ? `uploads/affiliation-proofs/${fileName}` : 'uploads/affiliation-proofs';
-    }
-  }
-
-  return `${getBackendOrigin()}/${normalized}`;
+// V4 fix: do not build a public /uploads address for an identity document.
+// Ask the admin API for the file. That request includes the logged-in admin token.
+const openAffiliationProof = async (rawPath) => {
+  const fileName = String(rawPath || "").replace(/\\/g, "/").split("/").filter(Boolean).pop();
+  if (!fileName) return null;
+  const response = await api.get(`/admin/affiliation-proofs/${encodeURIComponent(fileName)}`, {
+    responseType: "blob",
+  });
+  const contentType = response.headers["content-type"] || response.data.type || "application/octet-stream";
+  const blob = response.data.type
+    ? response.data
+    : new Blob([response.data], { type: contentType });
+  return { url: URL.createObjectURL(blob), contentType };
 };
 
 const AdminDashboard = () => {
@@ -137,6 +124,8 @@ const AdminDashboard = () => {
   const [researchersLoading, setResearchersLoading] = useState(false);
   const [reviewModal, setReviewModal] = useState(null);
   const [detailModalResearcher, setDetailModalResearcher] = useState(null);
+  const [proofPreview, setProofPreview] = useState(null);
+  const [proofPreviewError, setProofPreviewError] = useState("");
   const [deleteResearcherModal, setDeleteResearcherModal] = useState(null);
   const [allUsers, setAllUsers] = useState([]);
   const [roleFilter, setRoleFilter] = useState('');
@@ -1360,15 +1349,45 @@ const AdminDashboard = () => {
             {detailModalResearcher.researcherType === 'Affiliated to Organization' && detailModalResearcher.affiliationProof && (
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Affiliation Proof</p>
-                <a
-                  href={getAffiliationProofUrl(detailModalResearcher.affiliationProof)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-indigo-600 hover:text-indigo-800 mt-0.5 hover:underline block truncate"
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setProofPreviewError("");
+                    if (proofPreview?.url) URL.revokeObjectURL(proofPreview.url);
+                    setProofPreview(null);
+                    try {
+                      const preview = await openAffiliationProof(detailModalResearcher.affiliationProof);
+                      setProofPreview(preview);
+                    } catch (err) {
+                      let message = "Could not open the identity document.";
+                      const data = err?.response?.data;
+                      if (data instanceof Blob) {
+                        try {
+                          const body = JSON.parse(await data.text());
+                          message = body.message || message;
+                        } catch {
+                          message = "Could not open the identity document.";
+                        }
+                      } else if (data?.message) {
+                        message = data.message;
+                      }
+                      setProofPreviewError(message);
+                    }
+                  }}
+                  className="text-sm text-indigo-600 hover:text-indigo-800 mt-0.5 hover:underline block truncate text-left"
                   title="View attached document or image"
                 >
                   View Document / Image
-                </a>
+                </button>
+                {proofPreviewError && (
+                  <p className="mt-2 text-sm text-red-600">{proofPreviewError}</p>
+                )}
+                {proofPreview?.url && proofPreview.contentType.startsWith("image/") && (
+                  <img src={proofPreview.url} alt="Affiliation proof" className="mt-3 max-h-80 rounded border" />
+                )}
+                {proofPreview?.url && !proofPreview.contentType.startsWith("image/") && (
+                  <iframe title="Affiliation proof" src={proofPreview.url} className="mt-3 h-80 w-full rounded border" />
+                )}
               </div>
             )}
             <div>

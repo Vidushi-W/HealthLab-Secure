@@ -9,6 +9,7 @@ const researcherApprovedForPublish = require("./middleware/researcherApproved");
 const { extractUserFromHeader } = require("./middleware/rbacMiddleware");
 const { errorHandler, notFound } = require("./middleware/errorMiddleware");
 const dbReadyMiddleware = require("./middleware/dbReadyMiddleware");
+const frameGuard = require("./middleware/frameGuard");
 
 // Route imports
 const authRoutes = require("./routes/authRoutes");
@@ -25,6 +26,9 @@ const paymentRoutes = require("./routes/paymentRoutes");
 const communityRoutes = require("./modules/community/communityRoutes");
 
 const app = express();
+
+// Prevent clickjacking of backend-rendered/static responses and API pages.
+app.use(frameGuard);
 
 const allowedOrigins = [
   "http://localhost:5173",
@@ -50,8 +54,26 @@ app.use((req, res, next) => {
   next();
 });
 
-// Static uploads
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+
+// V4 fix: researcher identity documents are not public.
+// A direct address such as /uploads/affiliation-proofs/<file> used to open the document
+// for anyone, with no login. This block rejects those requests.
+// An admin opens the same document only through /api/admin/affiliation-proofs/:filename.
+app.use("/uploads/affiliation-proofs", (req, res) => {
+  res.status(401).json({ message: "Researcher identity documents are not public." });
+});
+
+const SAFE_UPLOAD_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp", ".pdf"]);
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads"), {
+  setHeaders(res, filePath) {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    const ext = path.extname(filePath).toLowerCase();
+    if (!SAFE_UPLOAD_EXTENSIONS.has(ext)) {
+      res.setHeader("Content-Type", "application/octet-stream");
+      res.setHeader("Content-Disposition", "attachment");
+    }
+  },
+}));
 
 // 📊 Health check
 app.get("/health", (req, res) => {

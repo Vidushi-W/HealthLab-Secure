@@ -76,7 +76,10 @@ frontend/.vite/
 .parcel-cache/
 
 # Backend
+# Uploaded affiliation proofs, post images, and local XSS test files must not be committed.
 backend/uploads/
+xss-test.html
+test-id.png
 backend/uploads/post-images/
 backend/uploads/affiliation-proofs/
 backend/db-structure.json
@@ -134,3 +137,7 @@ admin-overview-report-*.pdf
 # Optional: uncomment if you use these
 # .vercel
 # .netlify
+
+# Local security testing artifacts
+backend/.npm-cache/
+backend/evidence/
