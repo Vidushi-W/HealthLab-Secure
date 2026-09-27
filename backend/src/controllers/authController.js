@@ -221,6 +221,13 @@ const login = asyncHandler(async (req, res) => {
     });
   }
 
+  if (user.banned === true) {
+    return res.status(403).json({
+      success: false,
+      message: "Account access is restricted",
+    });
+  }
+
   const token = jwt.sign(
     { id: user._id, role: user.role },
     JWT_SECRET,
