@@ -141,3 +141,4 @@ admin-overview-report-*.pdf
 # Local security testing artifacts
 backend/.npm-cache/
 backend/evidence/
+postman/

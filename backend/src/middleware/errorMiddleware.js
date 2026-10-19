@@ -6,6 +6,7 @@ const notFound = (req, res, next) => {
     next(error);
 };
 
+// V5 / VUL-09: never return err.stack (file paths / internals) to clients.
 const errorHandler = (err, req, res, next) => {
     const statusCode = res.statusCode === 200
         ? (err.statusCode || err.status || 500)
@@ -13,7 +14,6 @@ const errorHandler = (err, req, res, next) => {
     res.status(statusCode);
     res.json({
         message: err.message,
-        stack: process.env.NODE_ENV === "production" ? "🥞" : err.stack,
     });
 };
 

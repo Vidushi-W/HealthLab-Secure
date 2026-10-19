@@ -16,6 +16,7 @@ const sessionUser = async (req) => {
   return User.findById(id).select("-password");
 };
 
+// V5 / VUL-09: do not log health/PII or return JWT/DB details to clients.
 const protect = async (req, res, next) => {
   try {
     req.user = await sessionUser(req);
@@ -35,8 +36,6 @@ const protect = async (req, res, next) => {
 
     return next();
   } catch {
-    // Do not expose token errors, database details, user IDs,
-    // emails, or other internal information to the client.
     return res.status(401).json({
       message: "Authentication failed",
     });
@@ -52,6 +51,7 @@ const requireAuth = (req, res, next) => {
   }
   next();
 };
+
 const authorize = (...args) => {
   const allowedRoles = args.flat();
   return (req, res, next) => {
@@ -60,15 +60,15 @@ const authorize = (...args) => {
     }
     const role = req.user.role || req.headers["x-user-role"];
     if (!allowedRoles.includes(role)) {
+      // V5 / VUL-09: do not echo the caller's role or allowed roles.
       return res.status(403).json({
         error: "Forbidden",
-        message: `Access denied. Required roles: ${allowedRoles.join(", ")}. Your role: ${role}`,
+        message: "Access denied",
       });
     }
     next();
   };
 };
-
 
 const optionalAuth = async (req, res, next) => {
   try { req.user = await sessionUser(req); } catch { req.user = null; }
@@ -78,4 +78,5 @@ const optionalAuth = async (req, res, next) => {
   }
   next();
 };
+
 module.exports = { protect, requireAuth, authorize, optionalAuth };

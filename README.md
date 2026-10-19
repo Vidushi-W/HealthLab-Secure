@@ -20,7 +20,7 @@
 ## Team members
 
 | Registration Number | Name 
-| --- | --- | --- |
+| 
 | IT23281400 | J.V.S.Weerasinghe 
 | IT23219366 | M.A.T.S.Meewalaarachchi 
 | IT23227972 | H.G.S.Dias 
