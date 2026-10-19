@@ -260,13 +260,22 @@ const getReports = asyncHandler(async (req, res) => {
 // V4 fix: send one identity document only after the admin check on this route.
 // path.basename drops any folder prefix, and the name must be a plain file name,
 // so a request cannot use ../ to read files outside uploads/affiliation-proofs.
-// Content-Type is taken from the file bytes, not from the name the uploader chose,
-// so a renamed file is not shown as a different kind of document.
+// The researcher record is loaded first so only proofs tied to a registration
+// are served. Content-Type comes from file bytes, not the uploader-chosen name.
 const getAffiliationProof = asyncHandler(async (req, res) => {
   const filename = path.basename(req.params.filename || "");
   if (!/^[A-Za-z0-9._-]+$/.test(filename)) {
     return errorResponse(res, HTTP_STATUS.BAD_REQUEST, "Invalid document name");
   }
+
+  const storedPath = path.posix.join("uploads", "affiliation-proofs", filename);
+  const researcher = await Researcher.findOne({
+    $or: [{ affiliationProof: storedPath }, { affiliationProof: filename }],
+  }).select("_id affiliationProof");
+  if (!researcher) {
+    return errorResponse(res, HTTP_STATUS.NOT_FOUND, "Document not found");
+  }
+
   const filePath = path.join(process.cwd(), "uploads", "affiliation-proofs", filename);
   if (!fs.existsSync(filePath)) {
     return errorResponse(res, HTTP_STATUS.NOT_FOUND, "Document not found");
@@ -280,6 +289,7 @@ const getAffiliationProof = asyncHandler(async (req, res) => {
   else if (file.toString("ascii", 0, 4) === "RIFF") contentType = "image/webp";
   res.setHeader("Content-Type", contentType);
   res.setHeader("Content-Disposition", "inline");
+  res.setHeader("X-Content-Type-Options", "nosniff");
   return res.send(file);
 });
 
